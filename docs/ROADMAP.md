@@ -16,6 +16,21 @@ the product and retrofitting it after tuning would waste all the tuning.
 
 ---
 
+## Build status (overseer-maintained)
+
+Work branch `phase-0`. Legend: ✅ done & committed · 🔨 in progress · ⬜ todo.
+
+- **Phase 0 — Skeleton & proof of feel** 🔨
+  - ✅ 0.1 pnpm workspace + determinism lint
+  - 🔨 0.2 sim tick loop + movement + static raft
+  - ⬜ 0.3 Cutlass + Chum + targeting + combat
+  - ⬜ 0.4 server match loop + WS + snapshots
+  - ⬜ 0.5 client render + interpolation + input
+  - ⬜ exit gate — Shane playtest
+- Phases 1–6 ⬜ not started
+
+---
+
 ## Phase 0 — Skeleton & proof of feel (~1 week)
 
 **Goal:** prove "moving while my weapon fights for me" is fun on the wire
