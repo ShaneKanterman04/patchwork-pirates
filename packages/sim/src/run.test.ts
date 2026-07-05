@@ -88,6 +88,80 @@ describe("run phase machine", () => {
     });
   });
 
+  it("heals damaged living players to full when combat enters build", () => {
+    const world = createWorld(11, TEST_CONTENT);
+    const player = addPlayer(world, "p1");
+    startRun(world);
+    player.hp = player.maxHp - 25;
+    player.prevHp = player.hp;
+    world.run.phaseTicksLeft = 1;
+    world.run.budgetRemaining = 0;
+
+    tick(world, new Map([["p1", IDLE_INPUT]]));
+
+    expect(world.run.phase).toBe("build");
+    expect(player.hp).toBe(player.maxHp);
+    expect(player.prevHp).toBe(player.maxHp);
+  });
+
+  it("heals downed players returned at wave end to full", () => {
+    const world = createWorld(12, TEST_CONTENT);
+    const player = addPlayer(world, "p1");
+    const reviver = addPlayer(world, "p2");
+    startRun(world);
+    player.downed = true;
+    player.hp = 0;
+    player.prevHp = 0;
+    player.bleedOutTicks = 100;
+    reviver.hp = reviver.maxHp - 10;
+    reviver.prevHp = reviver.hp;
+    world.run.phaseTicksLeft = 1;
+    world.run.budgetRemaining = 0;
+
+    tick(
+      world,
+      new Map([
+        ["p1", IDLE_INPUT],
+        ["p2", IDLE_INPUT]
+      ])
+    );
+
+    expect(world.run.phase).toBe("build");
+    expect(player.downed).toBe(false);
+    expect(player.out).toBe(false);
+    expect(player.bleedOutTicks).toBe(0);
+    expect(player.hp).toBe(player.maxHp);
+    expect(player.prevHp).toBe(player.maxHp);
+  });
+
+  it("heals out players returned at wave end to full", () => {
+    const world = createWorld(13, TEST_CONTENT);
+    const player = addPlayer(world, "p1");
+    const survivor = addPlayer(world, "p2");
+    startRun(world);
+    player.out = true;
+    player.hp = 0;
+    player.prevHp = 0;
+    survivor.hp = survivor.maxHp - 10;
+    survivor.prevHp = survivor.hp;
+    world.run.phaseTicksLeft = 1;
+    world.run.budgetRemaining = 0;
+
+    tick(
+      world,
+      new Map([
+        ["p1", IDLE_INPUT],
+        ["p2", IDLE_INPUT]
+      ])
+    );
+
+    expect(world.run.phase).toBe("build");
+    expect(player.downed).toBe(false);
+    expect(player.out).toBe(false);
+    expect(player.hp).toBe(player.maxHp);
+    expect(player.prevHp).toBe(player.maxHp);
+  });
+
   it("auto-ends a non-boss wave early once the budget is spent and all enemies are dead", () => {
     const world = createWorld(7, TEST_CONTENT);
     addPlayer(world, "p1");
@@ -132,6 +206,27 @@ describe("run phase machine", () => {
 
     expect(world.run.phase).toBe("victory");
     expect(world.run.wave).toBe(8);
+  });
+
+  it("heals players to full when final combat enters victory", () => {
+    const content = {
+      ...TEST_CONTENT,
+      waves: Array.from({ length: 8 }, () => ONE_COST_WAVE)
+    };
+    const world = createWorld(14, content);
+    const player = addPlayer(world, "p1");
+    world.run.phase = "combat";
+    world.run.wave = 8;
+    world.run.phaseTicksLeft = 1;
+    world.run.budgetRemaining = 0;
+    player.hp = player.maxHp - 30;
+    player.prevHp = player.hp;
+
+    tick(world, new Map([["p1", IDLE_INPUT]]));
+
+    expect(world.run.phase).toBe("victory");
+    expect(player.hp).toBe(player.maxHp);
+    expect(player.prevHp).toBe(player.maxHp);
   });
 });
 

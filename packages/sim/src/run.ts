@@ -298,6 +298,14 @@ function endCombatWave(world: WorldState): void {
   );
   world.salvage = Math.min(supplyCapacity(world), world.salvage + WAVE_CLEAR_SALVAGE);
   returnDownedAndOutPlayers(world);
+  for (const player of world.players) {
+    if (player.out) {
+      continue;
+    }
+
+    player.hp = player.maxHp;
+    player.prevHp = player.maxHp;
+  }
 
   if (world.run.wave >= MAX_WAVES) {
     world.run.phase = "victory";

@@ -163,7 +163,7 @@ describe("downed state", () => {
     expect(enemy.pos.x).toBeGreaterThan(outPlayer.pos.x - 1);
   });
 
-  it("returns downed and out players at wave end at 30 percent hp", () => {
+  it("returns downed and out players at wave end at full hp", () => {
     const world = createWorld(5, WAVE_CONTENT);
     const downed = addPlayer(world, "downed");
     const out = addPlayer(world, "out");
@@ -180,7 +180,7 @@ describe("downed state", () => {
     for (const player of [downed, out]) {
       expect(player.downed).toBe(false);
       expect(player.out).toBe(false);
-      expect(player.hp).toBe(Math.round(player.maxHp * REVIVE_HP_FRACTION));
+      expect(player.hp).toBe(player.maxHp);
       expect(player.bleedOutTicks).toBe(0);
       expect(player.reviveProgressTicks).toBe(0);
       expect(player.pos.x).toBeGreaterThanOrEqual(2.15);
