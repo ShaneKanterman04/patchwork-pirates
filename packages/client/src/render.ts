@@ -72,6 +72,13 @@ export interface HudState {
   salvageText: string;
   hpText: string;
   hpRatio: number;
+  boss:
+    | {
+        name: string;
+        phaseText: string;
+        hpRatio: number;
+      }
+    | null;
 }
 
 export class GameRenderer {
@@ -82,6 +89,7 @@ export class GameRenderer {
   private readonly players = new Map<string, EntityNode>();
   private readonly enemies = new Map<string, EntityNode>();
   private readonly pickups = new Map<string, Graphics>();
+  private readonly telegraphs = new Map<string, Graphics>();
   private readonly pings = new Map<string, PingNode>();
   private readonly slashes: SlashVfx[] = [];
   private readonly pops: PopVfx[] = [];
@@ -139,6 +147,7 @@ export class GameRenderer {
 
   update(state: InterpolatedState, myPlayerId: string | undefined, deltaMs: number): void {
     this.drawRaft(state.raft);
+    this.updateTelegraphs(state.enemies);
     this.updateModules(state.modules);
     this.updateProjectiles(state.projectiles);
     this.updatePlayers(state.players, myPlayerId);
@@ -164,12 +173,23 @@ export class GameRenderer {
 
     return {
       status,
-      waveText: `Wave ${state.wave.number}`,
+      waveText:
+        state.boss === null || state.boss === undefined
+          ? `Wave ${state.wave.number}`
+          : `Wave ${state.wave.number} - Boss`,
       phaseText: phaseText(state.wave.phase, state.wave.timeLeft),
       coinsText: `Coins ${ownPlayer?.coins ?? 0}`,
       salvageText: `Salvage ${state.salvage ?? 0}`,
       hpText,
-      hpRatio: clamp01(hpRatio)
+      hpRatio: clamp01(hpRatio),
+      boss:
+        state.boss === null || state.boss === undefined
+          ? null
+          : {
+              name: "The Kraken",
+              phaseText: bossPhaseText(state.boss.phase),
+              hpRatio: clamp01(state.boss.hpRatio)
+            }
     };
   }
 
@@ -345,6 +365,47 @@ export class GameRenderer {
     removeMissing(this.enemies, seen);
   }
 
+  private updateTelegraphs(enemies: readonly EnemyView[]): void {
+    const byTile = new Map<string, { col: number; row: number; ratio: number }>();
+
+    for (const enemy of enemies) {
+      if (enemy.telegraph === undefined) {
+        continue;
+      }
+
+      const key = `${enemy.telegraph.col},${enemy.telegraph.row}`;
+      const ratio = clamp01(enemy.telegraph.ratio);
+      const existing = byTile.get(key);
+
+      if (existing === undefined || ratio < existing.ratio) {
+        byTile.set(key, {
+          col: enemy.telegraph.col,
+          row: enemy.telegraph.row,
+          ratio
+        });
+      }
+    }
+
+    for (const [key, telegraph] of byTile) {
+      let graphic = this.telegraphs.get(key);
+
+      if (graphic === undefined) {
+        graphic = new Graphics();
+        this.telegraphs.set(key, graphic);
+        this.world.addChild(graphic);
+      }
+
+      drawTelegraph(graphic, telegraph.col, telegraph.row, telegraph.ratio);
+    }
+
+    for (const [key, graphic] of this.telegraphs) {
+      if (!byTile.has(key)) {
+        graphic.destroy();
+        this.telegraphs.delete(key);
+      }
+    }
+  }
+
   private updateModules(modules: readonly ModuleView[]): void {
     const seen = new Set<string>();
 
@@ -502,6 +563,55 @@ function fallbackRaft(): RaftView {
 function drawEnemy(graphic: Graphics, enemy: EnemyView): void {
   const r = enemy.radius;
 
+  if (enemy.kind === "kraken_tentacle") {
+    const height = Math.max(1.35, r * 3.2);
+    const width = Math.max(0.55, r * 1.35);
+    graphic
+      .ellipse(0, height * 0.28, width * 0.62, height * 0.62)
+      .fill(0x4b185f)
+      .stroke({ color: 0xf0a8ff, width: 0.065, alpha: 0.9 })
+      .ellipse(-width * 0.12, height * 0.02, width * 0.48, height * 0.72)
+      .fill(0x6a2580)
+      .stroke({ color: 0x2a0d39, width: 0.085 })
+      .ellipse(width * 0.12, -height * 0.34, width * 0.34, height * 0.46)
+      .fill(0x7d3297)
+      .moveTo(-width * 0.24, -height * 0.58)
+      .lineTo(width * 0.14, -height * 0.74)
+      .lineTo(width * 0.3, -height * 0.42)
+      .stroke({ color: 0xf7c2ff, width: 0.06, alpha: 0.72 })
+      .circle(-width * 0.2, height * 0.02, width * 0.11)
+      .fill(0xd7a1e8)
+      .circle(width * 0.18, height * 0.22, width * 0.1)
+      .fill(0xd7a1e8);
+    return;
+  }
+
+  if (enemy.kind === "kraken_head") {
+    const headR = Math.max(1.05, r * 1.45);
+    graphic
+      .ellipse(0, 0.06, headR * 1.18, headR)
+      .fill(0x39204f)
+      .stroke({ color: 0x130820, width: 0.1 })
+      .ellipse(-headR * 0.38, -headR * 0.2, headR * 0.24, headR * 0.16)
+      .fill(0xffe676)
+      .circle(-headR * 0.32, -headR * 0.2, headR * 0.07)
+      .fill(0x18121c)
+      .ellipse(headR * 0.38, -headR * 0.2, headR * 0.24, headR * 0.16)
+      .fill(0xffe676)
+      .circle(headR * 0.32, -headR * 0.2, headR * 0.07)
+      .fill(0x18121c)
+      .roundRect(-headR * 0.44, headR * 0.28, headR * 0.88, headR * 0.18, headR * 0.05)
+      .fill(0x160d1f)
+      .moveTo(-headR * 0.3, headR * 0.29)
+      .lineTo(-headR * 0.18, headR * 0.48)
+      .lineTo(-headR * 0.06, headR * 0.29)
+      .lineTo(headR * 0.06, headR * 0.48)
+      .lineTo(headR * 0.18, headR * 0.29)
+      .lineTo(headR * 0.3, headR * 0.48)
+      .stroke({ color: 0xfff2dc, width: 0.045 });
+    return;
+  }
+
   if (enemy.kind === "brute_turtle") {
     graphic
       .ellipse(0, 0.04, r * 1.15, r * 0.82)
@@ -583,6 +693,42 @@ function drawModule(graphic: Graphics, module: ModuleView): void {
     .circle(module.col + 0.82, module.row + 0.2, 0.07)
     .fill(hpColor(ratio))
     .stroke({ color: 0x1e1e24, width: 0.02 });
+}
+
+function drawTelegraph(
+  graphic: Graphics,
+  col: number,
+  row: number,
+  remainingRatio: number
+): void {
+  const fillRatio = 1 - clamp01(remainingRatio);
+  const cx = col + 0.5;
+  const cy = row + 0.5;
+  const start = -Math.PI / 2;
+  const end = start + Math.PI * 2 * fillRatio;
+
+  graphic
+    .clear()
+    .rect(col + 0.08, row + 0.08, 0.84, 0.84)
+    .fill({ color: 0xff2e2e, alpha: 0.16 + fillRatio * 0.2 })
+    .stroke({ color: 0xffe0a3, width: 0.035, alpha: 0.82 })
+    .circle(cx, cy, 0.36)
+    .stroke({ color: 0xff2e2e, width: 0.075, alpha: 0.95 });
+
+  if (fillRatio > 0) {
+    graphic
+      .moveTo(cx, cy)
+      .arc(cx, cy, 0.3, start, end)
+      .lineTo(cx, cy)
+      .fill({ color: 0xff2e2e, alpha: 0.48 });
+  }
+
+  graphic
+    .moveTo(cx - 0.28, cy)
+    .lineTo(cx + 0.28, cy)
+    .moveTo(cx, cy - 0.28)
+    .lineTo(cx, cy + 0.28)
+    .stroke({ color: 0xffffff, width: 0.035, alpha: 0.72 });
 }
 
 function getOrCreateEntity(
@@ -752,6 +898,29 @@ export function renderHud(root: HTMLElement, state: HudState): void {
       state.hpRatio * 100
     )}%)`;
   }
+
+  const bossHud = root.querySelector<HTMLElement>("[data-boss-hud]");
+  const bossFill = root.querySelector<HTMLElement>("[data-boss-fill]");
+  bossHud?.toggleAttribute("hidden", state.boss === null);
+  if (state.boss !== null) {
+    root.querySelector<HTMLElement>("[data-boss-name]")?.replaceChildren(state.boss.name);
+    root.querySelector<HTMLElement>("[data-boss-phase]")?.replaceChildren(state.boss.phaseText);
+    if (bossFill !== null) {
+      bossFill.style.width = `${Math.round(state.boss.hpRatio * 100)}%`;
+    }
+  }
+}
+
+export function bossPhaseText(phase: NonNullable<InterpolatedState["boss"]>["phase"]): string {
+  if (phase === "tentacles") {
+    return "The Kraken's tentacles rise!";
+  }
+
+  if (phase === "head") {
+    return "The head surfaces - strike now!";
+  }
+
+  return "The sea stills... brace!";
 }
 
 function phaseText(phase: InterpolatedState["wave"]["phase"], timeLeft: number): string {

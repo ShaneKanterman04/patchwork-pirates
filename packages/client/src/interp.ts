@@ -1,4 +1,5 @@
 import type {
+  BossView,
   EnemyView,
   ModuleView,
   PickupView,
@@ -27,6 +28,7 @@ export interface InterpolatedState {
   raft?: RaftView;
   salvage?: number;
   modules: ModuleView[];
+  boss?: BossView | null;
 }
 
 export function interpolate(
@@ -41,7 +43,8 @@ export function interpolate(
       pickups: [],
       pings: [],
       wave: { number: 1, phase: "lobby", timeLeft: 0 },
-      modules: []
+      modules: [],
+      boss: null
     };
   }
 
@@ -81,7 +84,8 @@ export function interpolate(
         wave: newer.snapshot.wave,
         raft: newer.snapshot.raft,
         salvage: newer.snapshot.salvage,
-        modules: newer.snapshot.modules?.map((module) => ({ ...module })) ?? []
+        modules: newer.snapshot.modules?.map((module) => ({ ...module })) ?? [],
+        boss: copyBoss(newer.snapshot.boss)
       };
     }
   }
@@ -99,8 +103,13 @@ function snapshotToState(snapshot: Snapshot): InterpolatedState {
     wave: snapshot.wave,
     raft: snapshot.raft,
     salvage: snapshot.salvage,
-    modules: snapshot.modules?.map((module) => ({ ...module })) ?? []
+    modules: snapshot.modules?.map((module) => ({ ...module })) ?? [],
+    boss: copyBoss(snapshot.boss)
   };
+}
+
+function copyBoss(boss: BossView | null | undefined): BossView | null {
+  return boss === undefined || boss === null ? null : { ...boss };
 }
 
 function interpolateById<T extends { id: string; x: number; y: number }>(

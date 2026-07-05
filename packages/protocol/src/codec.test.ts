@@ -38,7 +38,17 @@ const snapshot: Snapshot = {
       stats: { damageDealt: 18, tilesRepaired: 1, revives: 0 }
     }
   ],
-  enemies: [{ id: "e1", kind: "chum", x: 4, y: 5, hpRatio: 0.5, radius: 0.3 }],
+  enemies: [
+    {
+      id: "e1",
+      kind: "kraken_tentacle",
+      x: 4,
+      y: 5,
+      hpRatio: 0.5,
+      radius: 0.45,
+      telegraph: { col: 2, row: 3, ratio: 0.75 }
+    }
+  ],
   projectiles: [{ id: "pr1", kind: "glob", x: 4, y: 4, faction: "enemy" }],
   pickups: [{ id: "c1", kind: "coin", x: 3, y: 3 }],
   wave: { number: 2, phase: "build", timeLeft: 14.5 },
@@ -52,7 +62,8 @@ const snapshot: Snapshot = {
   },
   salvage: 5,
   modules: [{ id: "m1", defId: "cannon", col: 2, row: 1, hpRatio: 0.5 }],
-  pings: [{ id: "ping1", kind: "danger", x: 4, y: 5 }]
+  pings: [{ id: "ping1", kind: "danger", x: 4, y: 5 }],
+  boss: { phase: "tentacles", hpRatio: 0.6 }
 };
 
 describe("protocol codec", () => {

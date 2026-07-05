@@ -63,6 +63,16 @@ export interface EnemyView {
   y: number;
   hpRatio: number;
   radius: number;
+  telegraph?: {
+    col: number;
+    row: number;
+    ratio: number;
+  };
+}
+
+export interface BossView {
+  phase: "tentacles" | "head" | "between";
+  hpRatio: number;
 }
 
 export interface PickupView {
@@ -104,6 +114,7 @@ export interface Snapshot {
   salvage?: number;
   modules?: ModuleView[];
   pings?: PingView[];
+  boss?: BossView | null;
 }
 
 export type WireEvent =

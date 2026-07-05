@@ -21,6 +21,7 @@ import type {
   PlayerInput,
   SimEvent,
   ShopOffer,
+  EnemyState,
   WorldState
 } from "@patchwork/sim";
 import type {
@@ -316,7 +317,8 @@ export function buildSnapshot(match: Match): Snapshot {
       x: enemy.pos.x,
       y: enemy.pos.y,
       hpRatio: enemy.maxHp === 0 ? 0 : enemy.hp / enemy.maxHp,
-      radius: enemy.radius
+      radius: enemy.radius,
+      ...telegraphView(match.world, enemy)
     })),
     projectiles: match.world.projectiles.map((projectile) => ({
       id: projectile.id,
@@ -360,8 +362,72 @@ export function buildSnapshot(match: Match): Snapshot {
       kind: ping.kind,
       x: ping.x,
       y: ping.y
-    }))
+    })),
+    boss:
+      match.world.boss === null
+        ? null
+        : {
+            phase: match.world.boss.phase,
+            hpRatio:
+              match.world.boss.maxHp > 0
+                ? match.world.boss.hp / match.world.boss.maxHp
+                : 0
+          }
   };
+}
+
+function telegraphView(
+  world: WorldState,
+  enemy: EnemyState
+): { telegraph: { col: number; row: number; ratio: number } } | Record<string, never> {
+  if (enemy.telegraphTicks <= 0 || enemy.attackingTileId === null) {
+    return {};
+  }
+
+  const tile = parseTileId(enemy.attackingTileId);
+  const totalTicks = telegraphTotalTicks(world, enemy);
+
+  if (tile === null || totalTicks <= 0) {
+    return {};
+  }
+
+  return {
+    telegraph: {
+      col: tile.col,
+      row: tile.row,
+      ratio: ratio(enemy.telegraphTicks, totalTicks)
+    }
+  };
+}
+
+function telegraphTotalTicks(world: WorldState, enemy: EnemyState): number {
+  const behavior = world.content.enemies[enemy.type]?.behavior;
+
+  if (behavior?.kind !== "tentacle") {
+    return enemy.telegraphTicks;
+  }
+
+  return Math.max(
+    Math.ceil(0.8 * TICK_RATE),
+    Math.round(behavior.telegraphS * TICK_RATE)
+  );
+}
+
+function parseTileId(tileId: string): { col: number; row: number } | null {
+  const [colRaw, rowRaw, extra] = tileId.split(",");
+
+  if (extra !== undefined || colRaw === undefined || rowRaw === undefined) {
+    return null;
+  }
+
+  const col = Number(colRaw);
+  const row = Number(rowRaw);
+
+  if (!Number.isInteger(col) || !Number.isInteger(row)) {
+    return null;
+  }
+
+  return { col, row };
 }
 
 function ratio(value: number, max: number): number {

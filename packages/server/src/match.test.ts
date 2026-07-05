@@ -73,6 +73,47 @@ describe("match", () => {
     });
   });
 
+  it("exposes boss state and enemy attack telegraphs in snapshots", () => {
+    const match = createMatch(1);
+    match.world.boss = {
+      phase: "tentacles",
+      hp: 60,
+      maxHp: 100,
+      phaseTicksLeft: TICK_RATE,
+      headEnemyId: null,
+      cycles: 0
+    };
+    match.world.enemies.push({
+      id: "tentacle1",
+      type: "kraken_tentacle",
+      pos: { x: 0.5, y: -0.2 },
+      hp: 35,
+      maxHp: 70,
+      radius: 0.45,
+      speed: 0,
+      contactDamage: 0,
+      contactCooldownTicks: 0,
+      contactCooldownMax: Math.round(2.2 * TICK_RATE),
+      slowTicks: 0,
+      slowFactor: 1,
+      attackingTileId: "2,3",
+      telegraphTicks: 13,
+      markTicks: 0
+    });
+
+    const snapshot = buildSnapshot(match);
+
+    expect(snapshot.boss).toEqual({ phase: "tentacles", hpRatio: 0.6 });
+    expect(snapshot.enemies[0]).toMatchObject({
+      kind: "kraken_tentacle",
+      telegraph: {
+        col: 2,
+        row: 3,
+        ratio: 13 / Math.round(0.85 * TICK_RATE)
+      }
+    });
+  });
+
   it("removes players from the world and snapshots", () => {
     const match = createMatch(123);
     const playerId = matchAddPlayer(match, "c1");

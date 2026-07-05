@@ -47,8 +47,8 @@ Work branch `phase-0`. Legend: ✅ done & committed · 🔨 in progress · ⬜ t
   - ⏸ exit gate — Shane playtest (2 machines finish a run + a mid-wave revive). Overseer verified lobby/join/character-select/run-start + disconnect→downed→rejoin over real WS.
 - **Phase 3 — MVP content & the boss** 🔨
   - ✅ 3.1 The Kraken boss: tentacle-siege phases + head damage-window + Chum between (sim+content)
-  - 🔨 3.2 Kraken wire + client render + attack telegraphs (≥0.75s) (protocol+server+client)
-  - ⬜ 3.3 headless balance harness: seeded bot runs, wave-reached/core-HP/DPS reports (new package)
+  - ✅ 3.2 Kraken wire + client render + attack telegraphs (≥0.75s) (protocol+server+client)
+  - 🔨 3.3 headless balance harness: seeded bot runs, wave-reached/core-HP/DPS reports (new package)
   - ⬜ 3.4 balance tuning pass from harness output (overseer; content numbers)
   - note: character specials (Captain mark / Fisher priority) already shipped in 2.2
 - Phases 4–6 ⬜ not started

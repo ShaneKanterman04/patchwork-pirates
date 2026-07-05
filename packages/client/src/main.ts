@@ -26,11 +26,17 @@ root.innerHTML = `
     .hud { position: absolute; top: 14px; left: 14px; min-width: 270px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.45); pointer-events: none; }
     .hud[hidden] { display: none; }
     .hud-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
-    .hud-row span, .hp { background: rgba(16, 43, 58, .72); border: 1px solid rgba(255,255,255,.22); border-radius: 8px; padding: 6px 9px; }
+    .hud-row span, .hp, .boss-hud { background: rgba(16, 43, 58, .72); border: 1px solid rgba(255,255,255,.22); border-radius: 8px; padding: 6px 9px; }
     .hp { width: 230px; }
     .hp-label { font-weight: 700; font-size: 13px; margin-bottom: 5px; }
     .hp-track { height: 10px; border-radius: 999px; background: #2a2730; overflow: hidden; }
     .hp-fill { height: 100%; width: 0%; border-radius: 999px; }
+    .boss-hud { width: min(420px, calc(100vw - 28px)); margin-top: 8px; }
+    .boss-hud[hidden] { display: none; }
+    .boss-top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 6px; }
+    .boss-name { font-weight: 900; letter-spacing: 0; text-transform: uppercase; }
+    .boss-phase { font-size: 13px; font-weight: 800; text-align: right; }
+    .boss-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #ff4f5e, #f7b955); }
     .shop { position: absolute; right: 16px; top: 16px; width: min(360px, calc(100vw - 32px)); color: #17202a; background: rgba(246, 248, 241, .94); border: 1px solid rgba(38, 54, 68, .25); border-radius: 8px; box-shadow: 0 12px 34px rgba(25, 39, 52, .28); padding: 12px; }
     .shop[hidden], .end-screen[hidden], .lobby[hidden], .scoreboard[hidden], .revive-hint[hidden] { display: none; }
     .shop-head, .shop-actions, .modules { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -89,6 +95,13 @@ root.innerHTML = `
       <div class="hp">
         <div class="hp-label" data-hp-text>HP --</div>
         <div class="hp-track"><div class="hp-fill" data-hp-fill></div></div>
+      </div>
+      <div class="boss-hud" data-boss-hud hidden>
+        <div class="boss-top">
+          <span class="boss-name" data-boss-name>The Kraken</span>
+          <span class="boss-phase" data-boss-phase></span>
+        </div>
+        <div class="hp-track"><div class="boss-fill" data-boss-fill></div></div>
       </div>
     </div>
     <div class="shop" data-shop hidden></div>
