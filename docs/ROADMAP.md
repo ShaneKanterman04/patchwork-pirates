@@ -20,13 +20,13 @@ the product and retrofitting it after tuning would waste all the tuning.
 
 Work branch `phase-0`. Legend: ✅ done & committed · 🔨 in progress · ⬜ todo.
 
-- **Phase 0 — Skeleton & proof of feel** 🔨
+- **Phase 0 — Skeleton & proof of feel** 🔨 (all packets built & verified; awaiting playtest)
   - ✅ 0.1 pnpm workspace + determinism lint
   - ✅ 0.2 sim tick loop + movement + dash + static raft
   - ✅ 0.3 Cutlass + Chum + targeting + combat (content-injection architecture)
   - ✅ 0.4 server match loop + WS + snapshots (protocol wire contract)
-  - 🔨 0.5 client render + interpolation + input
-  - ⬜ exit gate — Shane playtest
+  - ✅ 0.5 PixiJS client render + interpolation + input capture
+  - 🔨 exit gate — Shane playtest (overseer verified the stack headlessly; feel is Shane's call)
 - Phases 1–6 ⬜ not started
 
 ---
