@@ -36,10 +36,17 @@ export interface PlayerState {
   items: string[];
   shop: PlayerShop;
   weapons: WeaponInstance[];
+  stats: PlayerStats;
   dashCooldown: number;
   dashTicks: number;
   dashDir: Vec2;
   prevDash: boolean;
+}
+
+export interface PlayerStats {
+  damageDealt: number;
+  tilesRepaired: number;
+  revives: number;
 }
 
 export type ShopOffer =
@@ -244,6 +251,15 @@ export interface PickupState {
   value: number;
 }
 
+export interface PingState {
+  id: string;
+  kind: "danger" | "repair" | "loot" | "group";
+  x: number;
+  y: number;
+  ttlTicks: number;
+  playerId: string;
+}
+
 export interface ProjectileState {
   id: string;
   type: string;
@@ -315,6 +331,7 @@ export interface WorldState {
   salvage: number;
   enemies: EnemyState[];
   pickups: PickupState[];
+  pings: PingState[];
   projectiles: ProjectileState[];
   modules: ModuleState[];
   events: SimEvent[];

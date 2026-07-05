@@ -34,14 +34,15 @@ export function updateDowned(
       continue;
     }
 
-    if (hasEligibleReviver(world, downedPlayer, inputs, tookHit)) {
+    const reviver = findEligibleReviver(world, downedPlayer, inputs, tookHit);
+    if (reviver !== null) {
       downedPlayer.reviveProgressTicks += 1;
+      if (downedPlayer.reviveProgressTicks >= REVIVE_S * TICK_RATE) {
+        revivePlayer(downedPlayer);
+        reviver.stats.revives += 1;
+      }
     } else {
       downedPlayer.reviveProgressTicks = 0;
-    }
-
-    if (downedPlayer.reviveProgressTicks >= REVIVE_S * TICK_RATE) {
-      revivePlayer(downedPlayer);
     }
   }
 
@@ -88,12 +89,12 @@ export function hasDownedPlayerInReviveRange(
   );
 }
 
-function hasEligibleReviver(
+function findEligibleReviver(
   world: WorldState,
   downedPlayer: PlayerState,
   inputs: Map<string, PlayerInput>,
   tookHit: Set<string>
-): boolean {
+): PlayerState | null {
   for (const reviver of world.players) {
     if (reviver === downedPlayer || reviver.downed || reviver.out) {
       continue;
@@ -105,11 +106,11 @@ function hasEligibleReviver(
     }
 
     if (distance(reviver.pos, downedPlayer.pos) <= REVIVE_RANGE) {
-      return true;
+      return reviver;
     }
   }
 
-  return false;
+  return null;
 }
 
 function revivePlayer(player: PlayerState): void {

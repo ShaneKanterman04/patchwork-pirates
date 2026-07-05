@@ -4,6 +4,8 @@ import {
   DASH_SPEED_MULT,
   HOLE_REBUILD_RATE,
   INTERACT_RANGE,
+  PING_SCAN_RADIUS,
+  PING_TTL_S,
   PLAYER_REPAIR_RATE,
   TICK_RATE
 } from "./constants";
@@ -25,6 +27,7 @@ import type {
   PlayerId,
   PlayerInput,
   PlayerState,
+  PingState,
   RaftTile,
   Vec2,
   WorldState
@@ -37,6 +40,7 @@ const ZERO_INPUT: PlayerInput = {
 };
 
 const FACING_EPSILON = 0.000001;
+const MAX_PINGS = 12;
 
 export function mulberry32(seed: number): () => number {
   let state = seed >>> 0;
@@ -74,6 +78,7 @@ export function createWorld(
     salvage: 0,
     enemies: [],
     pickups: [],
+    pings: [],
     projectiles: [],
     modules: [],
     events: [],
@@ -146,10 +151,51 @@ export function tick(
   resolveEnemyDeaths(world);
   updateDowned(world, inputs);
   collectPickups(world);
+  updatePings(world);
   updateRunPostSim(world);
 
   world.tick += 1;
   return world;
+}
+
+export function createPing(world: WorldState, playerId: PlayerId): PingState | null {
+  const player = world.players.find((candidate) => candidate.id === playerId);
+  if (player === undefined || player.downed || player.out) {
+    return null;
+  }
+
+  const target = pingTarget(world, player);
+  const ping: PingState = {
+    id: nextPingId(world),
+    kind: target.kind,
+    x: target.x,
+    y: target.y,
+    ttlTicks: PING_TTL_S * TICK_RATE,
+    playerId
+  };
+
+  world.pings.push(ping);
+  if (world.pings.length > MAX_PINGS) {
+    world.pings = world.pings.slice(world.pings.length - MAX_PINGS);
+  }
+
+  return ping;
+}
+
+export function updatePings(world: WorldState): void {
+  const remaining: PingState[] = [];
+
+  for (const ping of world.pings) {
+    ping.ttlTicks -= 1;
+    if (ping.ttlTicks > 0) {
+      remaining.push(ping);
+    }
+  }
+
+  world.pings =
+    remaining.length > MAX_PINGS
+      ? remaining.slice(remaining.length - MAX_PINGS)
+      : remaining;
 }
 
 export function collectPickups(world: WorldState): void {
@@ -249,8 +295,99 @@ function repairNearestTile(
 
   if (tile.broken && tile.hp >= tile.maxHp) {
     tile.broken = false;
+    player.stats.tilesRepaired += 1;
     world.events.push({ type: "tile_repaired", col: tile.col, row: tile.row });
   }
+}
+
+function pingTarget(
+  world: WorldState,
+  player: PlayerState
+): { kind: PingState["kind"]; x: number; y: number } {
+  const enemy = nearestEnemyForPing(world, player.pos);
+  if (enemy !== null) {
+    return { kind: "danger", x: enemy.pos.x, y: enemy.pos.y };
+  }
+
+  const tile = nearestDamagedTileForPing(world, player.pos);
+  if (tile !== null) {
+    return { kind: "repair", x: tile.col + 0.5, y: tile.row + 0.5 };
+  }
+
+  const pickup = nearestPickupForPing(world, player.pos);
+  if (pickup !== null) {
+    return { kind: "loot", x: pickup.pos.x, y: pickup.pos.y };
+  }
+
+  return { kind: "group", x: player.pos.x, y: player.pos.y };
+}
+
+function nearestEnemyForPing(
+  world: WorldState,
+  pos: Vec2
+): WorldState["enemies"][number] | null {
+  let selected: WorldState["enemies"][number] | null = null;
+  let selectedDistanceSquared = Number.POSITIVE_INFINITY;
+  const radiusSquared = PING_SCAN_RADIUS * PING_SCAN_RADIUS;
+
+  for (const enemy of world.enemies) {
+    if (enemy.hp <= 0) {
+      continue;
+    }
+
+    const distanceSquared = squaredDistance(pos, enemy.pos);
+    if (distanceSquared <= radiusSquared && distanceSquared < selectedDistanceSquared) {
+      selected = enemy;
+      selectedDistanceSquared = distanceSquared;
+    }
+  }
+
+  return selected;
+}
+
+function nearestDamagedTileForPing(
+  world: WorldState,
+  pos: Vec2
+): RaftTile | null {
+  let selected: RaftTile | null = null;
+  let selectedDistanceSquared = Number.POSITIVE_INFINITY;
+  const radiusSquared = PING_SCAN_RADIUS * PING_SCAN_RADIUS;
+
+  for (const tile of world.raft.tiles) {
+    if (!tile.broken && tile.hp >= tile.maxHp) {
+      continue;
+    }
+
+    const distanceSquared = squaredDistance(pos, {
+      x: tile.col + 0.5,
+      y: tile.row + 0.5
+    });
+    if (distanceSquared <= radiusSquared && distanceSquared < selectedDistanceSquared) {
+      selected = tile;
+      selectedDistanceSquared = distanceSquared;
+    }
+  }
+
+  return selected;
+}
+
+function nearestPickupForPing(
+  world: WorldState,
+  pos: Vec2
+): WorldState["pickups"][number] | null {
+  let selected: WorldState["pickups"][number] | null = null;
+  let selectedDistanceSquared = Number.POSITIVE_INFINITY;
+  const radiusSquared = PING_SCAN_RADIUS * PING_SCAN_RADIUS;
+
+  for (const pickup of world.pickups) {
+    const distanceSquared = squaredDistance(pos, pickup.pos);
+    if (distanceSquared <= radiusSquared && distanceSquared < selectedDistanceSquared) {
+      selected = pickup;
+      selectedDistanceSquared = distanceSquared;
+    }
+  }
+
+  return selected;
 }
 
 function nearestRepairTarget(
@@ -284,6 +421,18 @@ function nearestRepairTarget(
 
 function nextMulberry32State(state: number): number {
   return (state + 0x6d2b79f5) >>> 0;
+}
+
+function nextPingId(world: WorldState): string {
+  const id = `ping${world.nextEntityId}`;
+  world.nextEntityId += 1;
+  return id;
+}
+
+function squaredDistance(a: Vec2, b: Vec2): number {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return dx * dx + dy * dy;
 }
 
 function scrambleMulberry32State(state: number): number {

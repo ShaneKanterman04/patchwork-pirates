@@ -1,7 +1,10 @@
 import { CONTENT } from "@patchwork/content";
 import {
+  DOWNED_BLEED_OUT_S,
+  REVIVE_S,
   TICK_RATE,
   addPlayer,
+  createPing,
   buyOffer,
   createWorld,
   purchaseModule,
@@ -94,6 +97,9 @@ export function handleClientMessage(
       case "place_module":
         purchaseModule(match.world, playerId, msg.defId, msg.col, msg.row);
         return;
+      case "ping":
+        createPing(match.world, playerId);
+        return;
       default:
         console.warn(
           `dropping unknown client message from ${playerId}: ${JSON.stringify(msg)}`
@@ -132,10 +138,21 @@ export function buildSnapshot(match: Match): Snapshot {
       maxHp: player.maxHp,
       facingX: player.facing.x,
       facingY: player.facing.y,
-      downed: player.hp <= 0,
+      downed: player.downed,
+      out: player.out,
+      bleedOutRatio: ratio(
+        player.bleedOutTicks,
+        DOWNED_BLEED_OUT_S * TICK_RATE
+      ),
+      reviveProgressRatio: ratio(
+        player.reviveProgressTicks,
+        REVIVE_S * TICK_RATE
+      ),
+      characterId: player.characterId,
       weaponIds: player.weapons.map((weapon) => weapon.defId),
       coins: player.coins,
-      shop: shopToView(player.shop)
+      shop: shopToView(player.shop),
+      stats: { ...player.stats }
     })),
     enemies: match.world.enemies.map((enemy) => ({
       id: enemy.id,
@@ -181,8 +198,22 @@ export function buildSnapshot(match: Match): Snapshot {
       col: module.col,
       row: module.row,
       hpRatio: module.maxHp > 0 ? module.hp / module.maxHp : 0
+    })),
+    pings: match.world.pings.map((ping) => ({
+      id: ping.id,
+      kind: ping.kind,
+      x: ping.x,
+      y: ping.y
     }))
   };
+}
+
+function ratio(value: number, max: number): number {
+  if (max <= 0) {
+    return 0;
+  }
+
+  return Math.min(1, Math.max(0, value / max));
 }
 
 function shopToView(shop: { offers: ShopOffer[]; locked: boolean[]; rerollCost: number }): ShopView {

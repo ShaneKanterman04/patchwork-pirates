@@ -57,6 +57,11 @@ export function addPlayer(
       defId,
       cooldownTicks: 0
     })),
+    stats: {
+      damageDealt: 0,
+      tilesRepaired: 0,
+      revives: 0
+    },
     dashCooldown: 0,
     dashTicks: 0,
     dashDir: { x: 0, y: 1 },

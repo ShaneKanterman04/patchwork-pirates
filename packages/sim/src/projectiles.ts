@@ -85,6 +85,7 @@ function updateDirectProjectile(
   if (hit !== null) {
     const damage = markedDamage(projectile.damage, hit);
     hit.hp -= damage;
+    creditProjectileDamage(world, projectile, damage);
     world.events.push({
       type: "enemy_hit",
       enemyId: hit.id,
@@ -210,6 +211,7 @@ function explode(
 
     const damage = markedDamage(projectile.damage, enemy);
     enemy.hp -= damage;
+    creditProjectileDamage(world, projectile, damage);
     world.events.push({
       type: "enemy_hit",
       enemyId: enemy.id,
@@ -262,6 +264,17 @@ function isPlayerInAoe(
   pos: Vec2
 ): boolean {
   return distance(pos, player.pos) <= projectile.aoeRadius + PLAYER_RADIUS;
+}
+
+function creditProjectileDamage(
+  world: WorldState,
+  projectile: ProjectileState,
+  damage: number
+): void {
+  const owner = world.players.find((player) => player.id === projectile.ownerId);
+  if (owner !== undefined) {
+    owner.stats.damageDealt += damage;
+  }
 }
 
 function markedDamage(baseDamage: number, enemy: EnemyState): number {

@@ -42,9 +42,18 @@ export interface PlayerView {
   facingX: number;
   facingY: number;
   downed: boolean;
+  out?: boolean;
+  bleedOutRatio?: number;
+  reviveProgressRatio?: number;
+  characterId?: string | null;
   weaponIds: string[];
   coins?: number;
   shop?: ShopView;
+  stats?: {
+    damageDealt: number;
+    tilesRepaired: number;
+    revives: number;
+  };
 }
 
 export interface EnemyView {
@@ -71,6 +80,13 @@ export interface ProjView {
   faction?: "player" | "enemy";
 }
 
+export interface PingView {
+  id: string;
+  kind: string;
+  x: number;
+  y: number;
+}
+
 export interface WavePhaseView {
   number: number;
   phase: "combat" | "build" | "victory" | "defeat";
@@ -87,6 +103,7 @@ export interface Snapshot {
   raft?: RaftView;
   salvage?: number;
   modules?: ModuleView[];
+  pings?: PingView[];
 }
 
 export type WireEvent =
@@ -130,7 +147,8 @@ export type ClientMessage =
   | { type: "reroll" }
   | { type: "lock"; index: number }
   | { type: "ready"; ready: boolean }
-  | { type: "place_module"; defId: string; col: number; row: number };
+  | { type: "place_module"; defId: string; col: number; row: number }
+  | { type: "ping" };
 
 export function encodeServerMessage(msg: ServerMessage): string {
   return JSON.stringify(msg);
@@ -163,7 +181,8 @@ export function decodeClientMessage(raw: string): ClientMessage {
     msg.type !== "reroll" &&
     msg.type !== "lock" &&
     msg.type !== "ready" &&
-    msg.type !== "place_module"
+    msg.type !== "place_module" &&
+    msg.type !== "ping"
   ) {
     throw new Error(`Unknown client message type: ${String(msg.type)}`);
   }

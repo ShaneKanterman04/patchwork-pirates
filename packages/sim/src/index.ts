@@ -17,7 +17,15 @@ export {
 export { selectTarget, threatScore } from "./targeting";
 export { updateProjectiles } from "./projectiles";
 export { updatePlayerWeapons } from "./weapons";
-export { collectPickups, createWorld, mulberry32, nextRandom, tick } from "./world";
+export {
+  collectPickups,
+  createPing,
+  createWorld,
+  mulberry32,
+  nextRandom,
+  tick,
+  updatePings
+} from "./world";
 export type {
   ContentRegistry,
   CharacterDef,
@@ -31,10 +39,12 @@ export type {
   ModuleDef,
   ModuleState,
   PickupState,
+  PingState,
   PlayerId,
   PlayerInput,
   PlayerShop,
   PlayerState,
+  PlayerStats,
   ProjectileState,
   RaftState,
   RaftTile,

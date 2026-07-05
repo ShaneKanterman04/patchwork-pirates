@@ -16,6 +16,8 @@ export const DOWNED_BLEED_OUT_S = 30;
 export const REVIVE_S = 3;
 export const REVIVE_RANGE = 1.2;
 export const REVIVE_HP_FRACTION = 0.3;
+export const PING_TTL_S = 4;
+export const PING_SCAN_RADIUS = 3.5;
 
 export const DASH_SPEED_MULT = 3;
 export const DASH_DURATION_S = 0.2;

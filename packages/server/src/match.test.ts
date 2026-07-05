@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TICK_RATE } from "@patchwork/sim";
+import { DOWNED_BLEED_OUT_S, REVIVE_S, TICK_RATE } from "@patchwork/sim";
 import {
   buildSnapshot,
   createMatch,
@@ -94,6 +94,17 @@ describe("match", () => {
     expect(brokenTile).toBeDefined();
 
     player!.coins = 17;
+    player!.characterId = "captain";
+    player!.downed = true;
+    player!.out = false;
+    player!.hp = 20;
+    player!.bleedOutTicks = (DOWNED_BLEED_OUT_S * TICK_RATE) / 2;
+    player!.reviveProgressTicks = (REVIVE_S * TICK_RATE) / 3;
+    player!.stats = {
+      damageDealt: 42,
+      tilesRepaired: 2,
+      revives: 1
+    };
     player!.shop = {
       offers: [
         { kind: "weapon", defId: "harpoon_gun", price: 9 },
@@ -115,6 +126,14 @@ describe("match", () => {
       hp: 25,
       maxHp: 50,
       cooldownTicks: 0
+    });
+    match.world.pings.push({
+      id: "ping1",
+      kind: "repair",
+      x: 1.5,
+      y: 2.5,
+      ttlTicks: TICK_RATE,
+      playerId
     });
     match.world.run.phase = "build";
     match.world.run.wave = 2;
@@ -143,11 +162,24 @@ describe("match", () => {
         ],
         locked: [true, false, false],
         rerollCost: 4
+      },
+      downed: true,
+      out: false,
+      bleedOutRatio: 0.5,
+      reviveProgressRatio: 1 / 3,
+      characterId: "captain",
+      stats: {
+        damageDealt: 42,
+        tilesRepaired: 2,
+        revives: 1
       }
     });
     expect(snapshot.salvage).toBe(6);
     expect(snapshot.modules).toEqual([
       { id: "m1", defId: "cannon", col: 1, row: 1, hpRatio: 0.5 }
+    ]);
+    expect(snapshot.pings).toEqual([
+      { id: "ping1", kind: "repair", x: 1.5, y: 2.5 }
     ]);
     expect(snapshot.wave).toEqual({ number: 2, phase: "build", timeLeft: 1.5 });
   });
@@ -173,5 +205,18 @@ describe("match", () => {
     expect(player!.coins).toBe(13);
     expect(player!.shop.offers[0]).toEqual({ kind: "sold" });
     expect(match.world.run.readyPlayerIds).toContain(playerId);
+  });
+
+  it("routes ping client messages to sim ping creation", () => {
+    const match = createMatch(123);
+    const playerId = matchAddPlayer(match, "c1");
+
+    handleClientMessage(match, playerId, { type: "ping" });
+
+    expect(match.world.pings).toHaveLength(1);
+    expect(match.world.pings[0]).toMatchObject({
+      kind: "group",
+      playerId
+    });
   });
 });

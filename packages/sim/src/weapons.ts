@@ -86,6 +86,7 @@ function fireMeleeArc(
 
     const damage = markedDamage(scaledDamage(def, wielder), enemy);
     enemy.hp -= damage;
+    wielder.stats.damageDealt += damage;
     world.events.push({
       type: "enemy_hit",
       enemyId: enemy.id,

@@ -20,6 +20,10 @@ const snapshot: Snapshot = {
       facingX: 1,
       facingY: 0,
       downed: false,
+      out: false,
+      bleedOutRatio: 0,
+      reviveProgressRatio: 0.5,
+      characterId: "captain",
       weaponIds: ["cutlass"],
       coins: 12,
       shop: {
@@ -30,7 +34,8 @@ const snapshot: Snapshot = {
         ],
         locked: [true, false, false],
         rerollCost: 3
-      }
+      },
+      stats: { damageDealt: 18, tilesRepaired: 1, revives: 0 }
     }
   ],
   enemies: [{ id: "e1", kind: "chum", x: 4, y: 5, hpRatio: 0.5, radius: 0.3 }],
@@ -46,7 +51,8 @@ const snapshot: Snapshot = {
     ]
   },
   salvage: 5,
-  modules: [{ id: "m1", defId: "cannon", col: 2, row: 1, hpRatio: 0.5 }]
+  modules: [{ id: "m1", defId: "cannon", col: 2, row: 1, hpRatio: 0.5 }],
+  pings: [{ id: "ping1", kind: "danger", x: 4, y: 5 }]
 };
 
 describe("protocol codec", () => {
@@ -109,7 +115,8 @@ describe("protocol codec", () => {
       { type: "reroll" },
       { type: "lock", index: 2 },
       { type: "ready", ready: true },
-      { type: "place_module", defId: "cannon", col: 1, row: 2 }
+      { type: "place_module", defId: "cannon", col: 1, row: 2 },
+      { type: "ping" }
     ];
 
     for (const msg of messages) {
