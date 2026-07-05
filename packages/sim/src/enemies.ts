@@ -17,7 +17,9 @@ import type {
 
 export function updateEnemies(world: WorldState): void {
   for (const enemy of world.enemies) {
-    enemy.attackingTileId = null;
+    if (enemy.telegraphTicks === 0) {
+      enemy.attackingTileId = null;
+    }
     const def = world.content.enemies[enemy.type];
 
     if (def !== undefined) {
@@ -49,6 +51,12 @@ function updateEnemyByBehavior(
       return;
     case "tank_smasher":
       updateTankSmasher(world, enemy, behavior);
+      return;
+    case "tentacle":
+      updateTentacle(world, enemy, behavior);
+      return;
+    case "kraken_head":
+      updateKrakenHead(world, enemy, behavior);
       return;
   }
 }
@@ -163,6 +171,63 @@ function updateTankSmasher(
   }
 }
 
+function updateTentacle(
+  world: WorldState,
+  enemy: EnemyState,
+  behavior: Extract<EnemyBehavior, { kind: "tentacle" }>
+): void {
+  if (enemy.telegraphTicks > 0) {
+    const target = tileById(world, enemy.attackingTileId);
+    enemy.telegraphTicks -= 1;
+    if (enemy.telegraphTicks === 0) {
+      if (target !== null) {
+        damageTile(world, target.col, target.row, behavior.tileDamage);
+      }
+      enemy.attackingTileId = null;
+      enemy.contactCooldownTicks = enemy.contactCooldownMax;
+    }
+    return;
+  }
+
+  if (enemy.contactCooldownTicks > 0) {
+    return;
+  }
+
+  const targetTile = nearestIntactRaftTile(world, enemy.pos);
+  if (targetTile === null) {
+    return;
+  }
+
+  enemy.attackingTileId = tileId(targetTile);
+  enemy.telegraphTicks = Math.max(
+    Math.ceil(0.8 * TICK_RATE),
+    Math.round(behavior.telegraphS * TICK_RATE)
+  );
+}
+
+function updateKrakenHead(
+  world: WorldState,
+  enemy: EnemyState,
+  behavior: Extract<EnemyBehavior, { kind: "kraken_head" }>
+): void {
+  if (enemy.contactCooldownTicks > 0) {
+    return;
+  }
+
+  const target = nearestPlayer(world.players, enemy.pos);
+  if (target !== null) {
+    target.hp = Math.max(0, target.hp - behavior.playerDamage);
+  }
+
+  const targetTile = nearestIntactRaftTile(world, enemy.pos);
+  if (targetTile !== null) {
+    damageTile(world, targetTile.col, targetTile.row, behavior.tileDamage);
+    enemy.attackingTileId = tileId(targetTile);
+  }
+
+  enemy.contactCooldownTicks = enemy.contactCooldownMax;
+}
+
 export function resolveEnemyDeaths(world: WorldState): void {
   const survivors: EnemyState[] = [];
 
@@ -176,6 +241,9 @@ export function resolveEnemyDeaths(world: WorldState): void {
     const value = def?.coinValue ?? 0;
     const salvageValue = def?.salvageValue ?? 0;
 
+    if (world.boss?.headEnemyId === enemy.id) {
+      world.boss.hp = Math.min(world.boss.hp, enemy.hp);
+    }
     world.events.push({
       type: "enemy_killed",
       enemyId: enemy.id,
@@ -223,6 +291,7 @@ export function createEnemy(
     slowTicks: 0,
     slowFactor: 1,
     attackingTileId: null,
+    telegraphTicks: 0,
     markTicks: 0
   };
 }
@@ -399,6 +468,26 @@ function tileCenter(tile: RaftTile): Vec2 {
 
 function tileId(tile: RaftTile): string {
   return `${tile.col},${tile.row}`;
+}
+
+function tileById(world: WorldState, id: string | null): RaftTile | null {
+  if (id === null) {
+    return null;
+  }
+
+  const [colText, rowText] = id.split(",");
+  const col = Number(colText);
+  const row = Number(rowText);
+  const tile = tileAt(world.raft, col, row);
+  if (tile === undefined) {
+    return null;
+  }
+
+  if (tile.kind === "core") {
+    return tile.hp > 0 ? tile : null;
+  }
+
+  return tile.broken ? null : tile;
 }
 
 function projectileTtl(distanceTiles: number, speedTilesPerSec: number): number {

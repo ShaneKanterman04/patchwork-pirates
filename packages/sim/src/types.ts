@@ -188,6 +188,18 @@ export type EnemyBehavior =
       tileDamage: number;
       knockbackRadius: number;
       knockbackStrength: number;
+    }
+  | {
+      kind: "tentacle";
+      attackCooldownS: number;
+      telegraphS: number;
+      tileDamage: number;
+    }
+  | {
+      kind: "kraken_head";
+      attackCooldownS: number;
+      playerDamage: number;
+      tileDamage: number;
     };
 
 export interface ContentRegistry {
@@ -209,6 +221,7 @@ export interface WaveDef {
   durationS: number;
   budget: number;
   table: WaveSpawnEntry[];
+  boss?: string;
 }
 
 export type RunPhase = "lobby" | "combat" | "build" | "victory" | "defeat";
@@ -241,7 +254,17 @@ export interface EnemyState {
   slowTicks: number;
   slowFactor: number;
   attackingTileId: string | null;
+  telegraphTicks: number;
   markTicks: number;
+}
+
+export interface BossState {
+  hp: number;
+  maxHp: number;
+  phase: "tentacles" | "head" | "between";
+  phaseTicksLeft: number;
+  headEnemyId: string | null;
+  cycles: number;
 }
 
 export interface PickupState {
@@ -338,4 +361,5 @@ export interface WorldState {
   coreDestroyed: boolean;
   nextEntityId: number;
   run: RunState;
+  boss: BossState | null;
 }

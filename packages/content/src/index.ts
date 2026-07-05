@@ -8,6 +8,7 @@ import type {
   WeaponDef,
   WorldState
 } from "@patchwork/sim";
+import { KRAKEN_HP } from "@patchwork/sim";
 
 export type ContentWorldState = WorldState;
 
@@ -135,6 +136,48 @@ export const BRUTE_TURTLE = {
   }
 } as const satisfies EnemyDef;
 
+export const KRAKEN_TENTACLE = {
+  id: "kraken_tentacle",
+  name: "Kraken Tentacle",
+  maxHp: 70,
+  speedTilesPerSec: 0,
+  contactDamage: 0,
+  contactCooldownS: 2.2,
+  radius: 0.45,
+  coinValue: 3,
+  salvageValue: 3,
+  heavy: true,
+  basePriority: 30,
+  elite: false,
+  behavior: {
+    kind: "tentacle",
+    attackCooldownS: 2.2,
+    telegraphS: 0.85,
+    tileDamage: 26
+  }
+} as const satisfies EnemyDef;
+
+export const KRAKEN_HEAD = {
+  id: "kraken_head",
+  name: "Kraken Head",
+  maxHp: KRAKEN_HP,
+  speedTilesPerSec: 0,
+  contactDamage: 0,
+  contactCooldownS: 1.5,
+  radius: 0.8,
+  coinValue: 0,
+  salvageValue: 0,
+  heavy: true,
+  basePriority: 100,
+  elite: true,
+  behavior: {
+    kind: "kraken_head",
+    attackCooldownS: 1.5,
+    playerDamage: 16,
+    tileDamage: 30
+  }
+} as const satisfies EnemyDef;
+
 export const CANNON = {
   id: "cannon",
   name: "Cannon",
@@ -246,7 +289,9 @@ export const ENEMIES = {
   chum: CHUM,
   spitter_crab: SPITTER_CRAB,
   plank_biter: PLANK_BITER,
-  brute_turtle: BRUTE_TURTLE
+  brute_turtle: BRUTE_TURTLE,
+  kraken_tentacle: KRAKEN_TENTACLE,
+  kraken_head: KRAKEN_HEAD
 } as const satisfies Record<string, EnemyDef>;
 
 export const MODULES = {
@@ -324,6 +369,7 @@ export const WAVES = [
   {
     durationS: 75,
     budget: 95,
+    boss: "kraken",
     table: [
       { enemyId: "chum", weight: 5, cost: 1 },
       { enemyId: "plank_biter", weight: 4, cost: 2 },

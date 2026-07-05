@@ -51,3 +51,10 @@ export const MARK_INTERVAL_S = 12;
 export const MARK_DURATION_S = 5;
 export const MARK_DAMAGE_MULT = 1.4;
 export const MARK_RADIUS = 5;
+
+export const KRAKEN_HP = 1200;
+export const TENTACLE_COUNT = 3;
+export const TENTACLE_PHASE_S = 14;
+export const HEAD_WINDOW_S = 6;
+export const BETWEEN_S = 4;
+export const BETWEEN_CHUM = 5;

@@ -3,6 +3,7 @@ export { addPlayer } from "./player";
 export { damageTile, isHole, isWalkable, tileAt } from "./raft";
 export { forceDowned, updateDowned } from "./downed";
 export { applyAuras, updateSpecials } from "./characters";
+export { startBoss, updateBoss, updateBossAfterSim } from "./boss";
 export { createEnemy, updateEnemies, resolveEnemyDeaths } from "./enemies";
 export { placeModule, updateModules } from "./modules";
 export {
@@ -30,6 +31,7 @@ export {
 } from "./world";
 export type {
   ContentRegistry,
+  BossState,
   CharacterDef,
   CharacterPassive,
   CharacterSpecial,

@@ -10,6 +10,7 @@ import {
   TICK_RATE,
   WAVE_CLEAR_SALVAGE
 } from "./constants";
+import { startBoss, updateBoss } from "./boss";
 import { returnDownedAndOutPlayers } from "./downed";
 import { createEnemy } from "./enemies";
 import { placeModule } from "./modules";
@@ -227,6 +228,15 @@ export function updateRunPostSim(world: WorldState): void {
 }
 
 function updateCombatPhase(world: WorldState): void {
+  const waveDef = currentWaveDef(world);
+  if (waveDef?.boss === "kraken") {
+    if (world.boss === null) {
+      startBoss(world);
+    }
+    updateBoss(world);
+    return;
+  }
+
   updateBudgetSpawner(world);
   world.run.phaseTicksLeft -= 1;
 
@@ -283,6 +293,11 @@ function loadWave(world: WorldState, wave: number): void {
   world.run.budgetRemaining = scaledBudget(waveDef, world);
   world.run.spawnTimer = 0;
   world.run.readyPlayerIds = [];
+  if (waveDef.boss === "kraken") {
+    startBoss(world);
+  } else {
+    world.boss = null;
+  }
 }
 
 function generatePlayerShops(world: WorldState): void {

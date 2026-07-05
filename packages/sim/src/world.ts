@@ -10,6 +10,7 @@ import {
   TICK_RATE
 } from "./constants";
 import { applyAuras, updateSpecials } from "./characters";
+import { updateBossAfterSim } from "./boss";
 import { hasDownedPlayerInReviveRange, updateDowned } from "./downed";
 import { resolveEnemyDeaths, updateEnemies } from "./enemies";
 import { updateModules } from "./modules";
@@ -84,7 +85,8 @@ export function createWorld(
     events: [],
     coreDestroyed: false,
     nextEntityId: 1,
-    run: createRunState()
+    run: createRunState(),
+    boss: null
   };
 }
 
@@ -162,6 +164,7 @@ export function tick(
   updateEnemies(world);
   updateProjectiles(world);
   resolveEnemyDeaths(world);
+  updateBossAfterSim(world);
   updateDowned(world, inputs);
   collectPickups(world);
   updatePings(world);

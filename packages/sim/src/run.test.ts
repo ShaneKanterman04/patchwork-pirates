@@ -88,7 +88,7 @@ describe("run phase machine", () => {
     });
   });
 
-  it("sets victory when wave 8 combat expires", () => {
+  it("sets victory when non-boss wave 8 combat expires as a fallback", () => {
     const content = {
       ...TEST_CONTENT,
       waves: Array.from({ length: 8 }, () => ONE_COST_WAVE)

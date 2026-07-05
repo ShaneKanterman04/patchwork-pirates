@@ -133,6 +133,7 @@ function addEnemy(world: WorldState, id: string, pos: Vec2): EnemyState {
     slowTicks: 0,
     slowFactor: 1,
     attackingTileId: null,
+    telegraphTicks: 0,
     markTicks: 0
   };
 

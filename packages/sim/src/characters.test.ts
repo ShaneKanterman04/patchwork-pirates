@@ -366,6 +366,7 @@ function addEnemy(
     slowTicks: 0,
     slowFactor: 1,
     attackingTileId: null,
+    telegraphTicks: 0,
     markTicks: 0
   };
 
