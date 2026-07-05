@@ -17,7 +17,12 @@ const PREVENT_DEFAULT_KEYS = new Set([
   "Tab"
 ]);
 
-export function keysToInput(held: ReadonlySet<string>, seq: number): ClientMessage {
+type PlayerInputMessage = Extract<ClientMessage, { type: "player_input" }>;
+
+export function keysToInput(
+  held: ReadonlySet<string>,
+  seq: number
+): PlayerInputMessage {
   const x = axis(held, RIGHT_KEYS) - axis(held, LEFT_KEYS);
   const y = axis(held, DOWN_KEYS) - axis(held, UP_KEYS);
   const magnitude = Math.hypot(x, y);
@@ -62,7 +67,7 @@ export class InputTracker {
     };
   }
 
-  nextInput(): ClientMessage {
+  nextInput(): PlayerInputMessage {
     this.seq += 1;
     return keysToInput(this.held, this.seq);
   }
