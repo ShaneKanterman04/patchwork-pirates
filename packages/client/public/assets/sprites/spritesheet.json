@@ -1,0 +1,721 @@
+{
+  "version": 2,
+  "cellSize": 128,
+  "image": "spritesheet.png",
+  "frames": {
+    "captain/idle": {
+      "assetId": "captain",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/captain/idle.png",
+      "x": 0,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "medium",
+      "contentBounds": {
+        "x": 40,
+        "y": 23,
+        "w": 48,
+        "h": 82
+      }
+    },
+    "captain/walk_0": {
+      "assetId": "captain",
+      "frame": "walk_0",
+      "source": "../../../../../art/sprites/normalized/captain/walk_0.png",
+      "x": 128,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "medium",
+      "contentBounds": {
+        "x": 37,
+        "y": 23,
+        "w": 55,
+        "h": 82
+      }
+    },
+    "captain/walk_1": {
+      "assetId": "captain",
+      "frame": "walk_1",
+      "source": "../../../../../art/sprites/normalized/captain/walk_1.png",
+      "x": 256,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "medium",
+      "contentBounds": {
+        "x": 38,
+        "y": 23,
+        "w": 54,
+        "h": 82
+      }
+    },
+    "captain/walk_2": {
+      "assetId": "captain",
+      "frame": "walk_2",
+      "source": "../../../../../art/sprites/normalized/captain/walk_2.png",
+      "x": 384,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "medium",
+      "contentBounds": {
+        "x": 37,
+        "y": 23,
+        "w": 55,
+        "h": 82
+      }
+    },
+    "captain/walk_3": {
+      "assetId": "captain",
+      "frame": "walk_3",
+      "source": "../../../../../art/sprites/normalized/captain/walk_3.png",
+      "x": 512,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "medium",
+      "contentBounds": {
+        "x": 37,
+        "y": 23,
+        "w": 55,
+        "h": 82
+      }
+    },
+    "fisher/idle": {
+      "assetId": "fisher",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/fisher/idle.png",
+      "x": 640,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "medium",
+      "contentBounds": {
+        "x": 38,
+        "y": 24,
+        "w": 51,
+        "h": 81
+      }
+    },
+    "fisher/walk_0": {
+      "assetId": "fisher",
+      "frame": "walk_0",
+      "source": "../../../../../art/sprites/normalized/fisher/walk_0.png",
+      "x": 0,
+      "y": 128,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "medium",
+      "contentBounds": {
+        "x": 37,
+        "y": 23,
+        "w": 54,
+        "h": 82
+      }
+    },
+    "fisher/walk_1": {
+      "assetId": "fisher",
+      "frame": "walk_1",
+      "source": "../../../../../art/sprites/normalized/fisher/walk_1.png",
+      "x": 128,
+      "y": 128,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "medium",
+      "contentBounds": {
+        "x": 37,
+        "y": 23,
+        "w": 54,
+        "h": 82
+      }
+    },
+    "fisher/walk_2": {
+      "assetId": "fisher",
+      "frame": "walk_2",
+      "source": "../../../../../art/sprites/normalized/fisher/walk_2.png",
+      "x": 256,
+      "y": 128,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "medium",
+      "contentBounds": {
+        "x": 37,
+        "y": 23,
+        "w": 54,
+        "h": 82
+      }
+    },
+    "fisher/walk_3": {
+      "assetId": "fisher",
+      "frame": "walk_3",
+      "source": "../../../../../art/sprites/normalized/fisher/walk_3.png",
+      "x": 384,
+      "y": 128,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "medium",
+      "contentBounds": {
+        "x": 38,
+        "y": 23,
+        "w": 53,
+        "h": 82
+      }
+    },
+    "chum/idle": {
+      "assetId": "chum",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/chum/idle.png",
+      "x": 512,
+      "y": 128,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 33,
+        "y": 41,
+        "w": 63,
+        "h": 45
+      }
+    },
+    "chum/move_0": {
+      "assetId": "chum",
+      "frame": "move_0",
+      "source": "../../../../../art/sprites/normalized/chum/move_0.png",
+      "x": 640,
+      "y": 128,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 39,
+        "w": 64,
+        "h": 50
+      }
+    },
+    "chum/move_1": {
+      "assetId": "chum",
+      "frame": "move_1",
+      "source": "../../../../../art/sprites/normalized/chum/move_1.png",
+      "x": 0,
+      "y": 256,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 39,
+        "w": 64,
+        "h": 50
+      }
+    },
+    "chum/move_2": {
+      "assetId": "chum",
+      "frame": "move_2",
+      "source": "../../../../../art/sprites/normalized/chum/move_2.png",
+      "x": 128,
+      "y": 256,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 39,
+        "w": 64,
+        "h": 50
+      }
+    },
+    "chum/move_3": {
+      "assetId": "chum",
+      "frame": "move_3",
+      "source": "../../../../../art/sprites/normalized/chum/move_3.png",
+      "x": 256,
+      "y": 256,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 39,
+        "w": 64,
+        "h": 50
+      }
+    },
+    "spitter_crab/idle": {
+      "assetId": "spitter_crab",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/spitter_crab/idle.png",
+      "x": 384,
+      "y": 256,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 43,
+        "w": 64,
+        "h": 41
+      }
+    },
+    "spitter_crab/move_0": {
+      "assetId": "spitter_crab",
+      "frame": "move_0",
+      "source": "../../../../../art/sprites/normalized/spitter_crab/move_0.png",
+      "x": 512,
+      "y": 256,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 43,
+        "w": 64,
+        "h": 42
+      }
+    },
+    "spitter_crab/move_1": {
+      "assetId": "spitter_crab",
+      "frame": "move_1",
+      "source": "../../../../../art/sprites/normalized/spitter_crab/move_1.png",
+      "x": 640,
+      "y": 256,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 43,
+        "w": 64,
+        "h": 42
+      }
+    },
+    "spitter_crab/move_2": {
+      "assetId": "spitter_crab",
+      "frame": "move_2",
+      "source": "../../../../../art/sprites/normalized/spitter_crab/move_2.png",
+      "x": 0,
+      "y": 384,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 43,
+        "w": 64,
+        "h": 42
+      }
+    },
+    "spitter_crab/move_3": {
+      "assetId": "spitter_crab",
+      "frame": "move_3",
+      "source": "../../../../../art/sprites/normalized/spitter_crab/move_3.png",
+      "x": 128,
+      "y": 384,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 43,
+        "w": 64,
+        "h": 42
+      }
+    },
+    "plank_biter/idle": {
+      "assetId": "plank_biter",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/plank_biter/idle.png",
+      "x": 256,
+      "y": 384,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 38,
+        "w": 64,
+        "h": 52
+      }
+    },
+    "brute_turtle/idle": {
+      "assetId": "brute_turtle",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/brute_turtle/idle.png",
+      "x": 384,
+      "y": 384,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "large",
+      "contentBounds": {
+        "x": 10,
+        "y": 17,
+        "w": 108,
+        "h": 94
+      }
+    },
+    "kraken_tentacle/idle": {
+      "assetId": "kraken_tentacle",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/kraken_tentacle/idle.png",
+      "x": 512,
+      "y": 384,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "boss",
+      "contentBounds": {
+        "x": 27,
+        "y": 6,
+        "w": 75,
+        "h": 116
+      }
+    },
+    "kraken_head/idle": {
+      "assetId": "kraken_head",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/kraken_head/idle.png",
+      "x": 640,
+      "y": 384,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "boss",
+      "contentBounds": {
+        "x": 6,
+        "y": 10,
+        "w": 116,
+        "h": 107
+      }
+    },
+    "cannon/idle": {
+      "assetId": "cannon",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/cannon/idle.png",
+      "x": 0,
+      "y": 512,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "module",
+      "contentBounds": {
+        "x": 18,
+        "y": 24,
+        "w": 92,
+        "h": 79
+      }
+    },
+    "repair_station/idle": {
+      "assetId": "repair_station",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/repair_station/idle.png",
+      "x": 128,
+      "y": 512,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "module",
+      "contentBounds": {
+        "x": 23,
+        "y": 18,
+        "w": 81,
+        "h": 92
+      }
+    },
+    "coin/idle": {
+      "assetId": "coin",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/coin/idle.png",
+      "x": 256,
+      "y": 512,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "pickup",
+      "contentBounds": {
+        "x": 48,
+        "y": 48,
+        "w": 31,
+        "h": 32
+      }
+    },
+    "salvage/idle": {
+      "assetId": "salvage",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/salvage/idle.png",
+      "x": 384,
+      "y": 512,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "pickup",
+      "contentBounds": {
+        "x": 48,
+        "y": 50,
+        "w": 32,
+        "h": 27
+      }
+    },
+    "harpoon_projectile/idle": {
+      "assetId": "harpoon_projectile",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/harpoon_projectile/idle.png",
+      "x": 512,
+      "y": 512,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "projectile",
+      "contentBounds": {
+        "x": 48,
+        "y": 59,
+        "w": 32,
+        "h": 10
+      }
+    },
+    "coconut_projectile/idle": {
+      "assetId": "coconut_projectile",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/coconut_projectile/idle.png",
+      "x": 640,
+      "y": 512,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "projectile",
+      "contentBounds": {
+        "x": 49,
+        "y": 54,
+        "w": 31,
+        "h": 20
+      }
+    },
+    "cannon_projectile/idle": {
+      "assetId": "cannon_projectile",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/cannon_projectile/idle.png",
+      "x": 0,
+      "y": 640,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "projectile",
+      "contentBounds": {
+        "x": 48,
+        "y": 48,
+        "w": 32,
+        "h": 32
+      }
+    },
+    "enemy_glob/idle": {
+      "assetId": "enemy_glob",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/enemy_glob/idle.png",
+      "x": 128,
+      "y": 640,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "projectile",
+      "contentBounds": {
+        "x": 48,
+        "y": 54,
+        "w": 32,
+        "h": 20
+      }
+    }
+  },
+  "animations": {
+    "captain/walk": {
+      "assetId": "captain",
+      "name": "walk",
+      "frames": [
+        "captain/walk_0",
+        "captain/walk_1",
+        "captain/walk_2",
+        "captain/walk_3"
+      ],
+      "fps": 8,
+      "loop": true,
+      "sharedBounds": {
+        "x": 37,
+        "y": 23,
+        "w": 55,
+        "h": 82
+      }
+    },
+    "fisher/walk": {
+      "assetId": "fisher",
+      "name": "walk",
+      "frames": [
+        "fisher/walk_0",
+        "fisher/walk_1",
+        "fisher/walk_2",
+        "fisher/walk_3"
+      ],
+      "fps": 8,
+      "loop": true,
+      "sharedBounds": {
+        "x": 37,
+        "y": 23,
+        "w": 54,
+        "h": 82
+      }
+    },
+    "chum/move": {
+      "assetId": "chum",
+      "name": "move",
+      "frames": [
+        "chum/move_0",
+        "chum/move_1",
+        "chum/move_2",
+        "chum/move_3"
+      ],
+      "fps": 8,
+      "loop": true,
+      "sharedBounds": {
+        "x": 32,
+        "y": 39,
+        "w": 64,
+        "h": 50
+      }
+    },
+    "spitter_crab/move": {
+      "assetId": "spitter_crab",
+      "name": "move",
+      "frames": [
+        "spitter_crab/move_0",
+        "spitter_crab/move_1",
+        "spitter_crab/move_2",
+        "spitter_crab/move_3"
+      ],
+      "fps": 8,
+      "loop": true,
+      "sharedBounds": {
+        "x": 32,
+        "y": 43,
+        "w": 64,
+        "h": 42
+      }
+    }
+  }
+}

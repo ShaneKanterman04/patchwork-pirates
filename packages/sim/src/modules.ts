@@ -1,15 +1,15 @@
-import { TICK_RATE } from "./constants";
+import {
+  BASE_SUPPLY_CAP,
+  TICK_RATE
+} from "./constants";
 import { tileAt } from "./raft";
 import type {
   EnemyState,
   ModuleBehavior,
   ModuleState,
-  RaftTile,
   Vec2,
   WorldState
 } from "./types";
-
-const HOLE_REBUILD_RATE_MULT = 0.5;
 
 export function placeModule(
   world: WorldState,
@@ -62,6 +62,18 @@ export function updateModules(world: WorldState): void {
   }
 
   world.modules = survivors;
+  world.salvage = Math.min(world.salvage, supplyCapacity(world));
+}
+
+export function supplyCapacity(world: WorldState): number {
+  return world.modules.reduce((capacity, module) => {
+    const behavior = world.content.modules[module.defId]?.behavior;
+    if (behavior?.kind !== "supply_cache") {
+      return capacity;
+    }
+
+    return capacity + behavior.capacityBonus;
+  }, BASE_SUPPLY_CAP);
 }
 
 function updateModuleByBehavior(
@@ -73,8 +85,7 @@ function updateModuleByBehavior(
     case "cannon":
       updateCannon(world, module, behavior);
       return;
-    case "repair_station":
-      updateRepairStation(world, module, behavior);
+    case "supply_cache":
       return;
   }
 }
@@ -126,33 +137,6 @@ function updateCannon(
   module.cooldownTicks = Math.round(behavior.cooldownS * TICK_RATE);
 }
 
-function updateRepairStation(
-  world: WorldState,
-  module: ModuleState,
-  behavior: Extract<ModuleBehavior, { kind: "repair_station" }>
-): void {
-  const origin = moduleCenter(module);
-  const tile = nearestRepairTarget(world, origin, behavior.radiusTiles);
-  if (tile === null) {
-    return;
-  }
-
-  const boosted = world.players.some(
-    (player) => distance(player.pos, origin) <= behavior.radiusTiles
-  );
-  const baseRate = tile.broken
-    ? behavior.repairRate * HOLE_REBUILD_RATE_MULT
-    : behavior.repairRate;
-  const rate = boosted ? baseRate * behavior.playerBoostMult : baseRate;
-
-  tile.hp = Math.min(tile.maxHp, tile.hp + rate / TICK_RATE);
-
-  if (tile.broken && tile.hp >= tile.maxHp) {
-    tile.broken = false;
-    world.events.push({ type: "tile_repaired", col: tile.col, row: tile.row });
-  }
-}
-
 function nearestEnemyInRange(
   world: WorldState,
   pos: Vec2,
@@ -179,36 +163,8 @@ function nearestEnemyInRange(
   return selected;
 }
 
-function nearestRepairTarget(
-  world: WorldState,
-  pos: Vec2,
-  radiusTiles: number
-): RaftTile | null {
-  let selected: RaftTile | null = null;
-  let selectedDistance = Infinity;
-
-  for (const tile of world.raft.tiles) {
-    if (!tile.broken && tile.hp >= tile.maxHp) {
-      continue;
-    }
-
-    const tilePos = tileCenter(tile);
-    const distanceToTile = distance(pos, tilePos);
-    if (distanceToTile <= radiusTiles && distanceToTile < selectedDistance) {
-      selected = tile;
-      selectedDistance = distanceToTile;
-    }
-  }
-
-  return selected;
-}
-
 function moduleCenter(module: ModuleState): Vec2 {
   return { x: module.col + 0.5, y: module.row + 0.5 };
-}
-
-function tileCenter(tile: RaftTile): Vec2 {
-  return { x: tile.col + 0.5, y: tile.row + 0.5 };
 }
 
 function normalize(vector: Vec2): Vec2 {

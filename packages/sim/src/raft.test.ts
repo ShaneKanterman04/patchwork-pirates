@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   CORE_MAX_HP,
+  DAMAGED_TILE_HP_PER_SUPPLY,
   HOLE_REBUILD_RATE,
   PLAYER_REPAIR_RATE,
+  TILE_MAX_HP,
   TICK_RATE,
   addPlayer,
   createWorld,
@@ -128,38 +130,52 @@ describe("repair", () => {
   it("repairs damaged tiles at the player repair rate up to max hp", () => {
     const world = createWorld(1);
     addPlayer(world, "p1");
+    world.salvage = 2;
     const tile = tileAt(world.raft, 1, 1);
-    damageTile(world, 1, 1, 10);
+    damageTile(world, 1, 1, 2);
 
-    tick(world, new Map([["p1", { ...IDLE_INPUT, interact: true }]]));
+    tick(world, new Map([["p1", IDLE_INPUT]]));
 
-    expect(tile?.hp).toBeCloseTo(90 + PLAYER_REPAIR_RATE / TICK_RATE);
+    expect(tile?.hp).toBeCloseTo(TILE_MAX_HP - 2 + PLAYER_REPAIR_RATE / TICK_RATE);
+    expect(world.salvage).toBeCloseTo(2 - (PLAYER_REPAIR_RATE / TICK_RATE) / DAMAGED_TILE_HP_PER_SUPPLY);
 
-    for (let i = 0; i < 10; i += 1) {
-      tick(world, new Map([["p1", { ...IDLE_INPUT, interact: true }]]));
+    for (let i = 0; i < TICK_RATE; i += 1) {
+      tick(world, new Map([["p1", IDLE_INPUT]]));
     }
 
-    expect(tile?.hp).toBe(100);
+    expect(tile?.hp).toBeCloseTo(TILE_MAX_HP);
+  });
+
+  it("does not repair without supplies", () => {
+    const world = createWorld(1);
+    addPlayer(world, "p1");
+    const tile = tileAt(world.raft, 1, 1);
+    damageTile(world, 1, 1, 2);
+
+    tick(world, new Map([["p1", IDLE_INPUT]]));
+
+    expect(tile?.hp).toBe(TILE_MAX_HP - 2);
   });
 
   it("rebuilds holes at the slower rate and emits tile_repaired at full hp", () => {
     const world = createWorld(1);
     addPlayer(world, "p1");
+    world.salvage = 20;
     const tile = tileAt(world.raft, 1, 1);
     damageTile(world, 1, 1, 1000);
     world.events = [];
 
-    tick(world, new Map([["p1", { ...IDLE_INPUT, interact: true }]]));
+    tick(world, new Map([["p1", IDLE_INPUT]]));
 
     expect(tile?.hp).toBeCloseTo(HOLE_REBUILD_RATE / TICK_RATE);
     expect(tile?.broken).toBe(true);
     expect(world.events).toEqual([]);
 
     while (tile !== undefined && tile.broken) {
-      tick(world, new Map([["p1", { ...IDLE_INPUT, interact: true }]]));
+      tick(world, new Map([["p1", IDLE_INPUT]]));
     }
 
-    expect(tile).toMatchObject({ hp: 100, broken: false });
+    expect(tile).toMatchObject({ hp: TILE_MAX_HP, broken: false });
     expect(world.events).toContainEqual({
       type: "tile_repaired",
       col: 1,
@@ -171,36 +187,38 @@ describe("repair", () => {
     const world = createWorld(1);
     const player = addPlayer(world, "p1");
     player.pos = { x: 1.5, y: 1.5 };
+    world.salvage = 2;
     const nearest = tileAt(world.raft, 1, 1);
     const tiedFirst = tileAt(world.raft, 1, 0);
     const tiedSecond = tileAt(world.raft, 0, 1);
-    damageTile(world, 1, 1, 10);
-    damageTile(world, 0, 1, 10);
-    damageTile(world, 1, 0, 10);
+    damageTile(world, 1, 1, 2);
+    damageTile(world, 0, 1, 2);
+    damageTile(world, 1, 0, 2);
 
-    tick(world, new Map([["p1", { ...IDLE_INPUT, interact: true }]]));
+    tick(world, new Map([["p1", IDLE_INPUT]]));
 
-    expect(nearest?.hp).toBeCloseTo(90 + PLAYER_REPAIR_RATE / TICK_RATE);
-    expect(tiedFirst?.hp).toBe(90);
-    expect(tiedSecond?.hp).toBe(90);
+    expect(nearest?.hp).toBeCloseTo(TILE_MAX_HP - 2 + PLAYER_REPAIR_RATE / TICK_RATE);
+    expect(tiedFirst?.hp).toBe(TILE_MAX_HP - 2);
+    expect(tiedSecond?.hp).toBe(TILE_MAX_HP - 2);
 
-    nearest!.hp = 100;
-    tick(world, new Map([["p1", { ...IDLE_INPUT, interact: true }]]));
+    nearest!.hp = TILE_MAX_HP;
+    tick(world, new Map([["p1", IDLE_INPUT]]));
 
-    expect(tiedFirst?.hp).toBeCloseTo(90 + PLAYER_REPAIR_RATE / TICK_RATE);
-    expect(tiedSecond?.hp).toBe(90);
+    expect(tiedFirst?.hp).toBeCloseTo(TILE_MAX_HP - 2 + PLAYER_REPAIR_RATE / TICK_RATE);
+    expect(tiedSecond?.hp).toBe(TILE_MAX_HP - 2);
   });
 
   it("does nothing when no damaged tile is in range", () => {
     const world = createWorld(1);
     addPlayer(world, "p1");
+    world.salvage = 2;
     const tile = tileAt(world.raft, 4, 4);
-    damageTile(world, 4, 4, 10);
+    damageTile(world, 4, 4, 2);
     world.events = [];
 
-    tick(world, new Map([["p1", { ...IDLE_INPUT, interact: true }]]));
+    tick(world, new Map([["p1", IDLE_INPUT]]));
 
-    expect(tile?.hp).toBe(90);
+    expect(tile?.hp).toBe(TILE_MAX_HP - 2);
     expect(world.events).toEqual([]);
   });
 });

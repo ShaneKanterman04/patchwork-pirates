@@ -156,10 +156,8 @@ export type ModuleBehavior =
       projectileSpeed: number;
     }
   | {
-      kind: "repair_station";
-      radiusTiles: number;
-      repairRate: number;
-      playerBoostMult: number;
+      kind: "supply_cache";
+      capacityBonus: number;
     };
 
 export interface ModuleDef {

@@ -5,7 +5,7 @@ export { forceDowned, updateDowned } from "./downed";
 export { applyAuras, updateSpecials } from "./characters";
 export { startBoss, updateBoss, updateBossAfterSim } from "./boss";
 export { createEnemy, updateEnemies, resolveEnemyDeaths } from "./enemies";
-export { placeModule, updateModules } from "./modules";
+export { placeModule, supplyCapacity, updateModules } from "./modules";
 export {
   buyOffer,
   purchaseModule,

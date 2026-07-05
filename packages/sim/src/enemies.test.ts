@@ -64,7 +64,7 @@ const SPITTER = enemyDef({
     projectileSpeed: 6,
     aoeRadius: 0.9,
     playerDamage: 8,
-    tileDamage: 14
+    tileDamage: 2
   }
 });
 
@@ -78,7 +78,7 @@ const PLANK_BITER = enemyDef({
   behavior: {
     kind: "tile_eater",
     attackCooldownS: 1,
-    tileDamage: 18
+    tileDamage: 2
   }
 });
 
@@ -95,7 +95,7 @@ const BRUTE = enemyDef({
   behavior: {
     kind: "tank_smasher",
     attackCooldownS: 1.2,
-    tileDamage: 30,
+    tileDamage: 2,
     knockbackRadius: 1.2,
     knockbackStrength: 3
   }
@@ -136,7 +136,7 @@ describe("spitter crab behavior", () => {
       ownerId: "spitter1",
       landPos: { x: 1.5, y: 1.5 },
       damage: 8,
-      tileDamage: 14
+      tileDamage: 2
     });
 
     world.projectiles = [];
@@ -159,7 +159,7 @@ describe("spitter crab behavior", () => {
     runProjectilesToEmpty(world);
 
     expect(player.hp).toBe(playerHp - 8);
-    expect(tile.hp).toBe(tileHp - 14);
+    expect(tile.hp).toBe(tileHp - 2);
     expect(bystander.hp).toBe(enemyHp);
     expect(world.events).toContainEqual({
       type: "explosion",
@@ -215,7 +215,7 @@ describe("brute turtle behavior", () => {
     updateEnemies(world);
 
     expect(player.hp).toBe(82);
-    expect(tile.hp).toBe(470);
+    expect(tile.hp).toBe(8);
     expect(brute.attackingTileId).toBe("2,2");
   });
 
@@ -225,7 +225,7 @@ describe("brute turtle behavior", () => {
     edgePlayer.pos = { x: 0.45, y: 2.5 };
     const holePlayer = addPlayer(world, "hole");
     holePlayer.pos = { x: 2.95, y: 2.5 };
-    damageTile(world, 3, 2, 100);
+    damageTile(world, 3, 2, 10);
     addEnemy(world, "edgeBrute", "brute", { x: 1.0, y: 2.5 });
     addEnemy(world, "holeBrute", "brute", { x: 2.5, y: 2.5 });
 

@@ -1,7 +1,9 @@
 import {
+  BROKEN_TILE_HP_PER_SUPPLY,
   DASH_COOLDOWN_TICKS,
   DASH_DURATION_TICKS,
   DASH_SPEED_MULT,
+  DAMAGED_TILE_HP_PER_SUPPLY,
   HOLE_REBUILD_RATE,
   INTERACT_RANGE,
   PING_SCAN_RADIUS,
@@ -13,7 +15,7 @@ import { applyAuras, updateSpecials } from "./characters";
 import { updateBossAfterSim } from "./boss";
 import { hasDownedPlayerInReviveRange, updateDowned } from "./downed";
 import { resolveEnemyDeaths, updateEnemies } from "./enemies";
-import { updateModules } from "./modules";
+import { supplyCapacity, updateModules } from "./modules";
 import {
   clampMovement,
   clampToRaft,
@@ -150,7 +152,7 @@ export function tick(
 
     player.pos = nextPos;
     if (!hasDownedPlayerInReviveRange(world, player)) {
-      repairNearestTile(world, player, input);
+      repairNearestTile(world, player);
     }
     player.dashTicks = Math.max(0, player.dashTicks - 1);
     player.dashCooldown = Math.max(0, player.dashCooldown - 1);
@@ -250,7 +252,7 @@ export function collectPickups(world: WorldState): void {
     if (pickup.kind === "coin") {
       selected.coins += pickup.value;
     } else {
-      world.salvage += pickup.value;
+      world.salvage = Math.min(supplyCapacity(world), world.salvage + pickup.value);
     }
   }
 
@@ -291,23 +293,26 @@ function moveOnRaft(world: WorldState, player: PlayerState, nextPos: Vec2): Vec2
 
 function repairNearestTile(
   world: WorldState,
-  player: PlayerState,
-  input: PlayerInput
+  player: PlayerState
 ): void {
-  if (!input.interact) {
-    return;
-  }
-
   const tile = nearestRepairTarget(world, player.pos);
-  if (tile === null) {
+  if (tile === null || world.salvage <= 0) {
     return;
   }
 
   const rate = tile.broken ? HOLE_REBUILD_RATE : PLAYER_REPAIR_RATE;
-  tile.hp = Math.min(
-    tile.maxHp,
-    tile.hp + rate * player.repairSpeed / TICK_RATE
-  );
+  const hpPerSupply = tile.broken ? BROKEN_TILE_HP_PER_SUPPLY : DAMAGED_TILE_HP_PER_SUPPLY;
+  const wantedRepair = rate * player.repairSpeed / TICK_RATE;
+  const missingHp = tile.maxHp - tile.hp;
+  const affordableRepair = world.salvage * hpPerSupply;
+  const repairHp = Math.min(missingHp, wantedRepair, affordableRepair);
+
+  if (repairHp <= 0) {
+    return;
+  }
+
+  tile.hp += repairHp;
+  world.salvage = Math.max(0, world.salvage - repairHp / hpPerSupply);
 
   if (tile.broken && tile.hp >= tile.maxHp) {
     tile.broken = false;

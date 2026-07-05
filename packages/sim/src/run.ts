@@ -13,7 +13,7 @@ import {
 import { startBoss, updateBoss } from "./boss";
 import { returnDownedAndOutPlayers } from "./downed";
 import { createEnemy } from "./enemies";
-import { placeModule } from "./modules";
+import { placeModule, supplyCapacity } from "./modules";
 import { applyCharacterProfile } from "./player";
 import { nextRandom } from "./world";
 import type {
@@ -191,7 +191,7 @@ export function purchaseModule(
     return false;
   }
 
-  world.salvage -= def.salvageCost;
+  world.salvage = Math.min(supplyCapacity(world), world.salvage - def.salvageCost);
   return true;
 }
 
@@ -267,7 +267,7 @@ function endCombatWave(world: WorldState): void {
   world.projectiles = world.projectiles.filter(
     (projectile) => projectile.faction !== "enemy"
   );
-  world.salvage += WAVE_CLEAR_SALVAGE;
+  world.salvage = Math.min(supplyCapacity(world), world.salvage + WAVE_CLEAR_SALVAGE);
   returnDownedAndOutPlayers(world);
 
   if (world.run.wave >= MAX_WAVES) {

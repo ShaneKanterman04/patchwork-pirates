@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RaftView, ShopOfferView } from "@patchwork/protocol";
-import { canAffordOffer, canPlaceOnTile, screenPointToTile } from "./shopLogic";
+import { canAffordOffer, canPlaceOnTile, nearestBuildTile, screenPointToTile } from "./shopLogic";
 
 describe("shop logic", () => {
   it("maps screen pixels through the renderer transform to raft tiles", () => {
@@ -14,6 +14,13 @@ describe("shop logic", () => {
     expect(canPlaceOnTile(raft(), { col: 1, row: 0 })).toBe(false);
     expect(canPlaceOnTile(raft(), { col: 2, row: 0 })).toBe(false);
     expect(canPlaceOnTile(raft(), { col: 9, row: 9 })).toBe(false);
+    expect(canPlaceOnTile(raft(), { col: 0, row: 0 }, [{ id: "m1", defId: "cannon", col: 0, row: 0, hpRatio: 1 }])).toBe(false);
+  });
+
+  it("finds the nearest buildable tile in player range", () => {
+    expect(nearestBuildTile(raft(), [], { x: 0.55, y: 0.58 })).toEqual({ col: 0, row: 0 });
+    expect(nearestBuildTile(raft(), [{ id: "m1", defId: "cannon", col: 0, row: 0, hpRatio: 1 }], { x: 0.55, y: 0.58 })).toEqual({ col: 0, row: 1 });
+    expect(nearestBuildTile(raft(), [], { x: 8, y: 8 })).toBeUndefined();
   });
 
   it("checks offer affordability including sold offers and weapon cap", () => {

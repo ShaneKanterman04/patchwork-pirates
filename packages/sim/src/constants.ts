@@ -2,14 +2,18 @@ export const TICK_RATE = 30;
 
 export const RAFT_WIDTH = 5;
 export const RAFT_HEIGHT = 5;
-export const TILE_MAX_HP = 100;
-export const CORE_MAX_HP = 500;
+export const TILE_MAX_HP = 10;
+export const CORE_MAX_HP = 10;
 
 export const PLAYER_MAX_HP = 100;
 export const PLAYER_MOVE_SPEED = 4;
 export const PLAYER_RADIUS = 0.4;
-export const PLAYER_REPAIR_RATE = 40;
-export const HOLE_REBUILD_RATE = 20;
+export const PLAYER_REPAIR_RATE = 2;
+export const HOLE_REBUILD_RATE = 2;
+export const BASE_SUPPLY_CAP = 20;
+export const SUPPLY_CACHE_CAPACITY = 10;
+export const DAMAGED_TILE_HP_PER_SUPPLY = 1;
+export const BROKEN_TILE_HP_PER_SUPPLY = 1;
 export const INTERACT_RANGE = 1.2;
 export const BASE_PICKUP_RADIUS = 1.2;
 export const DOWNED_BLEED_OUT_S = 30;

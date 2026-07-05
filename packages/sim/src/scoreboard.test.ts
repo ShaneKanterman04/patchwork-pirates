@@ -77,6 +77,7 @@ describe("scoreboard stats", () => {
     const world = createWorld(2, TEST_CONTENT);
     world.run.spawnTimer = Number.MAX_SAFE_INTEGER;
     const player = addPlayer(world, "p1");
+    world.salvage = 1;
     const tile = world.raft.tiles.find(
       (candidate) =>
         candidate.col === Math.floor(player.pos.x) &&
@@ -86,7 +87,9 @@ describe("scoreboard stats", () => {
     tile!.broken = true;
     tile!.hp = tile!.maxHp - 0.5;
 
-    tick(world, new Map([["p1", INTERACT_INPUT]]));
+    while (tile!.broken) {
+      tick(world, new Map([["p1", IDLE_INPUT]]));
+    }
 
     expect(tile!.broken).toBe(false);
     expect(player.stats.tilesRepaired).toBe(1);

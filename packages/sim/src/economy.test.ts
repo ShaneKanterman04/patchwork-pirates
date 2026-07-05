@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BASE_SUPPLY_CAP,
   BASE_REROLL_COST,
   REROLL_COST_STEP,
+  SUPPLY_CACHE_CAPACITY,
   TICK_RATE,
   WAVE_CLEAR_SALVAGE,
   addPlayer,
@@ -14,6 +16,7 @@ import {
   rerollShop,
   resolveEnemyDeaths,
   startRun,
+  supplyCapacity,
   tick,
   toggleLock
 } from "./index";
@@ -91,6 +94,17 @@ const CANNON: ModuleDef = {
   }
 };
 
+const SUPPLY_CACHE: ModuleDef = {
+  id: "repair_station",
+  name: "Supply Cache",
+  maxHp: 60,
+  salvageCost: 10,
+  behavior: {
+    kind: "supply_cache",
+    capacityBonus: SUPPLY_CACHE_CAPACITY
+  }
+};
+
 const WAVE: WaveDef = {
   durationS: 10,
   budget: 0,
@@ -102,7 +116,7 @@ const CONTENT: ContentRegistry = {
   characters: {},
   items: { plated_hull: PLATED_HULL, magnet: MAGNET },
   enemies: { chum: CHUM, plank_biter: PLANK_BITER },
-  modules: { cannon: CANNON },
+  modules: { cannon: CANNON, repair_station: SUPPLY_CACHE },
   waves: Array.from({ length: 8 }, () => WAVE)
 };
 
@@ -123,6 +137,17 @@ describe("pickup collection", () => {
     expect(world.pickups).toEqual([
       { id: "far", kind: "coin", pos: { x: 4.5, y: 4.5 }, value: 9 }
     ]);
+  });
+
+  it("clamps collected supplies to the current crew cap", () => {
+    const world = createWorld(1, CONTENT);
+    const player = addPlayer(world, "p1");
+    world.salvage = BASE_SUPPLY_CAP - 1;
+    world.pickups.push({ id: "salvage", kind: "salvage", pos: { ...player.pos }, value: 5 });
+
+    collectPickups(world);
+
+    expect(world.salvage).toBe(BASE_SUPPLY_CAP);
   });
 });
 
@@ -178,7 +203,7 @@ describe("shop transactions", () => {
     tick(world, new Map([["p1", IDLE_INPUT]]));
 
     const shop = world.players[0]?.shop;
-    expect(world.salvage).toBe(WAVE_CLEAR_SALVAGE);
+    expect(world.salvage).toBe(Math.min(BASE_SUPPLY_CAP, WAVE_CLEAR_SALVAGE));
     expect(shop?.offers).toHaveLength(4);
     expect(shop?.locked).toEqual([false, false, false, false]);
     expect(shop?.rerollCost).toBe(BASE_REROLL_COST);
@@ -291,6 +316,18 @@ describe("module purchases", () => {
     world.salvage = 7;
     expect(purchaseModule(world, "p1", "cannon", 2, 2)).toBe(false);
     expect(world.salvage).toBe(7);
+  });
+
+  it("supply caches increase the shared supply cap", () => {
+    const world = createWorld(4, CONTENT);
+    addPlayer(world, "p1");
+    world.run.phase = "build";
+    world.salvage = BASE_SUPPLY_CAP;
+
+    expect(purchaseModule(world, "p1", "repair_station", 1, 1)).toBe(true);
+
+    expect(supplyCapacity(world)).toBe(BASE_SUPPLY_CAP + SUPPLY_CACHE_CAPACITY);
+    expect(world.salvage).toBe(BASE_SUPPLY_CAP - SUPPLY_CACHE.salvageCost);
   });
 });
 

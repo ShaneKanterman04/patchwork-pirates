@@ -163,8 +163,8 @@ describe("world tick", () => {
       {
         col: 2,
         row: 2,
-        hp: 500,
-        maxHp: 500,
+        hp: 10,
+        maxHp: 10,
         kind: "core",
         broken: false
       }

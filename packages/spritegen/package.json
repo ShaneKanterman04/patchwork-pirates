@@ -1,0 +1,30 @@
+{
+  "name": "@patchwork/spritegen",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "patchwork-spritegen": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "spritegen": "tsx src/cli.ts",
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "pngjs": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/pngjs": "^6.0.5",
+    "tsx": "^4.20.3",
+    "vitest": "^3.2.4"
+  }
+}

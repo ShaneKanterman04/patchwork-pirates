@@ -34,14 +34,14 @@ const KRAKEN_TENTACLE = enemyDef("kraken_tentacle", 70, {
   kind: "tentacle",
   attackCooldownS: 2.2,
   telegraphS: 0.85,
-  tileDamage: 26
+  tileDamage: 2
 });
 
 const KRAKEN_HEAD = enemyDef("kraken_head", KRAKEN_HP, {
   kind: "kraken_head",
   attackCooldownS: 1.5,
   playerDamage: 16,
-  tileDamage: 30
+  tileDamage: 2
 });
 
 const NORMAL_WAVE: WaveDef = {
@@ -127,7 +127,7 @@ describe("kraken boss director", () => {
     }
 
     step(world);
-    expect(target.hp).toBe(targetHp - 26);
+    expect(target.hp).toBe(targetHp - 2);
 
     for (const tentacle of world.enemies.filter(
       (enemy) => enemy.type === "kraken_tentacle"

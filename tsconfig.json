@@ -4,6 +4,7 @@
     { "path": "./packages/sim" },
     { "path": "./packages/content" },
     { "path": "./packages/protocol" },
+    { "path": "./packages/spritegen" },
     { "path": "./packages/server" },
     { "path": "./packages/client" }
   ]

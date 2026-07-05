@@ -10,7 +10,13 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "sprites": "pnpm --filter @patchwork/spritegen spritegen",
+    "sprites:prompt": "pnpm --filter @patchwork/spritegen spritegen prompt",
+    "sprites:normalize": "pnpm --filter @patchwork/spritegen spritegen normalize",
+    "sprites:check": "pnpm --filter @patchwork/spritegen spritegen check",
+    "sprites:atlas": "pnpm --filter @patchwork/spritegen spritegen atlas",
+    "sprites:review": "pnpm --filter @patchwork/spritegen spritegen contact-sheet"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",

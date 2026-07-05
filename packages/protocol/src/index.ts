@@ -112,6 +112,7 @@ export interface Snapshot {
   wave: WavePhaseView;
   raft?: RaftView;
   salvage?: number;
+  supplyCap?: number;
   modules?: ModuleView[];
   pings?: PingView[];
   boss?: BossView | null;

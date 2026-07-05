@@ -13,6 +13,7 @@ import {
   setCharacter,
   setPlayerReady,
   startRun,
+  supplyCapacity,
   tick,
   toggleLock
 } from "@patchwork/sim";
@@ -350,6 +351,7 @@ export function buildSnapshot(match: Match): Snapshot {
       }))
     },
     salvage: match.world.salvage,
+    supplyCap: supplyCapacity(match.world),
     modules: match.world.modules.map((module) => ({
       id: module.id,
       defId: module.defId,

@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BASE_SUPPLY_CAP,
+  SUPPLY_CACHE_CAPACITY,
   TICK_RATE,
   addPlayer,
   createWorld,
   damageTile,
   placeModule,
+  supplyCapacity,
   tick,
   tileAt
 } from "./index";
@@ -35,14 +38,12 @@ const CANNON: ModuleDef = {
 
 const REPAIR_STATION: ModuleDef = {
   id: "repair_station",
-  name: "Repair Station",
+  name: "Supply Cache",
   maxHp: 60,
   salvageCost: 10,
   behavior: {
-    kind: "repair_station",
-    radiusTiles: 1.8,
-    repairRate: 15,
-    playerBoostMult: 2.5
+    kind: "supply_cache",
+    capacityBonus: SUPPLY_CACHE_CAPACITY
   }
 };
 
@@ -70,12 +71,6 @@ const CONTENT: ContentRegistry = {
   waves: []
 };
 
-const IDLE_INPUT: PlayerInput = {
-  movement: { x: 0, y: 0 },
-  dash: false,
-  interact: false
-};
-
 describe("placeModule", () => {
   it("places a module on an intact deck tile", () => {
     const world = createWorld(1, CONTENT);
@@ -96,7 +91,7 @@ describe("placeModule", () => {
 
   it("rejects invalid placement targets", () => {
     const world = createWorld(1, CONTENT);
-    damageTile(world, 0, 0, 100);
+    damageTile(world, 0, 0, 10);
     expect(placeModule(world, "cannon", 2, 2)).toBeNull();
     expect(placeModule(world, "cannon", 0, 0)).toBeNull();
     expect(placeModule(world, "cannon", 9, 9)).toBeNull();
@@ -164,58 +159,38 @@ describe("cannon module", () => {
   });
 });
 
-describe("repair station module", () => {
-  it("auto-repairs a damaged tile in radius over time", () => {
+describe("supply cache module", () => {
+  it("increases shared supply capacity", () => {
+    const world = createWorld(1, CONTENT);
+    expect(supplyCapacity(world)).toBe(BASE_SUPPLY_CAP);
+
+    placeModule(world, "repair_station", 1, 1);
+    expect(supplyCapacity(world)).toBe(BASE_SUPPLY_CAP + SUPPLY_CACHE_CAPACITY);
+  });
+
+  it("does not repair tiles by itself", () => {
     const world = createWorld(1, CONTENT);
     placeModule(world, "repair_station", 1, 1);
-    damageTile(world, 1, 2, 30);
+    damageTile(world, 1, 2, 3);
     const tile = requiredTile(world, 1, 2);
 
     for (let i = 0; i < 10; i += 1) {
       tick(world, new Map());
     }
 
-    expect(tile.hp).toBe(75);
+    expect(tile.hp).toBe(7);
   });
 
-  it("repairs faster with an adjacent player", () => {
-    const withoutPlayer = createWorld(1, CONTENT);
-    const withPlayer = createWorld(1, CONTENT);
-    placeModule(withoutPlayer, "repair_station", 1, 1);
-    placeModule(withPlayer, "repair_station", 1, 1);
-    addPlayer(withPlayer, "p1");
-    damageTile(withoutPlayer, 1, 2, 30);
-    damageTile(withPlayer, 1, 2, 30);
-
-    for (let i = 0; i < 10; i += 1) {
-      tick(withoutPlayer, new Map());
-      tick(withPlayer, new Map([["p1", IDLE_INPUT]]));
-    }
-
-    expect(requiredTile(withPlayer, 1, 2).hp).toBeGreaterThan(
-      requiredTile(withoutPlayer, 1, 2).hp
-    );
-    expect(requiredTile(withoutPlayer, 1, 2).hp).toBe(75);
-    expect(requiredTile(withPlayer, 1, 2).hp).toBe(82.5);
-  });
-
-  it("rebuilds a hole to walkable and emits tile_repaired", () => {
+  it("clamps supplies when a cache is destroyed", () => {
     const world = createWorld(1, CONTENT);
     placeModule(world, "repair_station", 1, 1);
-    damageTile(world, 1, 2, 100);
-    const tile = requiredTile(world, 1, 2);
-    expect(tile.broken).toBe(true);
+    world.salvage = BASE_SUPPLY_CAP + SUPPLY_CACHE_CAPACITY;
+    damageTile(world, 1, 1, 10);
 
-    for (let i = 0; i < 400; i += 1) {
-      tick(world, new Map());
-    }
+    tick(world, new Map());
 
-    expect(tile).toMatchObject({ hp: 100, broken: false });
-    expect(world.events).toContainEqual({
-      type: "tile_repaired",
-      col: 1,
-      row: 2
-    });
+    expect(world.modules).toEqual([]);
+    expect(world.salvage).toBe(BASE_SUPPLY_CAP);
   });
 });
 
@@ -223,7 +198,7 @@ describe("module tile coupling", () => {
   it("destroys a module when its tile becomes a hole", () => {
     const world = createWorld(1, CONTENT);
     const module = placeModule(world, "cannon", 1, 1);
-    damageTile(world, 1, 1, 100);
+    damageTile(world, 1, 1, 10);
 
     tick(world, new Map());
 
@@ -266,7 +241,7 @@ function createModuleReplayWorld(): WorldState {
   addPlayer(world, "p1");
   placeModule(world, "cannon", 1, 1);
   placeModule(world, "repair_station", 3, 3);
-  damageTile(world, 3, 4, 50);
+  damageTile(world, 3, 4, 5);
   addEnemy(world, "e1", { x: 4.5, y: 1.5 });
   addEnemy(world, "e2", { x: -0.5, y: 3.5 });
   return world;

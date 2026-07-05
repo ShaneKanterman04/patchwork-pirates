@@ -3,9 +3,9 @@ export const HINT_STORAGE_KEY = "pp_seen_hints";
 export const HINT_COPY = {
   move: "Move with WASD / arrows - your weapons fight on their own!",
   dash: "Dash with Space or Shift",
-  repair: "Hold E to repair a damaged tile",
+  repair: "Stand near damaged raft tiles with Supplies to repair automatically",
   coins: "Coins buy weapons & items in the build shop",
-  build: "Build phase - spend coins in the shop, salvage on modules, then Ready Up",
+  build: "Build phase - stand near a deck tile, spend Supplies on modules, then Ready Up",
   revive: "Stand next to a downed mate and hold E to revive them",
   boss: "The Kraken! Strike the head when it surfaces - heed the tile warnings"
 } as const;

@@ -61,6 +61,7 @@ const snapshot: Snapshot = {
     ]
   },
   salvage: 5,
+  supplyCap: 20,
   modules: [{ id: "m1", defId: "cannon", col: 2, row: 1, hpRatio: 0.5 }],
   pings: [{ id: "ping1", kind: "danger", x: 4, y: 5 }],
   boss: { phase: "tentacles", hpRatio: 0.6 }

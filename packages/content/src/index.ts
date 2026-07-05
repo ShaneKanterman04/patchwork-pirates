@@ -8,7 +8,7 @@ import type {
   WeaponDef,
   WorldState
 } from "@patchwork/sim";
-import { KRAKEN_HP } from "@patchwork/sim";
+import { KRAKEN_HP, SUPPLY_CACHE_CAPACITY } from "@patchwork/sim";
 
 export type ContentWorldState = WorldState;
 type DescribedWeaponDef = WeaponDef & { description: string };
@@ -95,7 +95,7 @@ export const SPITTER_CRAB = {
     projectileSpeed: 6,
     aoeRadius: 0.9,
     playerDamage: 8,
-    tileDamage: 14
+    tileDamage: 2
   }
 } as const satisfies EnemyDef;
 
@@ -115,7 +115,7 @@ export const PLANK_BITER = {
   behavior: {
     kind: "tile_eater",
     attackCooldownS: 1.0,
-    tileDamage: 18
+    tileDamage: 2
   }
 } as const satisfies EnemyDef;
 
@@ -135,7 +135,7 @@ export const BRUTE_TURTLE = {
   behavior: {
     kind: "tank_smasher",
     attackCooldownS: 1.2,
-    tileDamage: 30,
+    tileDamage: 2,
     knockbackRadius: 1.2,
     knockbackStrength: 3
   }
@@ -158,7 +158,7 @@ export const KRAKEN_TENTACLE = {
     kind: "tentacle",
     attackCooldownS: 2.2,
     telegraphS: 0.85,
-    tileDamage: 26
+    tileDamage: 2
   }
 } as const satisfies EnemyDef;
 
@@ -179,7 +179,7 @@ export const KRAKEN_HEAD = {
     kind: "kraken_head",
     attackCooldownS: 1.5,
     playerDamage: 16,
-    tileDamage: 30
+    tileDamage: 2
   }
 } as const satisfies EnemyDef;
 
@@ -200,15 +200,13 @@ export const CANNON = {
 
 export const REPAIR_STATION = {
   id: "repair_station",
-  name: "Repair Station",
-  description: "Repairs nearby tiles; faster when you stand next to it",
+  name: "Supply Cache",
+  description: "Increases crew Supplies capacity for repairs and building",
   maxHp: 60,
   salvageCost: 10,
   behavior: {
-    kind: "repair_station",
-    radiusTiles: 1.8,
-    repairRate: 15,
-    playerBoostMult: 2.5
+    kind: "supply_cache",
+    capacityBonus: SUPPLY_CACHE_CAPACITY
   }
 } as const satisfies DescribedModuleDef;
 
