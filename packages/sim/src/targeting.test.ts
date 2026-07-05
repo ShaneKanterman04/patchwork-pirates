@@ -45,7 +45,8 @@ const CONTENT: ContentRegistry = {
       coinValue: 1,
       heavy: false,
       basePriority: 0,
-      elite: false
+      elite: false,
+      behavior: { kind: "swarmer_melee" }
     }
   }
 };

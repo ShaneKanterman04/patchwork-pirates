@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { addPlayer, createWorld, tick } from "@patchwork/sim";
-import type { PlayerInput } from "@patchwork/sim";
+import { TICK_RATE, addPlayer, createWorld, tick } from "@patchwork/sim";
+import type { EnemyState, PlayerInput, Vec2, WorldState } from "@patchwork/sim";
 
 import { CONTENT } from "./index";
 
@@ -11,6 +11,8 @@ describe("content determinism", () => {
     const second = createWorld(99, CONTENT);
     addPlayer(first, "p1", ["cutlass", "harpoon_gun", "coconut_launcher"]);
     addPlayer(second, "p1", ["cutlass", "harpoon_gun", "coconut_launcher"]);
+    addContentEnemies(first);
+    addContentEnemies(second);
 
     for (let i = 0; i < 200; i += 1) {
       const input = replayInput(i);
@@ -52,4 +54,46 @@ function replayInput(tickIndex: number): Map<string, PlayerInput> {
       }
     ]
   ]);
+}
+
+function addContentEnemies(world: WorldState): void {
+  addEnemy(world, "seed_spitter", "spitter_crab", { x: 4.5, y: 1.5 });
+  addEnemy(world, "seed_biter", "plank_biter", { x: -0.2, y: 0.5 });
+  addEnemy(world, "seed_brute", "brute_turtle", { x: 3.5, y: 2.5 });
+}
+
+function addEnemy(
+  world: WorldState,
+  id: string,
+  type: "spitter_crab" | "plank_biter" | "brute_turtle",
+  pos: Vec2
+): EnemyState {
+  const def = CONTENT.enemies[type];
+
+  const enemy: EnemyState = {
+    id,
+    type,
+    pos,
+    hp: def.maxHp,
+    maxHp: def.maxHp,
+    radius: def.radius,
+    speed: def.speedTilesPerSec,
+    contactDamage: def.contactDamage,
+    contactCooldownTicks: 0,
+    contactCooldownMax: Math.round(behaviorCooldownS(def) * TICK_RATE),
+    slowTicks: 0,
+    slowFactor: 1,
+    attackingTileId: null
+  };
+
+  world.enemies.push(enemy);
+  return enemy;
+}
+
+function behaviorCooldownS(def: (typeof CONTENT.enemies)[keyof typeof CONTENT.enemies]): number {
+  if (def.behavior.kind === "swarmer_melee") {
+    return def.contactCooldownS;
+  }
+
+  return def.behavior.attackCooldownS;
 }

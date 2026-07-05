@@ -8,6 +8,7 @@ export { updatePlayerWeapons } from "./weapons";
 export { createWorld, mulberry32, nextRandom, tick } from "./world";
 export type {
   ContentRegistry,
+  EnemyBehavior,
   EnemyDef,
   EnemyState,
   PickupState,

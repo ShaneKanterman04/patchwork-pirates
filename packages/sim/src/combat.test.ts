@@ -42,7 +42,8 @@ const TEST_CONTENT: ContentRegistry = {
       contactDamage: 6,
       contactCooldownS: 0.6,
       radius: 0.3,
-      coinValue: 1
+      coinValue: 1,
+      behavior: { kind: "swarmer_melee" }
     }
   }
 };

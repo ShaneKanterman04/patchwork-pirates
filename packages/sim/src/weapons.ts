@@ -110,9 +110,11 @@ function fireProjectile(
   world.projectiles.push({
     id: nextProjectileId(world),
     type: def.id,
+    faction: "player",
     pos: { ...wielder.pos },
     vel: { x: direction.x * speed, y: direction.y * speed },
     damage: def.damage,
+    tileDamage: 0,
     ttl: projectileTtl(def.rangeTiles, speed),
     ownerId: wielder.id,
     homing: def.pattern.homing,
@@ -156,9 +158,11 @@ function fireLob(
   world.projectiles.push({
     id: nextProjectileId(world),
     type: def.id,
+    faction: "player",
     pos: { ...wielder.pos },
     vel: { x: direction.x * speed, y: direction.y * speed },
     damage: def.damage,
+    tileDamage: 0,
     ttl: projectileTtl(distance(wielder.pos, landPos), speed),
     ownerId: wielder.id,
     homing: false,

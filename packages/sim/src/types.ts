@@ -71,7 +71,28 @@ export interface EnemyDef {
   heavy?: boolean;
   basePriority?: number;
   elite?: boolean;
+  behavior: EnemyBehavior;
 }
+
+export type EnemyBehavior =
+  | { kind: "swarmer_melee" }
+  | {
+      kind: "ranged_lobber";
+      attackRangeTiles: number;
+      attackCooldownS: number;
+      projectileSpeed: number;
+      aoeRadius: number;
+      playerDamage: number;
+      tileDamage: number;
+    }
+  | { kind: "tile_eater"; attackCooldownS: number; tileDamage: number }
+  | {
+      kind: "tank_smasher";
+      attackCooldownS: number;
+      tileDamage: number;
+      knockbackRadius: number;
+      knockbackStrength: number;
+    };
 
 export interface ContentRegistry {
   weapons: Record<string, WeaponDef>;
@@ -109,9 +130,11 @@ export interface PickupState {
 export interface ProjectileState {
   id: string;
   type: string;
+  faction: "player" | "enemy";
   pos: Vec2;
   vel: Vec2;
   damage: number;
+  tileDamage: number;
   ttl: number;
   ownerId: string;
   homing: boolean;

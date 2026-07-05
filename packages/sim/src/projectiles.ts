@@ -4,8 +4,14 @@ import {
   RAFT_WIDTH,
   TICK_RATE
 } from "./constants";
-import { isWalkable } from "./raft";
-import type { EnemyState, ProjectileState, Vec2, WorldState } from "./types";
+import { damageTile, isWalkable } from "./raft";
+import type {
+  EnemyState,
+  PlayerState,
+  ProjectileState,
+  Vec2,
+  WorldState
+} from "./types";
 
 const PROJECTILE_HIT_RADIUS = 0.25;
 const LOB_ARRIVAL_EPSILON = 0.05;
@@ -14,6 +20,11 @@ export function updateProjectiles(world: WorldState): void {
   const survivors: ProjectileState[] = [];
 
   for (const projectile of world.projectiles) {
+    if (projectile.faction === "enemy") {
+      updateEnemyLob(world, projectile, survivors);
+      continue;
+    }
+
     if (projectile.landPos !== null) {
       updateLob(world, projectile, survivors);
     } else {
@@ -22,6 +33,29 @@ export function updateProjectiles(world: WorldState): void {
   }
 
   world.projectiles = survivors;
+}
+
+function updateEnemyLob(
+  world: WorldState,
+  projectile: ProjectileState,
+  survivors: ProjectileState[]
+): void {
+  if (projectile.landPos === null) {
+    return;
+  }
+
+  moveTowardLand(projectile);
+
+  if (
+    distance(projectile.pos, projectile.landPos) <= LOB_ARRIVAL_EPSILON ||
+    projectile.ttl <= 1
+  ) {
+    explodeEnemyLob(world, projectile, projectile.landPos);
+    return;
+  }
+
+  projectile.ttl -= 1;
+  survivors.push(projectile);
 }
 
 function updateDirectProjectile(
@@ -75,14 +109,7 @@ function updateLob(
     return;
   }
 
-  const distanceToLand = distance(projectile.pos, projectile.landPos);
-  const step = magnitude(projectile.vel) / TICK_RATE;
-
-  if (distanceToLand <= step) {
-    projectile.pos = { ...projectile.landPos };
-  } else {
-    move(projectile);
-  }
+  moveTowardLand(projectile);
 
   if (
     distance(projectile.pos, projectile.landPos) <= LOB_ARRIVAL_EPSILON ||
@@ -94,6 +121,21 @@ function updateLob(
 
   projectile.ttl -= 1;
   survivors.push(projectile);
+}
+
+function moveTowardLand(projectile: ProjectileState): void {
+  if (projectile.landPos === null) {
+    return;
+  }
+
+  const distanceToLand = distance(projectile.pos, projectile.landPos);
+  const step = magnitude(projectile.vel) / TICK_RATE;
+
+  if (distanceToLand <= step) {
+    projectile.pos = { ...projectile.landPos };
+  } else {
+    move(projectile);
+  }
 }
 
 function firstProjectileHit(
@@ -178,6 +220,41 @@ function explode(
     pos: { ...pos },
     radius: projectile.aoeRadius
   });
+}
+
+function explodeEnemyLob(
+  world: WorldState,
+  projectile: ProjectileState,
+  pos: Vec2
+): void {
+  for (const player of world.players) {
+    if (!isPlayerInAoe(player, projectile, pos)) {
+      continue;
+    }
+
+    player.hp = Math.max(0, player.hp - projectile.damage);
+  }
+
+  damageTile(
+    world,
+    Math.floor(pos.x),
+    Math.floor(pos.y),
+    projectile.tileDamage
+  );
+
+  world.events.push({
+    type: "explosion",
+    pos: { ...pos },
+    radius: projectile.aoeRadius
+  });
+}
+
+function isPlayerInAoe(
+  player: PlayerState,
+  projectile: ProjectileState,
+  pos: Vec2
+): boolean {
+  return distance(pos, player.pos) <= projectile.aoeRadius + PLAYER_RADIUS;
 }
 
 function move(projectile: ProjectileState): void {

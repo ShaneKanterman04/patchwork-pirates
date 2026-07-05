@@ -6,6 +6,7 @@ import type {
   EnemyState,
   PlayerInput,
   Vec2,
+  EnemyDef,
   WeaponDef,
   WorldState
 } from "./index";
@@ -155,7 +156,7 @@ describe("coconut lob", () => {
   });
 });
 
-function enemyDef(id: string, heavy: boolean) {
+function enemyDef(id: string, heavy: boolean): EnemyDef {
   return {
     id,
     name: id,
@@ -167,7 +168,8 @@ function enemyDef(id: string, heavy: boolean) {
     coinValue: 0,
     heavy,
     basePriority: 0,
-    elite: false
+    elite: false,
+    behavior: { kind: "swarmer_melee" }
   };
 }
 
