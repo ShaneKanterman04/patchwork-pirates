@@ -9,7 +9,11 @@ import type { PlayerId, PlayerState, Vec2, WorldState } from "./types";
 
 export const DEFAULT_PLAYER_POS: Vec2 = { x: 1.5, y: 1.5 };
 
-export function addPlayer(world: WorldState, id: PlayerId): PlayerState {
+export function addPlayer(
+  world: WorldState,
+  id: PlayerId,
+  startingWeaponIds: string[] = []
+): PlayerState {
   if (world.players.some((player) => player.id === id)) {
     throw new Error(`Player id already exists: ${id}`);
   }
@@ -21,6 +25,7 @@ export function addPlayer(world: WorldState, id: PlayerId): PlayerState {
     hp: PLAYER_MAX_HP,
     maxHp: PLAYER_MAX_HP,
     moveSpeed: PLAYER_MOVE_SPEED,
+    weapons: startingWeaponIds.map((defId) => ({ defId, cooldownTicks: 0 })),
     dashCooldown: 0,
     dashTicks: 0,
     dashDir: { x: 0, y: 1 },

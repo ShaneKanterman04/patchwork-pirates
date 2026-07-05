@@ -2,15 +2,24 @@ import {
   DASH_COOLDOWN_TICKS,
   DASH_DURATION_TICKS,
   DASH_SPEED_MULT,
+  SPAWN_INTERVAL_TICKS,
   TICK_RATE
 } from "./constants";
+import { resolveEnemyDeaths, spawnEnemies, updateEnemies } from "./enemies";
 import {
   clampMovement,
   clampToRaft,
   normalizeOrZero
 } from "./player";
 import { createRaft } from "./raft";
-import type { PlayerId, PlayerInput, Vec2, WorldState } from "./types";
+import { updatePlayerWeapons } from "./weapons";
+import type {
+  ContentRegistry,
+  PlayerId,
+  PlayerInput,
+  Vec2,
+  WorldState
+} from "./types";
 
 const ZERO_INPUT: PlayerInput = {
   movement: { x: 0, y: 0 },
@@ -34,12 +43,24 @@ export function nextRandom(world: WorldState): number {
   return stateToUnitFloat(scrambleMulberry32State(world.rngState));
 }
 
-export function createWorld(seed: number): WorldState {
+const EMPTY_CONTENT: ContentRegistry = { weapons: {}, enemies: {} };
+
+export function createWorld(
+  seed: number,
+  content: ContentRegistry = EMPTY_CONTENT
+): WorldState {
   return {
     tick: 0,
     rngState: seed >>> 0,
     players: [],
-    raft: createRaft()
+    raft: createRaft(),
+    content,
+    enemies: [],
+    pickups: [],
+    projectiles: [],
+    events: [],
+    nextEntityId: 1,
+    spawnTimer: SPAWN_INTERVAL_TICKS
   };
 }
 
@@ -47,6 +68,10 @@ export function tick(
   world: WorldState,
   inputs: Map<PlayerId, PlayerInput>
 ): WorldState {
+  world.events = [];
+
+  spawnEnemies(world);
+
   for (const player of world.players) {
     const input = inputs.get(player.id) ?? ZERO_INPUT;
     const movement = clampMovement(input.movement);
@@ -78,6 +103,10 @@ export function tick(
     player.dashCooldown = Math.max(0, player.dashCooldown - 1);
     player.prevDash = input.dash;
   }
+
+  updatePlayerWeapons(world);
+  updateEnemies(world);
+  resolveEnemyDeaths(world);
 
   world.tick += 1;
   return world;

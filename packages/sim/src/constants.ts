@@ -14,3 +14,7 @@ export const DASH_DURATION_S = 0.2;
 export const DASH_COOLDOWN_S = 3.0;
 export const DASH_DURATION_TICKS = Math.round(DASH_DURATION_S * TICK_RATE);
 export const DASH_COOLDOWN_TICKS = Math.round(DASH_COOLDOWN_S * TICK_RATE);
+
+export const SPAWN_INTERVAL_S = 0.8;
+export const SPAWN_INTERVAL_TICKS = Math.round(SPAWN_INTERVAL_S * TICK_RATE);
+export const MAX_ENEMIES = 24;
