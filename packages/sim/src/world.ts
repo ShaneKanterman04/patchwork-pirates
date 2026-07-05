@@ -7,6 +7,7 @@ import {
   PLAYER_REPAIR_RATE,
   TICK_RATE
 } from "./constants";
+import { applyAuras, updateSpecials } from "./characters";
 import { hasDownedPlayerInReviveRange, updateDowned } from "./downed";
 import { resolveEnemyDeaths, updateEnemies } from "./enemies";
 import { updateModules } from "./modules";
@@ -53,6 +54,7 @@ export function nextRandom(world: WorldState): number {
 
 const EMPTY_CONTENT: ContentRegistry = {
   weapons: {},
+  characters: {},
   items: {},
   enemies: {},
   modules: {},
@@ -135,6 +137,8 @@ export function tick(
     player.prevDash = input.dash;
   }
 
+  applyAuras(world);
+  updateSpecials(world);
   updatePlayerWeapons(world);
   updateModules(world);
   updateEnemies(world);

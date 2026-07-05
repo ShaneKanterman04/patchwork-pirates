@@ -43,6 +43,7 @@ const COCONUT: WeaponDef = {
 
 const CONTENT: ContentRegistry = {
   weapons: { harpoon: HARPOON, coconut: COCONUT },
+  characters: {},
   items: {},
   enemies: {
     light: enemyDef("light", false),
@@ -202,7 +203,8 @@ function addEnemy(
     contactCooldownMax: Math.round(def.contactCooldownS * TICK_RATE),
     slowTicks: 0,
     slowFactor: 1,
-    attackingTileId: null
+    attackingTileId: null,
+    markTicks: 0
   };
 
   world.enemies.push(enemy);

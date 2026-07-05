@@ -135,7 +135,8 @@ function addEnemy(
     contactCooldownMax: Math.round(behaviorCooldownS(def) * TICK_RATE),
     slowTicks: 0,
     slowFactor: 1,
-    attackingTileId: null
+    attackingTileId: null,
+    markTicks: 0
   };
 
   world.enemies.push(enemy);

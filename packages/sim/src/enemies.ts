@@ -222,7 +222,8 @@ export function createEnemy(
     contactCooldownMax: Math.round(cooldownS * TICK_RATE),
     slowTicks: 0,
     slowFactor: 1,
-    attackingTileId: null
+    attackingTileId: null,
+    markTicks: 0
   };
 }
 

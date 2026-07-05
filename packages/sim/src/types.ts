@@ -13,6 +13,11 @@ export interface PlayerInput {
 
 export interface PlayerState {
   id: PlayerId;
+  characterId: string | null;
+  passive: CharacterPassive;
+  special: CharacterSpecial;
+  specialCooldownTicks: number;
+  auraAttackSpeedMult: number;
   pos: Vec2;
   facing: Vec2;
   hp: number;
@@ -79,7 +84,30 @@ export interface WeaponDef {
   cooldownS: number;
   rangeTiles: number;
   damage: number;
+  tags?: string[];
   pattern: WeaponPattern;
+}
+
+export type CharacterPassive = "none" | "attack_speed_aura";
+export type CharacterSpecial =
+  | "none"
+  | "mark_dangerous"
+  | "harpoon_raft_priority";
+
+export interface CharacterDef {
+  id: string;
+  name: string;
+  startingWeaponId: string;
+  statProfile: {
+    maxHp?: number;
+    moveSpeed?: number;
+    damageMult?: number;
+    attackSpeedMult?: number;
+    pickupRadius?: number;
+    repairSpeed?: number;
+  };
+  passive: CharacterPassive;
+  special: CharacterSpecial;
 }
 
 export interface EnemyDef {
@@ -157,6 +185,7 @@ export type EnemyBehavior =
 
 export interface ContentRegistry {
   weapons: Record<string, WeaponDef>;
+  characters: Record<string, CharacterDef>;
   items: Record<string, ItemDef>;
   enemies: Record<string, EnemyDef>;
   modules: Record<string, ModuleDef>;
@@ -205,6 +234,7 @@ export interface EnemyState {
   slowTicks: number;
   slowFactor: number;
   attackingTileId: string | null;
+  markTicks: number;
 }
 
 export interface PickupState {

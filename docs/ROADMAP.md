@@ -39,8 +39,8 @@ Work branch `phase-0`. Legend: ✅ done & committed · 🔨 in progress · ⬜ t
   - ⏸ exit gate — Shane playtest (full 8-wave solo run; lose 2 ways, win with 2 builds). Overseer verified the stack headlessly (97 tests, run-machine + wire + message smokes); feel/balance is Shane's.
 - **Phase 2 — Co-op** 🔨
   - ✅ 2.1 downed/revive/bleed-out + wave-end return + party-wipe defeat (sim)
-  - 🔨 2.2 characters Captain + Fisher — passives + automatic specials (sim+content)
-  - ⬜ 2.3 ping (Q contextual) + downed/revive + scoreboard wire (sim+protocol+server)
+  - ✅ 2.2 characters Captain + Fisher — passives + automatic specials (sim+content)
+  - 🔨 2.3 ping (Q contextual) + downed/revive + scoreboard wire (sim+protocol+server)
   - ⬜ 2.4 lobby: multi-match by code, join, character select, ready-up (server+protocol)
   - ⬜ 2.5 disconnect handling: drop→downed, rejoin by code resumes slot (server)
   - ⬜ 2.6 co-op client UI: lobby, char select, 2nd player, revive, ping, scoreboard (client)

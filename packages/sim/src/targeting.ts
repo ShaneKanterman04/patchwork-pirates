@@ -11,19 +11,25 @@ export function selectTarget(
   wielder: PlayerState,
   def: WeaponDef
 ): EnemyState | null {
-  if (def.targeting === "nearest") {
+  const targeting =
+    wielder.special === "harpoon_raft_priority" &&
+    def.tags?.includes("harpoon") === true
+      ? "attacking_raft"
+      : def.targeting;
+
+  if (targeting === "nearest") {
     return selectNearestTarget(world, wielder, def);
   }
 
-  if (def.targeting === "attacking_raft") {
+  if (targeting === "attacking_raft") {
     return selectAttackingRaftTarget(world, wielder, def);
   }
 
-  if (def.targeting === "densest_cluster") {
+  if (targeting === "densest_cluster") {
     return selectDensestClusterTarget(world, wielder, def);
   }
 
-  throw new Error(`targeting mode not implemented: ${def.targeting}`);
+  throw new Error(`targeting mode not implemented: ${targeting}`);
 }
 
 export function threatScore(

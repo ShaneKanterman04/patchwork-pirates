@@ -1,4 +1,4 @@
-import { TICK_RATE } from "./constants";
+import { MARK_DAMAGE_MULT, TICK_RATE } from "./constants";
 import { selectTarget } from "./targeting";
 import type {
   EnemyState,
@@ -79,13 +79,12 @@ function fireMeleeArc(
   });
 
   const minDot = Math.cos((arcDegrees / 2) * (Math.PI / 180));
-  const damage = scaledDamage(def, wielder);
-
   for (const enemy of world.enemies) {
     if (!isEnemyInMeleeArc(enemy, wielder, slashDir, def.rangeTiles, minDot)) {
       continue;
     }
 
+    const damage = markedDamage(scaledDamage(def, wielder), enemy);
     enemy.hp -= damage;
     world.events.push({
       type: "enemy_hit",
@@ -200,8 +199,15 @@ function scaledDamage(def: WeaponDef, wielder: PlayerState): number {
 function scaledCooldownTicks(def: WeaponDef, wielder: PlayerState): number {
   return Math.max(
     1,
-    Math.round((def.cooldownS * TICK_RATE) / wielder.attackSpeedMult)
+    Math.round(
+      (def.cooldownS * TICK_RATE) /
+        (wielder.attackSpeedMult * wielder.auraAttackSpeedMult)
+    )
   );
+}
+
+function markedDamage(baseDamage: number, enemy: EnemyState): number {
+  return enemy.markTicks > 0 ? baseDamage * MARK_DAMAGE_MULT : baseDamage;
 }
 
 function isEnemyInMeleeArc(

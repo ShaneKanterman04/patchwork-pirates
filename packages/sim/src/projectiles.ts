@@ -1,4 +1,5 @@
 import {
+  MARK_DAMAGE_MULT,
   PLAYER_RADIUS,
   RAFT_HEIGHT,
   RAFT_WIDTH,
@@ -82,11 +83,12 @@ function updateDirectProjectile(
 
   const hit = firstProjectileHit(world, projectile);
   if (hit !== null) {
-    hit.hp -= projectile.damage;
+    const damage = markedDamage(projectile.damage, hit);
+    hit.hp -= damage;
     world.events.push({
       type: "enemy_hit",
       enemyId: hit.id,
-      damage: projectile.damage,
+      damage,
       pos: { ...hit.pos }
     });
 
@@ -206,11 +208,12 @@ function explode(
       continue;
     }
 
-    enemy.hp -= projectile.damage;
+    const damage = markedDamage(projectile.damage, enemy);
+    enemy.hp -= damage;
     world.events.push({
       type: "enemy_hit",
       enemyId: enemy.id,
-      damage: projectile.damage,
+      damage,
       pos: { ...enemy.pos }
     });
   }
@@ -259,6 +262,10 @@ function isPlayerInAoe(
   pos: Vec2
 ): boolean {
   return distance(pos, player.pos) <= projectile.aoeRadius + PLAYER_RADIUS;
+}
+
+function markedDamage(baseDamage: number, enemy: EnemyState): number {
+  return enemy.markTicks > 0 ? baseDamage * MARK_DAMAGE_MULT : baseDamage;
 }
 
 function move(projectile: ProjectileState): void {

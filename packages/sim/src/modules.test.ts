@@ -60,6 +60,7 @@ const CHUM: EnemyDef = {
 
 const CONTENT: ContentRegistry = {
   weapons: {},
+  characters: {},
   items: {},
   enemies: { chum: CHUM },
   modules: {
@@ -307,7 +308,8 @@ function addEnemy(world: WorldState, id: string, pos: Vec2): EnemyState {
     contactCooldownMax: Math.round(CHUM.contactCooldownS * TICK_RATE),
     slowTicks: 0,
     slowFactor: 1,
-    attackingTileId: null
+    attackingTileId: null,
+    markTicks: 0
   };
 
   world.enemies.push(enemy);

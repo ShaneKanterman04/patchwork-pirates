@@ -42,6 +42,7 @@ const TWO_COST_WAVE: WaveDef = {
 
 const TEST_CONTENT: ContentRegistry = {
   weapons: {},
+  characters: {},
   items: {},
   enemies: {
     chum: CHUM,
@@ -137,6 +138,7 @@ describe("budget spawner", () => {
   it("is inert when content has no waves", () => {
     const world = createWorld(4, {
       weapons: {},
+      characters: {},
       items: {},
       enemies: { chum: CHUM },
       modules: {},

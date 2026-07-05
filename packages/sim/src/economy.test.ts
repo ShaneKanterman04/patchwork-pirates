@@ -98,6 +98,7 @@ const WAVE: WaveDef = {
 
 const CONTENT: ContentRegistry = {
   weapons: { cutlass: CUTLASS, harpoon: HARPOON },
+  characters: {},
   items: { plated_hull: PLATED_HULL, magnet: MAGNET },
   enemies: { chum: CHUM, plank_biter: PLANK_BITER },
   modules: { cannon: CANNON },

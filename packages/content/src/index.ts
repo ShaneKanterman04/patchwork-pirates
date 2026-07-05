@@ -1,5 +1,6 @@
 import type {
   ContentRegistry,
+  CharacterDef,
   EnemyDef,
   ItemDef,
   ModuleDef,
@@ -29,6 +30,7 @@ export const HARPOON_GUN = {
   cooldownS: 1.1,
   rangeTiles: 4.5,
   damage: 22,
+  tags: ["harpoon", "defensive"],
   pattern: {
     kind: "projectile",
     projectileSpeed: 14,
@@ -165,6 +167,29 @@ export const WEAPONS = {
   harpoon_gun: HARPOON_GUN,
   coconut_launcher: COCONUT_LAUNCHER
 } as const satisfies Record<string, WeaponDef>;
+
+export const CAPTAIN = {
+  id: "captain",
+  name: "Captain",
+  startingWeaponId: "cutlass",
+  statProfile: {},
+  passive: "attack_speed_aura",
+  special: "mark_dangerous"
+} as const satisfies CharacterDef;
+
+export const FISHER = {
+  id: "fisher",
+  name: "Fisher",
+  startingWeaponId: "harpoon_gun",
+  statProfile: { pickupRadius: 0.6 },
+  passive: "none",
+  special: "harpoon_raft_priority"
+} as const satisfies CharacterDef;
+
+export const CHARACTERS = {
+  captain: CAPTAIN,
+  fisher: FISHER
+} as const satisfies Record<string, CharacterDef>;
 
 export const PLATED_HULL = {
   id: "plated_hull",
@@ -310,6 +335,7 @@ export const WAVES = [
 
 export const CONTENT = {
   weapons: WEAPONS,
+  characters: CHARACTERS,
   items: ITEMS,
   enemies: ENEMIES,
   modules: MODULES,

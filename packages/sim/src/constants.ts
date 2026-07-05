@@ -42,3 +42,10 @@ export const CLUSTER_RADIUS = 1.3;
 export const DISTANCE_PENALTY = 1.0;
 export const RAFT_ATTACK_BONUS = 50;
 export const ELITE_BONUS = 20;
+
+export const AURA_RADIUS = 1.8;
+export const AURA_ATTACK_SPEED_BONUS = 0.25;
+export const MARK_INTERVAL_S = 12;
+export const MARK_DURATION_S = 5;
+export const MARK_DAMAGE_MULT = 1.4;
+export const MARK_RADIUS = 5;

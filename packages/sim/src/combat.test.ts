@@ -30,6 +30,7 @@ const CUTLASS: WeaponDef = {
 
 const TEST_CONTENT: ContentRegistry = {
   weapons: { cutlass: CUTLASS },
+  characters: {},
   items: {},
   enemies: {
     chum: {
@@ -259,7 +260,8 @@ function addEnemy(world: WorldState, id: string, pos: Vec2): EnemyState {
     contactCooldownMax: Math.round(0.6 * TICK_RATE),
     slowTicks: 0,
     slowFactor: 1,
-    attackingTileId: null
+    attackingTileId: null,
+    markTicks: 0
   };
 
   world.enemies.push(enemy);

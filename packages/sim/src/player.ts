@@ -13,14 +13,25 @@ export const DEFAULT_PLAYER_POS: Vec2 = { x: 1.5, y: 1.5 };
 export function addPlayer(
   world: WorldState,
   id: PlayerId,
-  startingWeaponIds: string[] = []
+  startingWeaponIds: string[] = [],
+  characterId?: string
 ): PlayerState {
   if (world.players.some((player) => player.id === id)) {
     throw new Error(`Player id already exists: ${id}`);
   }
 
+  const character =
+    characterId === undefined ? undefined : world.content.characters[characterId];
+  const characterWeapons =
+    character === undefined ? [] : [character.startingWeaponId];
+
   const player: PlayerState = {
     id,
+    characterId: character?.id ?? null,
+    passive: character?.passive ?? "none",
+    special: character?.special ?? "none",
+    specialCooldownTicks: 0,
+    auraAttackSpeedMult: 1,
     pos: clampToRaft(DEFAULT_PLAYER_POS),
     facing: { x: 0, y: 1 },
     hp: PLAYER_MAX_HP,
@@ -42,12 +53,28 @@ export function addPlayer(
       locked: [],
       rerollCost: 0
     },
-    weapons: startingWeaponIds.map((defId) => ({ defId, cooldownTicks: 0 })),
+    weapons: [...characterWeapons, ...startingWeaponIds].map((defId) => ({
+      defId,
+      cooldownTicks: 0
+    })),
     dashCooldown: 0,
     dashTicks: 0,
     dashDir: { x: 0, y: 1 },
     prevDash: false
   };
+
+  if (character !== undefined) {
+    const statProfile = character.statProfile;
+    const maxHpDelta = statProfile.maxHp ?? 0;
+    player.maxHp += maxHpDelta;
+    player.hp += maxHpDelta;
+    player.prevHp += maxHpDelta;
+    player.moveSpeed += statProfile.moveSpeed ?? 0;
+    player.pickupRadius += statProfile.pickupRadius ?? 0;
+    player.repairSpeed += statProfile.repairSpeed ?? 0;
+    player.damageMult += statProfile.damageMult ?? 0;
+    player.attackSpeedMult += statProfile.attackSpeedMult ?? 0;
+  }
 
   world.players.push(player);
   return player;
