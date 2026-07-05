@@ -1,5 +1,5 @@
 import { Application, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
-import { CHARACTERS, ENEMIES } from "@patchwork/content";
+import { CHARACTERS, ENEMIES, WEAPONS } from "@patchwork/content";
 import type {
   EnemyView,
   HazardView,
@@ -237,6 +237,7 @@ export interface HudState {
   salvageText: string;
   hpText: string;
   hpRatio: number;
+  weaponSlots: string[];
   boss:
     | {
         name: string;
@@ -522,6 +523,13 @@ export class GameRenderer {
       ownPlayer === undefined
         ? "HP --"
         : `HP ${Math.max(0, Math.ceil(ownPlayer.hp))}/${Math.ceil(ownPlayer.maxHp)}`;
+    const weaponIds = ownPlayer?.weaponIds ?? [];
+    const weaponSlots = [
+      weaponDisplayName(weaponIds[0]),
+      weaponDisplayName(weaponIds[1]),
+      weaponDisplayName(weaponIds[2]),
+      weaponDisplayName(weaponIds[3])
+    ];
 
     return {
       status,
@@ -534,6 +542,7 @@ export class GameRenderer {
       salvageText: `Supplies ${Math.floor(state.salvage ?? 0)}/${state.supplyCap ?? 20}`,
       hpText,
       hpRatio: clamp01(hpRatio),
+      weaponSlots,
       boss:
         state.boss === null || state.boss === undefined
           ? null
@@ -2862,6 +2871,15 @@ export function renderHud(root: HTMLElement, state: HudState): void {
   setHudText(root, cache, "coins", "[data-coins]", state.coinsText);
   setHudText(root, cache, "salvage", "[data-salvage]", state.salvageText);
   setHudText(root, cache, "hpText", "[data-hp-text]", state.hpText);
+  for (let index = 0; index < 4; index += 1) {
+    const slotName = state.weaponSlots[index] ?? "";
+    const slotText = slotName === "" ? "—" : slotName;
+    setCachedStyle(cache, `weaponSlot${index}`, slotText, (value) => {
+      const slot = root.querySelector<HTMLElement>(`[data-weapon-slot="${index}"]`);
+      slot?.replaceChildren(value);
+      slot?.classList.toggle("empty", slotName === "");
+    });
+  }
 
   const hpFill = root.querySelector<HTMLElement>("[data-hp-fill]");
   if (hpFill !== null) {
@@ -2888,6 +2906,13 @@ export function renderHud(root: HTMLElement, state: HudState): void {
       });
     }
   }
+}
+
+function weaponDisplayName(id: string | undefined): string {
+  if (id === undefined) {
+    return "";
+  }
+  return WEAPONS[id as keyof typeof WEAPONS]?.name ?? id;
 }
 
 function getHudRenderCache(root: HTMLElement): HudRenderCache {

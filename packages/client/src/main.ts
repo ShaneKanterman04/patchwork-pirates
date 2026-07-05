@@ -51,6 +51,9 @@ root.innerHTML = `
     .hp-label { font-weight: 700; font-size: 13px; margin-bottom: 5px; }
     .hp-track { height: 10px; border-radius: 999px; background: #2a2730; overflow: hidden; }
     .hp-fill { height: 100%; width: 0%; border-radius: 999px; }
+    .weapon-slots { display: flex; flex-direction: row; gap: 6px; margin-top: 8px; }
+    .weapon-slot { background: rgba(16, 43, 58, .72); border: 1px solid rgba(255,255,255,.22); border-radius: 8px; padding: 4px 8px 6px; font-size: 12px; font-weight: 700; min-width: 64px; text-align: center; }
+    .weapon-slot.empty { opacity: .45; }
     .boss-hud { width: min(420px, calc(100vw - 28px)); margin-top: 8px; }
     .boss-hud[hidden] { display: none; }
     .boss-top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 6px; }
@@ -126,6 +129,12 @@ root.innerHTML = `
       <div class="hp">
         <div class="hp-label" data-hp-text>HP --</div>
         <div class="hp-track"><div class="hp-fill" data-hp-fill></div></div>
+      </div>
+      <div class="weapon-slots" data-weapon-slots>
+        <span class="weapon-slot" data-weapon-slot="0"></span>
+        <span class="weapon-slot" data-weapon-slot="1"></span>
+        <span class="weapon-slot" data-weapon-slot="2"></span>
+        <span class="weapon-slot" data-weapon-slot="3"></span>
       </div>
       <div class="boss-hud" data-boss-hud hidden>
         <div class="boss-top">
