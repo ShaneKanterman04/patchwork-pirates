@@ -146,6 +146,7 @@ let latestState: InterpolatedState | undefined;
 let selectedModuleId: string | undefined;
 let locallyReady = false;
 let lobbyRenderKey = "";
+let shopRenderKey: string | null = null;
 let previousWavePhase: InterpolatedState["wave"]["phase"] | undefined;
 let previousOwnDowned = false;
 let previousBossPhase: NonNullable<InterpolatedState["boss"]>["phase"] | undefined;
@@ -397,6 +398,7 @@ function renderShop(
 ): void {
   if (state.wave.phase !== "build") {
     shop.hidden = true;
+    shopRenderKey = null;
     return;
   }
 
@@ -408,10 +410,35 @@ function renderShop(
   const salvage = state.salvage ?? snapshot?.salvage ?? 0;
 
   shop.hidden = false;
+
+  // The render loop runs every frame; rebuilding the shop DOM each time would
+  // destroy the buttons between mousedown and mouseup, making them unclickable.
+  // Only rebuild when the meaningful state changes (offers/funds/selection);
+  // otherwise just refresh the volatile countdown text in place.
+  const key = JSON.stringify({
+    offers: playerShop?.offers ?? [],
+    rerollCost: playerShop?.rerollCost ?? 0,
+    coins,
+    salvage,
+    ready: locallyReady,
+    module: selectedModuleId ?? null
+  });
+
+  if (key === shopRenderKey && shop.childElementCount > 0) {
+    const timer = shop.querySelector<HTMLElement>("[data-shop-timer]");
+    if (timer !== null) {
+      timer.textContent = `Ready in ${Math.ceil(state.wave.timeLeft)}s`;
+    }
+    return;
+  }
+  shopRenderKey = key;
+
   shop.replaceChildren();
 
   const head = el("div", "shop-head");
-  head.append(el("span", undefined, "Build Shop"), el("span", undefined, `Ready in ${Math.ceil(state.wave.timeLeft)}s`));
+  const timer = el("span", undefined, `Ready in ${Math.ceil(state.wave.timeLeft)}s`);
+  timer.setAttribute("data-shop-timer", "");
+  head.append(el("span", undefined, "Build Shop"), timer);
   shop.append(head);
 
   const offers = el("div", "offers");
