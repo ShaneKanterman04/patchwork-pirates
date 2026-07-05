@@ -27,6 +27,7 @@ export interface InterpolatedState {
   wave: WavePhaseView;
   raft?: RaftView;
   salvage?: number;
+  supplyCap?: number;
   modules: ModuleView[];
   boss?: BossView | null;
 }
@@ -80,12 +81,13 @@ export function interpolate(
           alpha
         ),
         pickups: interpolateById(older.snapshot.pickups, newer.snapshot.pickups, alpha),
-        pings: newer.snapshot.pings?.map((ping) => ({ ...ping })) ?? [],
+        pings: newer.snapshot.pings ?? [],
         wave: newer.snapshot.wave,
         raft: newer.snapshot.raft,
         salvage: newer.snapshot.salvage,
-        modules: newer.snapshot.modules?.map((module) => ({ ...module })) ?? [],
-        boss: copyBoss(newer.snapshot.boss)
+        supplyCap: newer.snapshot.supplyCap,
+        modules: newer.snapshot.modules ?? [],
+        boss: newer.snapshot.boss ?? null
       };
     }
   }
@@ -95,21 +97,18 @@ export function interpolate(
 
 function snapshotToState(snapshot: Snapshot): InterpolatedState {
   return {
-    players: snapshot.players.map((player) => ({ ...player })),
-    enemies: snapshot.enemies.map((enemy) => ({ ...enemy })),
-    projectiles: snapshot.projectiles.map((projectile) => ({ ...projectile })),
-    pickups: snapshot.pickups.map((pickup) => ({ ...pickup })),
-    pings: snapshot.pings?.map((ping) => ({ ...ping })) ?? [],
+    players: snapshot.players,
+    enemies: snapshot.enemies,
+    projectiles: snapshot.projectiles,
+    pickups: snapshot.pickups,
+    pings: snapshot.pings ?? [],
     wave: snapshot.wave,
     raft: snapshot.raft,
     salvage: snapshot.salvage,
-    modules: snapshot.modules?.map((module) => ({ ...module })) ?? [],
-    boss: copyBoss(snapshot.boss)
+    supplyCap: snapshot.supplyCap,
+    modules: snapshot.modules ?? [],
+    boss: snapshot.boss ?? null
   };
-}
-
-function copyBoss(boss: BossView | null | undefined): BossView | null {
-  return boss === undefined || boss === null ? null : { ...boss };
 }
 
 function interpolateById<T extends { id: string; x: number; y: number }>(
@@ -122,8 +121,12 @@ function interpolateById<T extends { id: string; x: number; y: number }>(
   return newerItems.map((newer) => {
     const older = olderById.get(newer.id);
 
-    if (older === undefined) {
-      return { ...newer };
+    if (
+      older === undefined ||
+      alpha === 1 ||
+      (older.x === newer.x && older.y === newer.y)
+    ) {
+      return newer;
     }
 
     return {

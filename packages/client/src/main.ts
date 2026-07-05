@@ -10,6 +10,8 @@ import type { InterpolatedState } from "./interp";
 import { InputTracker } from "./input";
 import { connect, resolveWsUrl } from "./net";
 import type { Connection } from "./net";
+import { createQualityMonitor, settingsForTier } from "./quality";
+import type { QualityTier } from "./quality";
 import { GameRenderer, renderHud } from "./render";
 import { applyEventsToStats, applySnapshotToStats, createRunStats } from "./runStats";
 import type { RunStats } from "./runStats";
@@ -24,7 +26,7 @@ import {
   weaponStatLine
 } from "./shopReadability";
 import type { PurchaseSnapshot } from "./shopReadability";
-import { canAffordOffer, canPlaceOnTile, ownCoins, screenPointToTile } from "./shopLogic";
+import { canAffordOffer, nearestBuildTile, ownCoins } from "./shopLogic";
 
 const root = document.querySelector<HTMLDivElement>("#app");
 
@@ -115,7 +117,7 @@ root.innerHTML = `
         <span class="wave" data-wave>Wave 1</span>
         <span data-phase>Fight!</span>
         <span data-coins>Coins 0</span>
-        <span data-salvage>Salvage 0</span>
+        <span data-salvage>Supplies 0/20</span>
       </div>
       <div class="hp">
         <div class="hp-label" data-hp-text>HP --</div>
@@ -157,17 +159,24 @@ if (shell === null || shopEl === null || lobbyEl === null || scoreboardEl === nu
 const hintToast = hintToastEl;
 const buyToast = buyToastEl;
 const renderer = await GameRenderer.create(shell);
+const qualityMonitor = createQualityMonitor();
+let currentQualityTier: QualityTier = "high";
+renderer.applyQuality(settingsForTier(currentQualityTier));
 const input = new InputTracker(window);
 input.attach();
 const audio = new ProceduralAudio();
 audio.bindUnlock(window);
 
 let stats: RunStats = createRunStats();
-let latestState: InterpolatedState | undefined;
-let selectedModuleId: string | undefined;
 let locallyReady = false;
 let lobbyRenderKey = "";
+let lastLobbyKeyCheckMs = 0;
+let lobbyRenderVisible = false;
 let shopRenderKey: string | null = null;
+let lastShopKeyCheckMs = 0;
+let scoreboardRenderKey = "";
+let lastScoreboardKeyCheckMs = 0;
+let scoreboardRenderVisible = false;
 let previousWavePhase: InterpolatedState["wave"]["phase"] | undefined;
 let previousOwnDowned = false;
 let previousBossPhase: NonNullable<InterpolatedState["boss"]>["phase"] | undefined;
@@ -176,6 +185,9 @@ let previousOwnCoins: number | undefined;
 let previousPurchaseState: PurchaseSnapshot | undefined;
 let previousShopOffers: ShopOfferView[] = [];
 let activeBuyToast: { text: string; dismissAtMs: number } | undefined;
+const perfOverlay = createPerfOverlay(shell);
+const perfFrames: number[] = [];
+let lastPerfOverlayMs = 0;
 
 if (new URLSearchParams(window.location.search).has("resethints")) {
   resetSeenHints();
@@ -201,32 +213,24 @@ soundToggleEl.addEventListener("click", () => {
   soundToggleEl.textContent = audio.isMuted ? "Sound off" : "Sound on";
 });
 
-renderer.app.canvas.addEventListener("click", (event) => {
-  if (latestState?.wave.phase !== "build" || selectedModuleId === undefined) {
-    return;
-  }
-
-  const rect = renderer.app.canvas.getBoundingClientRect();
-  const tile = screenPointToTile(
-    { x: event.clientX - rect.left, y: event.clientY - rect.top },
-    renderer.viewportTransform(),
-    latestState.raft
-  );
-
-  if (tile === undefined || !canPlaceOnTile(latestState.raft, tile)) {
-    return;
-  }
-
-  connection.sendInput({ type: "place_module", defId: selectedModuleId, col: tile.col, row: tile.row });
-  selectedModuleId = undefined;
-});
-
 renderer.app.ticker.add((ticker) => {
   const nowMs = performance.now();
+  const nextQualityTier = qualityMonitor.sample(ticker.deltaMS, nowMs);
+  if (nextQualityTier !== currentQualityTier) {
+    currentQualityTier = nextQualityTier;
+    renderer.applyQuality(settingsForTier(currentQualityTier));
+  }
+
+  recordPerfFrame(perfFrames, ticker.deltaMS);
   const renderTimeMs = nowMs - INTERP_DELAY_MS;
   const state = interpolate(connection.snapshots, renderTimeMs);
-  latestState = state;
   stats = applySnapshotToStats(stats, connection.latestSnapshot, connection.myPlayerId);
+  renderer.setBuildTarget(buildTargetFor(state, connection.myPlayerId));
+  if (state.wave.phase === "defeat") {
+    renderer.startDefeatSink(state.raft);
+  } else {
+    renderer.resetDefeatSink();
+  }
 
   const collectedPickups = renderer.update(state, connection.myPlayerId, ticker.deltaMS);
   for (const pickup of collectedPickups) {
@@ -246,7 +250,6 @@ renderer.app.ticker.add((ticker) => {
   root.querySelector<HTMLElement>(".hud")?.toggleAttribute("hidden", lobbyModel.inLobby);
 
   if (state.wave.phase !== "build") {
-    selectedModuleId = undefined;
     locallyReady = false;
   }
 
@@ -267,7 +270,8 @@ renderer.app.ticker.add((ticker) => {
   updatePurchaseToast(state, connection.myPlayerId, nowMs);
   renderScoreboard(scoreboardEl, state.players, connection.myPlayerId, input.isScoreboardHeld() && lobbyModel.activeRun);
   reviveHintEl.hidden = !ownCanRevive(state.players, connection.myPlayerId);
-  renderEndScreen(endScreenEl, state, stats);
+  renderEndScreen(endScreenEl, state, stats, state.wave.phase !== "defeat" || renderer.defeatSinkComplete());
+  updatePerfOverlay(perfOverlay, perfFrames, currentQualityTier, nowMs);
 });
 
 window.addEventListener("beforeunload", () => {
@@ -376,6 +380,56 @@ function renderBuyToast(nowMs: number): void {
   buyToast.textContent = activeBuyToast?.text ?? "";
 }
 
+function createPerfOverlay(parent: HTMLElement): HTMLDivElement | undefined {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("debug") !== "perf") {
+    return undefined;
+  }
+
+  const overlay = document.createElement("div");
+  overlay.style.position = "fixed";
+  overlay.style.top = "12px";
+  overlay.style.right = "12px";
+  overlay.style.zIndex = "20";
+  overlay.style.padding = "8px 10px";
+  overlay.style.border = "1px solid rgba(255,255,255,.22)";
+  overlay.style.borderRadius = "8px";
+  overlay.style.background = "rgba(10, 24, 34, .78)";
+  overlay.style.color = "#fff";
+  overlay.style.font = "12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+  overlay.style.lineHeight = "1.35";
+  overlay.style.whiteSpace = "pre";
+  overlay.style.pointerEvents = "none";
+  parent.append(overlay);
+  return overlay;
+}
+
+function recordPerfFrame(frames: number[], frameMs: number): void {
+  frames.push(frameMs);
+  if (frames.length > 120) {
+    frames.shift();
+  }
+}
+
+function updatePerfOverlay(
+  overlay: HTMLDivElement | undefined,
+  frames: readonly number[],
+  tier: QualityTier,
+  nowMs: number
+): void {
+  if (overlay === undefined || nowMs - lastPerfOverlayMs < 250 || frames.length === 0) {
+    return;
+  }
+
+  lastPerfOverlayMs = nowMs;
+  const graphicsAlive = renderer.perfStats().graphicsAlive;
+  const average = frames.reduce((total, frame) => total + frame, 0) / frames.length;
+  const sorted = [...frames].sort((a, b) => a - b);
+  const p95 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))]!;
+  const fps = average > 0 ? 1_000 / average : 0;
+  overlay.textContent = `FPS ${fps.toFixed(0)}\nframe ${average.toFixed(1)} / ${p95.toFixed(1)} ms\ntier ${tier}\ngfx: ${graphicsAlive}`;
+}
+
 function dismissHintForInput(message: ClientMessage): void {
   if (activeHint === undefined || message.type !== "player_input") {
     return;
@@ -385,7 +439,7 @@ function dismissHintForInput(message: ClientMessage): void {
     (activeHint.id === "move" &&
       (message.movement.x !== 0 || message.movement.y !== 0)) ||
     (activeHint.id === "dash" && message.dash) ||
-    ((activeHint.id === "repair" || activeHint.id === "revive") && message.interact)
+    (activeHint.id === "revive" && message.interact)
   ) {
     activeHint = undefined;
   }
@@ -460,6 +514,7 @@ function renderShop(
   const playerShop = player?.shop;
   const coins = ownCoins(player);
   const salvage = state.salvage ?? snapshot?.salvage ?? 0;
+  const buildTarget = buildTargetFor(state, myPlayerId);
 
   shop.hidden = false;
 
@@ -467,13 +522,27 @@ function renderShop(
   // destroy the buttons between mousedown and mouseup, making them unclickable.
   // Only rebuild when the meaningful state changes (offers/funds/selection);
   // otherwise just refresh the volatile countdown text in place.
+  const countdown = shop.querySelector<HTMLElement>("[data-shop-timer]");
+  if (countdown !== null) {
+    countdown.textContent = `Ready in ${Math.ceil(state.wave.timeLeft)}s`;
+  }
+  const nowMs = performance.now();
+  if (
+    shopRenderKey !== null &&
+    shop.childElementCount > 0 &&
+    nowMs - lastShopKeyCheckMs < 250
+  ) {
+    return;
+  }
+  lastShopKeyCheckMs = nowMs;
+
   const key = JSON.stringify({
     offers: playerShop?.offers ?? [],
     rerollCost: playerShop?.rerollCost ?? 0,
     coins,
     salvage,
     ready: locallyReady,
-    module: selectedModuleId ?? null,
+    buildTarget: buildTarget ?? null,
     characterId: player?.characterId ?? null,
     weaponIds: player?.weaponIds ?? [],
     hp: player === undefined ? null : [Math.ceil(player.hp), Math.ceil(player.maxHp)],
@@ -481,10 +550,6 @@ function renderShop(
   });
 
   if (key === shopRenderKey && shop.childElementCount > 0) {
-    const timer = shop.querySelector<HTMLElement>("[data-shop-timer]");
-    if (timer !== null) {
-      timer.textContent = `Ready in ${Math.ceil(state.wave.timeLeft)}s`;
-    }
     return;
   }
   shopRenderKey = key;
@@ -519,19 +584,21 @@ function renderShop(
   const moduleWrap = el("div", "modules");
   for (const moduleDef of Object.values(MODULES)) {
     const moduleButton = button("", () => {
-      selectedModuleId = selectedModuleId === moduleDef.id ? undefined : moduleDef.id;
+      const target = buildTargetFor(state, myPlayerId);
+      if (target !== undefined) {
+        send({ type: "place_module", defId: moduleDef.id, col: target.col, row: target.row });
+      }
     });
     moduleButton.className = "module-btn";
-    moduleButton.disabled = salvage < moduleDef.salvageCost;
-    moduleButton.classList.toggle("selected", selectedModuleId === moduleDef.id);
+    moduleButton.disabled = salvage < moduleDef.salvageCost || buildTarget === undefined;
     moduleButton.append(
-      el("span", "module-name", `${moduleDef.name} ${moduleDef.salvageCost} salvage`),
+      el("span", "module-name", `Build ${moduleDef.name} - ${moduleDef.salvageCost} Supplies`),
       el("span", "module-desc", moduleDef.description)
     );
     moduleWrap.append(moduleButton);
   }
   shop.append(moduleWrap);
-  shop.append(el("div", "placement", selectedModuleId === undefined ? "" : "Click an intact deck tile to place it."));
+  shop.append(el("div", "placement", placementText(buildTarget, salvage)));
 }
 
 function renderGearPanel(player: PlayerView | undefined): HTMLElement {
@@ -546,14 +613,50 @@ function renderGearPanel(player: PlayerView | undefined): HTMLElement {
   return panel;
 }
 
+function buildTargetFor(
+  state: InterpolatedState,
+  myPlayerId: string | undefined
+): ReturnType<typeof nearestBuildTile> {
+  if (state.wave.phase !== "build") {
+    return undefined;
+  }
+
+  const player = state.players.find((candidate) => candidate.id === myPlayerId);
+  return nearestBuildTile(state.raft, state.modules, player);
+}
+
+function placementText(
+  buildTarget: ReturnType<typeof nearestBuildTile>,
+  supplies: number
+): string {
+  if (buildTarget === undefined) {
+    return "Stand near an empty deck tile to build modules.";
+  }
+
+  return `Building target: row ${buildTarget.row + 1}, col ${buildTarget.col + 1}. Supplies available: ${Math.floor(supplies)}.`;
+}
+
 function renderLobby(container: HTMLElement, model: LobbyViewModel, connection: Connection): void {
   container.hidden = !model.inLobby;
 
   if (!model.inLobby) {
+    lobbyRenderVisible = false;
     return;
   }
 
   const rejoin = connection.rejoin;
+  const lobbyBecameVisible = !lobbyRenderVisible;
+  lobbyRenderVisible = true;
+  const nowMs = performance.now();
+  if (
+    !lobbyBecameVisible &&
+    container.childElementCount > 0 &&
+    nowMs - lastLobbyKeyCheckMs < 250
+  ) {
+    return;
+  }
+  lastLobbyKeyCheckMs = nowMs;
+
   const key = JSON.stringify({
     code: model.code,
     players: model.players,
@@ -645,8 +748,28 @@ function renderScoreboard(
 ): void {
   container.hidden = !visible;
   if (!visible) {
+    scoreboardRenderVisible = false;
     return;
   }
+
+  const scoreboardBecameVisible = !scoreboardRenderVisible;
+  scoreboardRenderVisible = true;
+  const nowMs = performance.now();
+  if (
+    !scoreboardBecameVisible &&
+    container.childElementCount > 0 &&
+    nowMs - lastScoreboardKeyCheckMs < 250
+  ) {
+    return;
+  }
+  lastScoreboardKeyCheckMs = nowMs;
+
+  const rows = scoreboardRows(players, myPlayerId, CHARACTERS);
+  const key = JSON.stringify({ visible, rows });
+  if (key === scoreboardRenderKey && container.childElementCount > 0) {
+    return;
+  }
+  scoreboardRenderKey = key;
 
   container.replaceChildren();
   const panel = el("div", "scoreboard-panel");
@@ -662,7 +785,7 @@ function renderScoreboard(
   );
   panel.append(header);
 
-  for (const row of scoreboardRows(players, myPlayerId, CHARACTERS)) {
+  for (const row of rows) {
     const node = el("div", "score-row");
     const name = el("div", "score-name");
     name.append(el("strong", undefined, row.characterName), el("span", undefined, `${row.label}${row.out ? " - out" : row.downed ? " - downed" : ""}`));
@@ -740,8 +863,13 @@ function weaponDefText(defId: string): string {
   return weapon === undefined ? "Weapon stats unavailable" : weaponStatLine(weapon);
 }
 
-function renderEndScreen(container: HTMLElement, state: InterpolatedState, runStats: RunStats): void {
-  if (state.wave.phase !== "victory" && state.wave.phase !== "defeat") {
+function renderEndScreen(
+  container: HTMLElement,
+  state: InterpolatedState,
+  runStats: RunStats,
+  reveal = true
+): void {
+  if ((state.wave.phase !== "victory" && state.wave.phase !== "defeat") || !reveal) {
     container.hidden = true;
     return;
   }

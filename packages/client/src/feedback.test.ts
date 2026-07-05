@@ -16,6 +16,15 @@ describe("feedback helpers", () => {
     expect(particleBurst("kill", 1, 2)[0]).toMatchObject({ x: 1, y: 2 });
   });
 
+  it("scales particle budgets with the quality multiplier", () => {
+    expect(particleBurst("kill", 1, 2, 0.5)).toHaveLength(5);
+    expect(particleBurst("explosion", 1, 2, 0.5)).toHaveLength(9);
+  });
+
+  it("skips particle bursts when the quality multiplier is zero", () => {
+    expect(particleBurst("kill", 1, 2, 0)).toEqual([]);
+  });
+
   it("returns a brief scale pop and settles back to normal", () => {
     expect(popScale(0, 180, 0.18)).toBe(1);
     expect(popScale(90, 180, 0.18)).toBeCloseTo(1.18);

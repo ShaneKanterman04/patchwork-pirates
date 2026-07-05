@@ -1,4 +1,4 @@
-import { Application, Container, Graphics, Text } from "pixi.js";
+import { Application, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 import { CHARACTERS, ENEMIES } from "@patchwork/content";
 import type {
   EnemyView,
@@ -17,7 +17,11 @@ import type { ConnectionStatus } from "./net";
 import { detectCollectedPickups } from "./pickupJuice";
 import type { CollectedPickup } from "./pickupJuice";
 import type { InterpolatedState } from "./interp";
-import type { ViewportTransform } from "./shopLogic";
+import { settingsForTier } from "./quality";
+import type { QualitySettings } from "./quality";
+import type { TileCoord, ViewportTransform } from "./shopLogic";
+import { loadSpriteAtlas, setSpriteAnimationFrame, setSpriteFrame } from "./sprites";
+import type { SpriteAtlas } from "./sprites";
 
 export const TILE_PX = 60;
 
@@ -27,6 +31,7 @@ const VIEW_MARGIN_TILES = 3;
 const VIEW_TILES = RAFT_SIZE_TILES + VIEW_MARGIN_TILES * 2;
 const PLAYER_RADIUS = 0.38;
 const SLASH_DURATION_MS = 180;
+const CUTLASS_SWING_DURATION_MS = 220;
 const HIT_DURATION_MS = 140;
 const KILL_DURATION_MS = 260;
 const EXPLOSION_DURATION_MS = 360;
@@ -35,18 +40,39 @@ const HIT_FLASH_MS = 130;
 const HIT_REACTION_MS = 150;
 const PLAYER_HURT_FLASH_MS = 180;
 const PICKUP_FLY_MS = 320;
+const REPAIR_SUPPLY_FLY_MS = 700;
+const REPAIR_TILE_HP = 10;
+const DEFEAT_TILE_STAGGER_MS = 110;
+const DEFEAT_TILE_SINK_MS = 650;
+const DEFEAT_UI_DELAY_MS = 220;
 
 interface EntityNode {
   container: Container;
   ground: Graphics;
   body: Graphics;
+  sprite?: Sprite;
+  spriteKey?: string;
+  weaponVisual?: Graphics;
+  weaponTrail?: Graphics;
+  weaponVisualDrawn: boolean;
   facing?: Graphics;
   hpBack?: Graphics;
+  hpBackKey?: string;
   hpFill?: Graphics;
+  hpFillKey?: string;
   label?: Text;
+  labelY?: number;
   reviveRing?: Graphics;
+  reviveRingKey?: number;
   bleedRing?: Graphics;
+  bleedRingKey?: number;
+  downedRingsVisible: boolean;
   flash?: Graphics;
+  flashRadius?: number;
+  flashColor?: number;
+  flashVisible: boolean;
+  enemyBodyKey?: string;
+  enemyGroundKey?: string;
   flashMs: number;
   reactionMs: number;
   reactionDx: number;
@@ -57,6 +83,7 @@ interface EntityNode {
 interface SlashVfx {
   ageMs: number;
   graphic: Graphics;
+  weaponId: string;
   ox: number;
   oy: number;
   dx: number;
@@ -65,14 +92,20 @@ interface SlashVfx {
   range: number;
 }
 
+interface WeaponSwing {
+  startedAtMs: number;
+  dx: number;
+  dy: number;
+}
+
 interface PopVfx {
   ageMs: number;
   durationMs: number;
-  graphic: Graphics;
+  sprite: Sprite;
   x: number;
   y: number;
   color: number;
-  kind: "hit" | "kill" | "explosion" | "splash";
+  kind: "hit" | "kill" | "explosion" | "splash" | "repair";
 }
 
 interface PingNode {
@@ -82,12 +115,12 @@ interface PingNode {
 
 interface ParticleVfx extends ParticleSpec {
   ageMs: number;
-  graphic: Graphics;
+  sprite: Sprite;
 }
 
 interface PickupFlyVfx {
   ageMs: number;
-  graphic: Graphics;
+  sprite: Sprite;
   kind: string;
   x: number;
   y: number;
@@ -95,11 +128,51 @@ interface PickupFlyVfx {
   ownerY: number;
 }
 
+interface RepairSupplyFlyVfx {
+  ageMs: number;
+  sprite: Sprite;
+  x: number;
+  y: number;
+  targetX: number;
+  targetY: number;
+  wobble: number;
+}
+
 interface PickupRecord {
   id: string;
   kind: string;
   x: number;
   y: number;
+}
+
+type VfxTextureKey =
+  | "popRing"
+  | "splashRing"
+  | "repairRing"
+  | "particleBubble"
+  | "particleCoin"
+  | "particleBone"
+  | "particleSpark"
+  | "pickupFlyOrb"
+  | "supplyCrate";
+
+interface TelegraphNode {
+  graphic: Graphics;
+  key: number;
+}
+
+interface DefeatSink {
+  startedAtMs: number;
+  tiles: RaftView["tiles"];
+  order: Map<string, number>;
+}
+
+interface RaftTileNode {
+  root: Container;
+  base: Graphics;
+  overlay: Graphics;
+  baseKey: string;
+  overlayKey: string;
 }
 
 export interface HudState {
@@ -122,28 +195,52 @@ export interface HudState {
 export class GameRenderer {
   private readonly world = new Container();
   private readonly raft = new Container();
+  private readonly raftTiles = new Map<string, RaftTileNode>();
   private readonly modules = new Map<string, Graphics>();
+  private readonly moduleSprites = new Map<string, Sprite>();
   private readonly projectiles = new Map<string, Graphics>();
+  private readonly projectileSprites = new Map<string, Sprite>();
   private readonly players = new Map<string, EntityNode>();
   private readonly enemies = new Map<string, EntityNode>();
   private readonly pickups = new Map<string, Graphics>();
-  private readonly telegraphs = new Map<string, Graphics>();
+  private readonly pickupSprites = new Map<string, Sprite>();
+  private readonly telegraphs = new Map<string, TelegraphNode>();
   private readonly pings = new Map<string, PingNode>();
   private readonly slashes: SlashVfx[] = [];
+  private readonly weaponSwings = new Map<string, WeaponSwing>();
   private readonly pops: PopVfx[] = [];
   private readonly particles: ParticleVfx[] = [];
   private readonly pickupFlies: PickupFlyVfx[] = [];
+  private readonly repairSupplyFlies: RepairSupplyFlyVfx[] = [];
+  private readonly vfxTextures = new Map<VfxTextureKey, Texture>();
+  private readonly vfxSpritePools = new Map<VfxTextureKey, Sprite[]>();
   private readonly enemyKinds = new Map<string, string>();
   private readonly previousEnemyDeckState = new Map<string, boolean>();
   private readonly previousPlayerHp = new Map<string, number>();
-  private previousPickups: PickupRecord[] = [];
+  private readonly previousPlayerPositions = new Map<string, { x: number; y: number }>();
+  private readonly repairTargetKeys = new Set<string>();
+  private readonly repairSources = new Map<string, { x: number; y: number }>();
+  private readonly needSupplyTargetKeys = new Set<string>();
+  private readonly previousTileState = new Map<string, { hpRatio: number; broken: boolean }>();
+  private readonly repairSupplyRemainders = new Map<string, number>();
+  private buildTarget: TileCoord | undefined;
+  private defeatSink: DefeatSink | undefined;
+  private readonly previousPickups: PickupRecord[] = [];
+  private readonly previousPickupRecords = new Map<string, PickupRecord>();
   private shakeAgeMs = Number.POSITIVE_INFINITY;
   private shakeAmplitude = 0;
   private baseWorldX = 0;
   private baseWorldY = 0;
   private renderClockMs = 0;
+  private readonly baseResolution: number;
+  private qualitySettings: QualitySettings = settingsForTier("high");
 
-  private constructor(readonly app: Application) {
+  private constructor(
+    readonly app: Application,
+    private readonly spriteAtlas: SpriteAtlas | null,
+    baseResolution: number
+  ) {
+    this.baseResolution = baseResolution;
     app.stage.addChild(this.world);
     this.world.addChild(this.raft);
     this.drawRaft();
@@ -153,15 +250,20 @@ export class GameRenderer {
 
   static async create(parent: HTMLElement): Promise<GameRenderer> {
     const app = new Application();
+    const baseResolution = Math.min(window.devicePixelRatio || 1, 2);
     await app.init({
       background: "#5ca9c9",
-      antialias: true,
+      antialias: false,
+      powerPreference: "high-performance",
+      resolution: baseResolution,
+      autoDensity: true,
       resizeTo: window
     });
     app.canvas.className = "game-canvas";
     parent.appendChild(app.canvas);
 
-    return new GameRenderer(app);
+    const spriteAtlas = await loadSpriteAtlas();
+    return new GameRenderer(app, spriteAtlas, baseResolution);
   }
 
   destroy(): void {
@@ -169,14 +271,105 @@ export class GameRenderer {
     this.app.destroy(true);
   }
 
+  setBuildTarget(target: TileCoord | undefined): void {
+    this.buildTarget = target;
+  }
+
+  applyQuality(settings: QualitySettings): void {
+    if (
+      this.qualitySettings.resolutionScale === settings.resolutionScale &&
+      this.qualitySettings.particleMultiplier === settings.particleMultiplier &&
+      this.qualitySettings.enemyWakes === settings.enemyWakes &&
+      this.qualitySettings.screenShake === settings.screenShake &&
+      this.qualitySettings.enemyDeckBob === settings.enemyDeckBob
+    ) {
+      return;
+    }
+
+    this.qualitySettings = settings;
+    this.app.renderer.resolution = this.baseResolution * settings.resolutionScale;
+    this.app.resize();
+  }
+
+  perfStats(): { graphicsAlive: number } {
+    let graphicsAlive =
+      this.raftTiles.size * 3 +
+      this.modules.size +
+      this.moduleSprites.size +
+      this.projectiles.size +
+      this.projectileSprites.size +
+      this.pickups.size +
+      this.pickupSprites.size +
+      this.telegraphs.size +
+      this.pings.size +
+      this.slashes.length +
+      this.pops.length +
+      this.particles.length +
+      this.pickupFlies.length +
+      this.repairSupplyFlies.length;
+
+    for (const node of this.players.values()) {
+      graphicsAlive += countEntityGraphics(node);
+    }
+    for (const node of this.enemies.values()) {
+      graphicsAlive += countEntityGraphics(node);
+    }
+
+    return { graphicsAlive };
+  }
+
+  startDefeatSink(raft: RaftView | undefined): void {
+    if (this.defeatSink !== undefined) {
+      return;
+    }
+
+    const tiles = (raft?.tiles ?? fallbackRaft().tiles).map((tile) => ({ ...tile }));
+    this.defeatSink = {
+      startedAtMs: this.renderClockMs,
+      tiles,
+      order: defeatTileOrder(tiles)
+    };
+    this.addShake(0.12);
+  }
+
+  resetDefeatSink(): void {
+    this.defeatSink = undefined;
+    for (const node of this.raftTiles.values()) {
+      node.baseKey = "";
+      node.overlayKey = "";
+    }
+  }
+
+  defeatSinkComplete(): boolean {
+    if (this.defeatSink === undefined) {
+      return true;
+    }
+
+    const totalMs =
+      Math.max(0, this.defeatSink.tiles.length - 1) * DEFEAT_TILE_STAGGER_MS +
+      DEFEAT_TILE_SINK_MS +
+      DEFEAT_UI_DELAY_MS;
+    return this.renderClockMs - this.defeatSink.startedAtMs >= totalMs;
+  }
+
   pushEvents(events: readonly WireEvent[]): void {
     for (const event of events) {
       if (event.type === "weapon_fired") {
+        if (event.weaponId === "cutlass") {
+          this.weaponSwings.set(event.wielderId, {
+            startedAtMs: this.renderClockMs,
+            dx: event.dx,
+            dy: event.dy
+          });
+          continue;
+        }
+
         const graphic = new Graphics();
         this.world.addChild(graphic);
         this.slashes.push({
           ageMs: 0,
           graphic,
+          weaponId: event.weaponId,
           ox: event.ox,
           oy: event.oy,
           dx: event.dx,
@@ -211,6 +404,8 @@ export class GameRenderer {
     deltaMs: number
   ): CollectedPickup[] {
     this.renderClockMs += deltaMs;
+    this.updateRepairTargets(state.players, state.raft, state.salvage ?? 0);
+    this.updateRepairFeedback(state.raft);
     this.drawRaft(state.raft);
     this.updateTelegraphs(state.enemies);
     this.updateModules(state.modules);
@@ -224,6 +419,7 @@ export class GameRenderer {
     this.updatePops(deltaMs);
     this.updateParticles(deltaMs);
     this.updatePickupFlies(deltaMs);
+    this.updateRepairSupplyFlies(deltaMs);
     this.updateShake(deltaMs);
     return collectedPickups;
   }
@@ -249,7 +445,7 @@ export class GameRenderer {
           : `Wave ${state.wave.number} - Boss`,
       phaseText: phaseText(state.wave.phase, state.wave.timeLeft),
       coinsText: `Coins ${ownPlayer?.coins ?? 0}`,
-      salvageText: `Salvage ${state.salvage ?? 0}`,
+      salvageText: `Supplies ${Math.floor(state.salvage ?? 0)}/${state.supplyCap ?? 20}`,
       hpText,
       hpRatio: clamp01(hpRatio),
       boss:
@@ -283,50 +479,127 @@ export class GameRenderer {
   };
 
   private drawRaft(raft?: RaftView): void {
-    this.raft.removeChildren();
-    const tiles = raft?.tiles ?? fallbackRaft().tiles;
+    const tiles = this.defeatSink?.tiles ?? raft?.tiles ?? fallbackRaft().tiles;
+    const seen = new Set<string>();
+    const sinking = this.defeatSink !== undefined;
 
     for (const tileView of tiles) {
-      const tile = new Graphics();
-      const x = tileView.col;
-      const y = tileView.row;
+      const key = tileKey(tileView.col, tileView.row);
+      seen.add(key);
+      let node = this.raftTiles.get(key);
 
-      if (tileView.broken) {
-        tile
-          .rect(x + 0.06, y + 0.06, 0.88, 0.88)
-          .fill({ color: 0x317e9b, alpha: 0.72 })
-          .stroke({ color: 0x8ed7ed, width: 0.025, alpha: 0.55 })
-          .moveTo(x + 0.18, y + 0.54)
-          .lineTo(x + 0.82, y + 0.46)
-          .stroke({ color: 0xb9edf6, width: 0.025, alpha: 0.5 });
-        this.raft.addChild(tile);
-        continue;
+      if (node === undefined) {
+        const root = new Container();
+        const base = new Graphics();
+        const overlay = new Graphics();
+        root.position.set(tileView.col, tileView.row);
+        root.addChild(base, overlay);
+        this.raft.addChild(root);
+        node = { root, base, overlay, baseKey: "", overlayKey: "" };
+        this.raftTiles.set(key, node);
       }
 
       const hpRatio = clamp01(tileView.hpRatio);
-      const isCore = tileView.kind === "core";
-      const deckColor = blendColor(isCore ? 0x7f4f1b : 0x5b3421, isCore ? 0xd9a441 : 0xb87942, hpRatio);
-      tile
-        .rect(x + 0.03, y + 0.03, 0.94, 0.94)
-        .fill(deckColor)
-        .stroke({ color: isCore ? 0xffec9f : 0x6f4425, width: isCore ? 0.055 : 0.035 });
-      tile
-        .moveTo(x + 0.16, y + 0.5)
-        .lineTo(x + 0.84, y + 0.5)
-        .stroke({ color: isCore ? 0xffd77a : 0xd79a5d, width: 0.025, alpha: 0.7 });
-
-      if (isCore) {
-        tile
-          .circle(x + 0.5, y + 0.5, 0.3)
-          .fill(0x7f4f1b)
-          .stroke({ color: 0xffec9f, width: 0.045 })
-          .roundRect(x + 0.16, y + 0.84, 0.68, 0.08, 0.025)
-          .fill(0x2b1d1d)
-          .roundRect(x + 0.18, y + 0.86, 0.64 * hpRatio, 0.04, 0.02)
-          .fill(hpColor(hpRatio));
+      const baseKey = `${tileView.kind}|${tileView.broken}|${Math.round(hpRatio * 50)}|${sinking ? 1 : 0}`;
+      if (node.baseKey !== baseKey) {
+        node.baseKey = baseKey;
+        drawRaftTileBase(node.base.clear(), tileView, hpRatio, sinking);
       }
 
-      this.raft.addChild(tile);
+      const repairing = this.repairTargetKeys.has(key);
+      const needsSupply = this.needSupplyTargetKeys.has(key);
+      const buildTarget = isSameTile(this.buildTarget, tileView);
+      const damaged = tileView.broken || hpRatio < 1;
+      const overlayKey = `${damaged ? Math.round(hpRatio * 50) : -1}|${repairing}|${needsSupply}|${buildTarget}`;
+      if (node.overlayKey !== overlayKey) {
+        node.overlayKey = overlayKey;
+        drawTileAffordances(node.overlay.clear(), tileView, {
+          repairing,
+          needsSupply,
+          buildTarget
+        });
+      }
+
+      const pulse = (Math.sin(this.renderClockMs * 0.006) + 1) / 2;
+      node.overlay.alpha = repairing || buildTarget ? 0.75 + pulse * 0.25 : 1;
+      const sink =
+        this.defeatSink === undefined
+          ? undefined
+          : sinkStateForTile(this.defeatSink, tileView, this.renderClockMs);
+      node.root.position.set(tileView.col, tileView.row + (sink?.offsetY ?? 0));
+      node.root.alpha = sink?.alpha ?? 1;
+    }
+
+    for (const [key, node] of this.raftTiles) {
+      if (!seen.has(key)) {
+        node.root.destroy({ children: true });
+        this.raftTiles.delete(key);
+      }
+    }
+  }
+
+  private updateRepairTargets(
+    players: readonly PlayerView[],
+    raft: RaftView | undefined,
+    supplies: number
+  ): void {
+    this.repairTargetKeys.clear();
+    this.repairSources.clear();
+    this.needSupplyTargetKeys.clear();
+    if (raft === undefined) {
+      return;
+    }
+
+    for (const player of players) {
+      if (player.downed || (player.out ?? false)) {
+        continue;
+      }
+
+      const target = nearestRepairTile(raft, player);
+      if (target === undefined) {
+        continue;
+      }
+
+      const key = tileKey(target.col, target.row);
+      if (supplies > 0) {
+        this.repairTargetKeys.add(key);
+        this.repairSources.set(key, { x: player.x, y: player.y });
+      } else {
+        this.needSupplyTargetKeys.add(key);
+      }
+    }
+  }
+
+  private updateRepairFeedback(raft: RaftView | undefined): void {
+    if (raft === undefined || this.defeatSink !== undefined) {
+      return;
+    }
+
+    const seen = new Set<string>();
+    for (const tile of raft.tiles) {
+      const key = tileKey(tile.col, tile.row);
+      seen.add(key);
+      const previous = this.previousTileState.get(key);
+      if (
+        previous !== undefined &&
+        (tile.hpRatio > previous.hpRatio + 0.003 || (previous.broken && !tile.broken))
+      ) {
+        this.addRepairSupplyFliesForHpGain(
+          key,
+          Math.max(0, tile.hpRatio - previous.hpRatio) * REPAIR_TILE_HP,
+          tile.col + 0.5,
+          tile.row + 0.5
+        );
+      }
+
+      this.previousTileState.set(key, { hpRatio: tile.hpRatio, broken: tile.broken });
+    }
+
+    for (const key of this.previousTileState.keys()) {
+      if (!seen.has(key)) {
+        this.previousTileState.delete(key);
+        this.repairSupplyRemainders.delete(key);
+      }
     }
   }
 
@@ -353,11 +626,17 @@ export class GameRenderer {
         node.flashMs = PLAYER_HURT_FLASH_MS;
       }
       this.previousPlayerHp.set(player.id, player.hp);
+      const previousPosition = this.previousPlayerPositions.get(player.id);
+      const moving =
+        previousPosition !== undefined &&
+        Math.hypot(player.x - previousPosition.x, player.y - previousPosition.y) > 0.003;
+      this.previousPlayerPositions.set(player.id, { x: player.x, y: player.y });
       node.container.position.set(player.x, player.y);
       node.container.scale.set(popScale(node.flashMs, PLAYER_HURT_FLASH_MS, 0.1) * node.baseScale);
       node.body.clear();
 
       if (player.downed) {
+        hideEntitySprite(node);
         node.body
           .ellipse(0, 0.08, PLAYER_RADIUS * 1.2, PLAYER_RADIUS * 0.56)
           .fill(0x6d7480)
@@ -365,26 +644,27 @@ export class GameRenderer {
           .circle(-0.22, -0.02, 0.12)
           .fill(0x8a929c);
       } else {
-        node.body
-          .circle(0, 0, PLAYER_RADIUS)
-          .fill(isOwn ? 0x2f80ed : characterColor(player.characterId))
-          .stroke({ color: isOwn ? 0xffffff : 0x12362c, width: isOwn ? 0.075 : 0.045 });
+        const assetId = player.characterId ?? "captain";
+        if (!this.applyEntityVisual(node, assetId, moving ? "walk" : "idle", PLAYER_RADIUS * 2.15)) {
+          node.body
+            .circle(0, 0, PLAYER_RADIUS)
+            .fill(isOwn ? 0x2f80ed : characterColor(player.characterId))
+            .stroke({ color: isOwn ? 0xffffff : 0x12362c, width: isOwn ? 0.075 : 0.045 });
+        }
       }
 
       const facing = node.facing;
       if (facing !== undefined) {
-        const magnitude = Math.hypot(player.facingX, player.facingY);
-        const fx = magnitude > 0 ? player.facingX / magnitude : 1;
-        const fy = magnitude > 0 ? player.facingY / magnitude : 0;
         facing.clear();
-        if (!player.downed) {
-          facing.moveTo(0, 0).lineTo(fx * 0.58, fy * 0.58).stroke({
-            color: 0xffffff,
-            width: 0.07,
-            cap: "round"
-          });
-        }
       }
+      const weaponSwing = this.weaponSwings.get(player.id);
+      if (
+        weaponSwing !== undefined &&
+        this.renderClockMs - weaponSwing.startedAtMs >= CUTLASS_SWING_DURATION_MS
+      ) {
+        this.weaponSwings.delete(player.id);
+      }
+      drawPlayerWeaponVisual(node, player, this.renderClockMs, this.weaponSwings.get(player.id));
 
       drawHpBar(node, player.maxHp > 0 ? player.hp / player.maxHp : 0);
       drawPlayerLabel(node, `${isOwn ? "You" : characterName(player.characterId, CHARACTERS)}`);
@@ -396,6 +676,8 @@ export class GameRenderer {
     for (const id of this.previousPlayerHp.keys()) {
       if (!seen.has(id)) {
         this.previousPlayerHp.delete(id);
+        this.previousPlayerPositions.delete(id);
+        this.weaponSwings.delete(id);
       }
     }
   }
@@ -411,23 +693,22 @@ export class GameRenderer {
         node = { graphic: new Graphics(), ageMs: 0 };
         this.pings.set(ping.id, node);
         this.world.addChild(node.graphic);
+        node.graphic
+          .circle(0, 0, 0.42)
+          .stroke({ color: pingColor(ping.kind), width: 0.075 })
+          .moveTo(-0.16, 0)
+          .lineTo(0.16, 0)
+          .moveTo(0, -0.16)
+          .lineTo(0, 0.16)
+          .stroke({ color: pingColor(ping.kind), width: 0.045 });
       } else {
         node.ageMs += deltaMs;
       }
 
       const t = clamp01(node.ageMs / PING_LIFE_MS);
-      const alpha = 1 - t;
-      const radius = 0.28 + t * 0.28;
       node.graphic.position.set(ping.x, ping.y);
-      node.graphic
-        .clear()
-        .circle(0, 0, radius)
-        .stroke({ color: pingColor(ping.kind), width: 0.075, alpha })
-        .moveTo(-0.16, 0)
-        .lineTo(0.16, 0)
-        .moveTo(0, -0.16)
-        .lineTo(0, 0.16)
-        .stroke({ color: pingColor(ping.kind), width: 0.045, alpha });
+      node.graphic.scale.set((0.28 + t * 0.28) / 0.42);
+      node.graphic.alpha = 1 - t;
     }
 
     for (const [id, node] of this.pings) {
@@ -464,11 +745,18 @@ export class GameRenderer {
         enemy.y + node.reactionDy * nudge
       );
       node.container.scale.set(popScale(node.reactionMs, HIT_REACTION_MS, 0.16) * node.baseScale);
-      const bobY = onDeck ? enemyBobOffset(enemy.id, this.renderClockMs) : 0;
+      const bobY =
+        onDeck && this.qualitySettings.enemyDeckBob
+          ? enemyBobOffset(enemy.id, this.renderClockMs)
+          : 0;
       node.body.position.set(0, bobY);
       node.flash?.position.set(0, bobY);
-      drawEnemyGround(node.ground.clear(), enemy, onDeck, this.renderClockMs);
-      drawEnemy(node.body.clear(), enemy);
+      drawEnemyGround(node, enemy, onDeck, this.renderClockMs, this.qualitySettings.enemyWakes);
+      const animationName =
+        enemy.kind === "kraken_head" || enemy.kind === "kraken_tentacle" ? "idle" : "move";
+      if (!this.applyEntityVisual(node, enemy.kind, animationName, enemySpriteWorldSize(enemy))) {
+        drawEnemy(node, enemy);
+      }
       drawHpBar(
         node,
         enemy.hpRatio,
@@ -510,20 +798,24 @@ export class GameRenderer {
     }
 
     for (const [key, telegraph] of byTile) {
-      let graphic = this.telegraphs.get(key);
+      let node = this.telegraphs.get(key);
 
-      if (graphic === undefined) {
-        graphic = new Graphics();
-        this.telegraphs.set(key, graphic);
-        this.world.addChild(graphic);
+      if (node === undefined) {
+        node = { graphic: new Graphics(), key: -1 };
+        this.telegraphs.set(key, node);
+        this.world.addChild(node.graphic);
       }
 
-      drawTelegraph(graphic, telegraph.col, telegraph.row, telegraph.ratio);
+      const drawKey = Math.round(telegraph.ratio * 50);
+      if (drawKey !== node.key) {
+        drawTelegraph(node.graphic, telegraph.col, telegraph.row, telegraph.ratio);
+        node.key = drawKey;
+      }
     }
 
-    for (const [key, graphic] of this.telegraphs) {
+    for (const [key, node] of this.telegraphs) {
       if (!byTile.has(key)) {
-        graphic.destroy();
+        node.graphic.destroy();
         this.telegraphs.delete(key);
       }
     }
@@ -542,7 +834,32 @@ export class GameRenderer {
         this.world.addChild(graphic);
       }
 
-      drawModule(graphic, module);
+      const sink =
+        this.defeatSink === undefined
+          ? undefined
+          : sinkStateForTile(
+              this.defeatSink,
+              { col: module.col, row: module.row, kind: "deck", hpRatio: module.hpRatio, broken: false },
+              this.renderClockMs
+            );
+      const spriteApplied = this.applyWorldSprite(
+        this.moduleSprites,
+        module.id,
+        frameKey(module.defId),
+        module.col + 0.5,
+        module.row + 0.5 + (sink?.offsetY ?? 0),
+        0.86
+      );
+      const moduleSprite = this.moduleSprites.get(module.id);
+      if (moduleSprite !== undefined) {
+        moduleSprite.alpha = sink?.alpha ?? 1;
+      }
+      graphic.visible = !spriteApplied;
+      graphic.alpha = sink?.alpha ?? 1;
+      graphic.position.set(0, sink?.offsetY ?? 0);
+      if (!spriteApplied) {
+        drawModule(graphic, module);
+      }
     }
 
     for (const [id, graphic] of this.modules) {
@@ -551,6 +868,67 @@ export class GameRenderer {
         this.modules.delete(id);
       }
     }
+    removeMissingSprites(this.moduleSprites, seen);
+  }
+
+  private applyEntityVisual(
+    node: EntityNode,
+    assetId: string,
+    animationName: string,
+    visibleWorldSize: number
+  ): boolean {
+    const animation = this.spriteAtlas?.animation(assetId, animationName);
+    const frame = this.spriteAtlas?.frame(frameKey(assetId));
+    if (animation === undefined && frame === undefined) {
+      hideEntitySprite(node);
+      return false;
+    }
+
+    if (node.sprite === undefined) {
+      node.sprite = new Sprite(animation?.frames[0]?.texture ?? frame!.texture);
+      node.container.addChildAt(node.sprite, 2);
+    }
+
+    const spriteKey = animation === undefined ? frameKey(assetId) : `${assetId}/${animationName}`;
+    if (node.spriteKey !== spriteKey) {
+      node.spriteKey = spriteKey;
+    }
+    node.sprite.position.set(node.body.position.x, node.body.position.y);
+    if (animation !== undefined) {
+      setSpriteAnimationFrame(node.sprite, animation, this.renderClockMs, visibleWorldSize);
+    } else if (frame !== undefined) {
+      setSpriteFrame(node.sprite, frame, visibleWorldSize);
+    }
+    node.body.visible = false;
+    return true;
+  }
+
+  private applyWorldSprite(
+    sprites: Map<string, Sprite>,
+    id: string,
+    key: string,
+    x: number,
+    y: number,
+    visibleWorldSize: number
+  ): boolean {
+    const frame = this.spriteAtlas?.frame(key);
+    const existing = sprites.get(id);
+    if (frame === undefined) {
+      if (existing !== undefined) {
+        existing.visible = false;
+      }
+      return false;
+    }
+
+    const sprite = existing ?? new Sprite(frame.texture);
+    if (existing === undefined) {
+      sprites.set(id, sprite);
+      this.world.addChild(sprite);
+    }
+
+    sprite.position.set(x, y);
+    setSpriteFrame(sprite, frame, visibleWorldSize);
+    return true;
   }
 
   private updateProjectiles(projectiles: readonly ProjView[]): void {
@@ -566,16 +944,27 @@ export class GameRenderer {
         this.world.addChild(graphic);
       }
 
-      const isEnemy = projectile.faction === "enemy";
-      graphic.position.set(projectile.x, projectile.y);
-      graphic
-        .clear()
-        .circle(0, 0, isEnemy ? 0.13 : 0.09)
-        .fill(isEnemy ? 0x7ee36d : 0xfff2a0)
-        .stroke({ color: isEnemy ? 0x245820 : 0xffffff, width: 0.025 })
-        .moveTo(isEnemy ? -0.18 : -0.26, 0)
-        .lineTo(0.04, 0)
-        .stroke({ color: isEnemy ? 0xb9ff9e : 0xffffff, width: 0.04, alpha: 0.65 });
+      const spriteApplied = this.applyWorldSprite(
+        this.projectileSprites,
+        projectile.id,
+        frameKey(projectileSpriteId(projectile.kind)),
+        projectile.x,
+        projectile.y,
+        0.34
+      );
+      graphic.visible = !spriteApplied;
+      if (!spriteApplied) {
+        const isEnemy = projectile.faction === "enemy";
+        graphic.position.set(projectile.x, projectile.y);
+        graphic
+          .clear()
+          .circle(0, 0, isEnemy ? 0.13 : 0.09)
+          .fill(isEnemy ? 0x7ee36d : 0xfff2a0)
+          .stroke({ color: isEnemy ? 0x245820 : 0xffffff, width: 0.025 })
+          .moveTo(isEnemy ? -0.18 : -0.26, 0)
+          .lineTo(0.04, 0)
+          .stroke({ color: isEnemy ? 0xb9ff9e : 0xffffff, width: 0.04, alpha: 0.65 });
+      }
     }
 
     for (const [id, graphic] of this.projectiles) {
@@ -584,6 +973,7 @@ export class GameRenderer {
         this.projectiles.delete(id);
       }
     }
+    removeMissingSprites(this.projectileSprites, seen);
   }
 
   private updatePickups(pickups: readonly PickupView[]): void {
@@ -599,12 +989,23 @@ export class GameRenderer {
         this.world.addChild(graphic);
       }
 
-      graphic.position.set(pickup.x, pickup.y);
-      graphic
-        .clear()
-        .circle(0, 0, 0.16)
-        .fill(pickup.kind === "coin" ? 0xffcf33 : 0xf3f0a5)
-        .stroke({ color: 0x8f6400, width: 0.035 });
+      const spriteApplied = this.applyWorldSprite(
+        this.pickupSprites,
+        pickup.id,
+        frameKey(pickup.kind),
+        pickup.x,
+        pickup.y,
+        0.34
+      );
+      graphic.visible = !spriteApplied;
+      if (!spriteApplied) {
+        graphic.position.set(pickup.x, pickup.y);
+        graphic
+          .clear()
+          .circle(0, 0, 0.16)
+          .fill(pickup.kind === "coin" ? 0xffcf33 : 0xf3f0a5)
+          .stroke({ color: 0x8f6400, width: 0.035 });
+      }
     }
 
     for (const [id, graphic] of this.pickups) {
@@ -613,6 +1014,7 @@ export class GameRenderer {
         this.pickups.delete(id);
       }
     }
+    removeMissingSprites(this.pickupSprites, seen);
   }
 
   private updateSlashes(deltaMs: number): void {
@@ -636,7 +1038,7 @@ export class GameRenderer {
       pop.ageMs += deltaMs;
 
       if (pop.ageMs >= pop.durationMs) {
-        pop.graphic.destroy();
+        this.releaseVfxSprite(pop.kind === "splash" ? "splashRing" : pop.kind === "repair" ? "repairRing" : "popRing", pop.sprite);
         this.pops.splice(index, 1);
         continue;
       }
@@ -649,20 +1051,12 @@ export class GameRenderer {
             ? 0.32 + t * 0.9
             : pop.kind === "splash"
               ? 0.16 + t * 0.36
+              : pop.kind === "repair"
+                ? 0.14 + t * 0.24
               : 0.2 + t * 0.48;
-      pop.graphic.position.set(pop.x, pop.y);
-      pop.graphic
-        .clear()
-        .circle(0, 0, radius)
-        .stroke({ color: pop.color, width: pop.kind === "splash" ? 0.04 : 0.05, alpha: 1 - t });
-      if (pop.kind === "splash") {
-        pop.graphic
-          .moveTo(-radius * 0.62, 0.04)
-          .lineTo(-radius * 0.28, -0.08)
-          .moveTo(radius * 0.28, -0.08)
-          .lineTo(radius * 0.62, 0.04)
-          .stroke({ color: 0xffffff, width: 0.025, alpha: (1 - t) * 0.75, cap: "round" });
-      }
+      pop.sprite.position.set(pop.x, pop.y);
+      pop.sprite.scale.set(radius);
+      pop.sprite.alpha = 1 - t;
     }
   }
 
@@ -672,7 +1066,7 @@ export class GameRenderer {
       particle.ageMs += deltaMs;
 
       if (particle.ageMs >= particle.lifeMs) {
-        particle.graphic.destroy();
+        this.releaseVfxSprite(particleTextureKey(particle.shape), particle.sprite);
         this.particles.splice(index, 1);
         continue;
       }
@@ -680,7 +1074,8 @@ export class GameRenderer {
       const t = particle.ageMs / particle.lifeMs;
       const x = particle.x + particle.vx * t;
       const y = particle.y + particle.vy * t + t * t * 0.22;
-      drawParticle(particle.graphic, particle, x, y, 1 - t);
+      particle.sprite.position.set(x, y);
+      particle.sprite.alpha = 1 - t;
     }
   }
 
@@ -690,7 +1085,7 @@ export class GameRenderer {
       fly.ageMs += deltaMs;
 
       if (fly.ageMs >= PICKUP_FLY_MS) {
-        fly.graphic.destroy();
+        this.releaseVfxSprite("pickupFlyOrb", fly.sprite);
         this.pickupFlies.splice(index, 1);
         continue;
       }
@@ -698,17 +1093,47 @@ export class GameRenderer {
       const t = easeOutCubic(clamp01(fly.ageMs / PICKUP_FLY_MS));
       const x = fly.x + (fly.ownerX - fly.x) * t;
       const y = fly.y + (fly.ownerY - fly.y) * t - Math.sin(Math.PI * t) * 0.25;
-      fly.graphic.position.set(x, y);
-      fly.graphic
-        .clear()
-        .circle(0, 0, 0.12 + Math.sin(Math.PI * t) * 0.05)
-        .fill(fly.kind === "coin" ? 0xffcf33 : 0xf3f0a5)
-        .stroke({ color: 0xffffff, width: 0.03, alpha: 1 - t * 0.4 })
-        .moveTo(-0.22, 0)
-        .lineTo(0.22, 0)
-        .moveTo(0, -0.22)
-        .lineTo(0, 0.22)
-        .stroke({ color: 0xffffff, width: 0.025, alpha: 1 - t });
+      fly.sprite.position.set(x, y);
+      fly.sprite.scale.set(0.12 + Math.sin(Math.PI * t) * 0.05);
+      fly.sprite.alpha = 1 - t * 0.4;
+    }
+  }
+
+  private updateRepairSupplyFlies(deltaMs: number): void {
+    for (let index = this.repairSupplyFlies.length - 1; index >= 0; index -= 1) {
+      const fly = this.repairSupplyFlies[index]!;
+      fly.ageMs += deltaMs;
+
+      if (fly.ageMs < 0) {
+        fly.sprite.visible = false;
+        continue;
+      }
+      fly.sprite.visible = true;
+
+      if (fly.ageMs >= REPAIR_SUPPLY_FLY_MS) {
+        this.releaseVfxSprite("supplyCrate", fly.sprite);
+        this.repairSupplyFlies.splice(index, 1);
+        this.addPop(fly.targetX, fly.targetY, 0x9dffd7, 200, "repair");
+        continue;
+      }
+
+      const rawT = clamp01(fly.ageMs / REPAIR_SUPPLY_FLY_MS);
+      const t = easeOutCubic(rawT);
+      const x = fly.x + (fly.targetX - fly.x) * t;
+      const y =
+        fly.y +
+        (fly.targetY - fly.y) * t -
+        Math.sin(Math.PI * t) * 0.28 +
+        Math.sin(rawT * Math.PI * 2 + fly.wobble) * 0.035;
+      const alpha = 1 - Math.max(0, rawT - 0.74) / 0.26;
+      const scale = 1.22 + Math.sin(Math.PI * rawT) * 0.32;
+
+      fly.sprite.position.set(x, y);
+      fly.sprite.rotation =
+        (fly.targetX - fly.x) * 0.18 +
+        Math.sin(rawT * Math.PI * 2 + fly.wobble) * 0.16;
+      fly.sprite.scale.set(scale);
+      fly.sprite.alpha = alpha;
     }
   }
 
@@ -726,25 +1151,27 @@ export class GameRenderer {
     durationMs: number,
     kind: PopVfx["kind"]
   ): void {
-    const graphic = new Graphics();
-    this.world.addChild(graphic);
-    this.pops.push({ ageMs: 0, durationMs, graphic, x, y, color, kind });
+    const key = kind === "splash" ? "splashRing" : kind === "repair" ? "repairRing" : "popRing";
+    const sprite = this.acquireVfxSprite(key);
+    sprite.tint = color;
+    this.pops.push({ ageMs: 0, durationMs, sprite, x, y, color, kind });
   }
 
   private addParticles(kind: "kill" | "explosion" | "pickup", x: number, y: number): void {
-    for (const spec of particleBurst(kind, x, y)) {
-      const graphic = new Graphics();
-      this.world.addChild(graphic);
-      this.particles.push({ ...spec, ageMs: 0, graphic });
+    for (const spec of particleBurst(kind, x, y, this.qualitySettings.particleMultiplier)) {
+      const sprite = this.acquireVfxSprite(particleTextureKey(spec.shape));
+      sprite.tint = spec.color;
+      sprite.scale.set(spec.radius);
+      this.particles.push({ ...spec, ageMs: 0, sprite });
     }
   }
 
   private addPickupFly(pickup: CollectedPickup): void {
-    const graphic = new Graphics();
-    this.world.addChild(graphic);
+    const sprite = this.acquireVfxSprite("pickupFlyOrb");
+    sprite.tint = pickup.kind === "coin" ? 0xffcf33 : 0xf3f0a5;
     this.pickupFlies.push({
       ageMs: 0,
-      graphic,
+      sprite,
       kind: pickup.kind,
       x: pickup.x,
       y: pickup.y,
@@ -752,6 +1179,79 @@ export class GameRenderer {
       ownerY: pickup.ownerY
     });
     this.addParticles("pickup", pickup.x, pickup.y);
+  }
+
+  private addRepairSupplyFliesForHpGain(
+    tileKeyValue: string,
+    hpGain: number,
+    targetX: number,
+    targetY: number
+  ): void {
+    const source = this.repairSources.get(tileKeyValue);
+    if (source === undefined || hpGain <= 0) {
+      return;
+    }
+
+    const available = (this.repairSupplyRemainders.get(tileKeyValue) ?? 0) + hpGain;
+    const supplyPackets = Math.floor(available);
+    this.repairSupplyRemainders.set(tileKeyValue, available - supplyPackets);
+
+    for (let index = 0; index < supplyPackets; index += 1) {
+      const sprite = this.acquireVfxSprite("supplyCrate");
+      this.repairSupplyFlies.push({
+        ageMs: -index * 85,
+        sprite,
+        x: source.x,
+        y: source.y - 0.1,
+        targetX,
+        targetY,
+        wobble: ((this.renderClockMs + index * 53) % 997) * 0.019
+      });
+    }
+  }
+
+  private acquireVfxSprite(key: VfxTextureKey): Sprite {
+    let pool = this.vfxSpritePools.get(key);
+    if (pool === undefined) {
+      pool = [];
+      this.vfxSpritePools.set(key, pool);
+    }
+
+    const sprite = pool.pop() ?? new Sprite(this.getVfxTexture(key));
+    if (sprite.parent === null) {
+      this.world.addChild(sprite);
+    }
+    sprite.visible = true;
+    sprite.alpha = 1;
+    sprite.rotation = 0;
+    sprite.tint = 0xffffff;
+    sprite.scale.set(1);
+    sprite.anchor.set(0.5, 0.5);
+    return sprite;
+  }
+
+  private releaseVfxSprite(key: VfxTextureKey, sprite: Sprite): void {
+    sprite.visible = false;
+    sprite.alpha = 0;
+    this.vfxSpritePools.get(key)?.push(sprite);
+  }
+
+  private getVfxTexture(key: VfxTextureKey): Texture {
+    let texture = this.vfxTextures.get(key);
+    if (texture !== undefined) {
+      return texture;
+    }
+
+    const graphic = new Graphics();
+    drawVfxTextureGraphic(graphic, key);
+    // The geometry is authored at ~unit world size (1 unit = 1 tile = up to
+    // ~60 screen px), so rasterize dense enough to stay crisp when a pop ring
+    // scales up, and mipmap for the tiny far-downscaled particles.
+    texture = this.app.renderer.generateTexture({ target: graphic, resolution: 48 });
+    texture.source.autoGenerateMipmaps = true;
+    graphic.destroy();
+    this.vfxTextures.set(key, texture);
+    return texture;
   }
 
   private updatePickupCollection(
@@ -762,7 +1262,26 @@ export class GameRenderer {
     for (const pickup of collected) {
       this.addPickupFly(pickup);
     }
-    this.previousPickups = pickups.map((pickup) => ({ ...pickup }));
+    this.previousPickups.length = 0;
+    const seen = new Set<string>();
+    for (const pickup of pickups) {
+      seen.add(pickup.id);
+      let record = this.previousPickupRecords.get(pickup.id);
+      if (record === undefined) {
+        record = { id: pickup.id, kind: pickup.kind, x: pickup.x, y: pickup.y };
+        this.previousPickupRecords.set(pickup.id, record);
+      } else {
+        record.kind = pickup.kind;
+        record.x = pickup.x;
+        record.y = pickup.y;
+      }
+      this.previousPickups.push(record);
+    }
+    for (const id of this.previousPickupRecords.keys()) {
+      if (!seen.has(id)) {
+        this.previousPickupRecords.delete(id);
+      }
+    }
     return collected;
   }
 
@@ -782,6 +1301,10 @@ export class GameRenderer {
   }
 
   private addShake(amplitude: number): void {
+    if (!this.qualitySettings.screenShake) {
+      return;
+    }
+
     this.shakeAmplitude = Math.max(this.shakeAmplitude * 0.7, amplitude);
     this.shakeAgeMs = 0;
   }
@@ -809,7 +1332,205 @@ function fallbackRaft(): RaftView {
   return { width: RAFT_SIZE_TILES, height: RAFT_SIZE_TILES, tiles };
 }
 
-function drawEnemy(graphic: Graphics, enemy: EnemyView): void {
+function defeatTileOrder(tiles: RaftView["tiles"]): Map<string, number> {
+  const centerX = (Math.max(...tiles.map((tile) => tile.col)) + 1) / 2;
+  const centerY = (Math.max(...tiles.map((tile) => tile.row)) + 1) / 2;
+  const ordered = [...tiles].sort((a, b) => {
+    const aCore = a.kind === "core" ? 1 : 0;
+    const bCore = b.kind === "core" ? 1 : 0;
+    if (aCore !== bCore) {
+      return aCore - bCore;
+    }
+
+    const aDistance = Math.hypot(a.col + 0.5 - centerX, a.row + 0.5 - centerY);
+    const bDistance = Math.hypot(b.col + 0.5 - centerX, b.row + 0.5 - centerY);
+    if (aDistance !== bDistance) {
+      return bDistance - aDistance;
+    }
+
+    return a.row === b.row ? a.col - b.col : a.row - b.row;
+  });
+
+  return new Map(ordered.map((tile, index) => [tileKey(tile.col, tile.row), index]));
+}
+
+function sinkStateForTile(
+  sink: DefeatSink,
+  tile: RaftView["tiles"][number],
+  nowMs: number
+): { alpha: number; offsetY: number } {
+  const order = sink.order.get(tileKey(tile.col, tile.row)) ?? 0;
+  const ageMs = nowMs - sink.startedAtMs - order * DEFEAT_TILE_STAGGER_MS;
+  if (ageMs <= 0) {
+    return { alpha: 1, offsetY: 0 };
+  }
+
+  const progress = clamp01(ageMs / DEFEAT_TILE_SINK_MS);
+  const eased = easeOutCubic(progress);
+  return {
+    alpha: 1 - eased * 0.92,
+    offsetY: eased * 1.15
+  };
+}
+
+interface HudRenderCache {
+  values: Map<string, string>;
+}
+
+const hudRenderCaches = new WeakMap<HTMLElement, HudRenderCache>();
+
+function nearestRepairTile(
+  raft: RaftView,
+  player: Pick<PlayerView, "x" | "y">
+): RaftView["tiles"][number] | undefined {
+  let selected: RaftView["tiles"][number] | undefined;
+  let selectedDistanceSquared = Number.POSITIVE_INFINITY;
+  const rangeSquared = 1.2 * 1.2;
+
+  for (const tile of raft.tiles) {
+    if (!tile.broken && tile.hpRatio >= 1) {
+      continue;
+    }
+
+    const dx = tile.col + 0.5 - player.x;
+    const dy = tile.row + 0.5 - player.y;
+    const distanceSquared = dx * dx + dy * dy;
+    if (distanceSquared > rangeSquared || distanceSquared >= selectedDistanceSquared) {
+      continue;
+    }
+
+    selected = tile;
+    selectedDistanceSquared = distanceSquared;
+  }
+
+  return selected;
+}
+
+function drawTileAffordances(
+  graphic: Graphics,
+  tile: RaftView["tiles"][number],
+  state: { repairing: boolean; needsSupply: boolean; buildTarget: boolean }
+): void {
+  const x = 0;
+  const y = 0;
+
+  if (tile.broken || tile.hpRatio < 1) {
+    const hpRatio = clamp01(tile.hpRatio);
+    graphic
+      .rect(x + 0.08, y + 0.08, 0.84, 0.84)
+      .stroke({ color: tile.broken ? 0xfff2a0 : 0xffdf7f, width: 0.035, alpha: 0.52 })
+      .roundRect(x + 0.18, y + 0.78, 0.64, 0.08, 0.025)
+      .fill({ color: 0x162832, alpha: 0.72 })
+      .roundRect(x + 0.2, y + 0.8, 0.6 * hpRatio, 0.04, 0.02)
+      .fill(tile.broken ? 0x9dffd7 : hpColor(hpRatio));
+  }
+
+  if (state.repairing) {
+    graphic
+      .rect(x + 0.12, y + 0.12, 0.76, 0.76)
+      .stroke({ color: 0x9dffd7, width: 0.04, alpha: 0.67 })
+      .circle(x + 0.5, y + 0.5, 0.0925)
+      .fill({ color: 0xffcf66, alpha: 0.76 });
+  }
+
+  if (state.needsSupply) {
+    graphic
+      .rect(x + 0.12, y + 0.12, 0.76, 0.76)
+      .stroke({ color: 0xff5e57, width: 0.045, alpha: 0.84 })
+      .moveTo(x + 0.32, y + 0.32)
+      .lineTo(x + 0.68, y + 0.68)
+      .moveTo(x + 0.68, y + 0.32)
+      .lineTo(x + 0.32, y + 0.68)
+      .stroke({ color: 0xfff1d8, width: 0.035, alpha: 0.76, cap: "round" });
+  }
+
+  if (state.buildTarget) {
+    graphic
+      .rect(x + 0.1, y + 0.1, 0.8, 0.8)
+      .stroke({ color: 0xf2c14e, width: 0.055, alpha: 0.85 })
+      .circle(x + 0.5, y + 0.5, 0.18)
+      .stroke({ color: 0xffffff, width: 0.035, alpha: 0.72 });
+  }
+}
+
+function drawRaftTileBase(
+  graphic: Graphics,
+  tile: RaftView["tiles"][number],
+  hpRatio: number,
+  sinking: boolean
+): void {
+  const x = 0;
+  const y = 0;
+
+  if (tile.broken || sinking) {
+    graphic
+      .rect(x + 0.06, y + 0.06, 0.88, 0.88)
+      .fill({ color: 0x317e9b, alpha: 0.72 })
+      .stroke({ color: 0x8ed7ed, width: 0.025, alpha: 0.55 })
+      .moveTo(x + 0.18, y + 0.54)
+      .lineTo(x + 0.82, y + 0.46)
+      .stroke({ color: 0xb9edf6, width: 0.025, alpha: 0.5 })
+      .moveTo(x + 0.3, y + 0.28)
+      .lineTo(x + 0.5, y + 0.48)
+      .lineTo(x + 0.42, y + 0.7)
+      .lineTo(x + 0.7, y + 0.82)
+      .stroke({ color: 0xfff2a0, width: 0.03, alpha: sinking ? 0.7 : 0, cap: "round" });
+    return;
+  }
+
+  const isCore = tile.kind === "core";
+  const deckColor = blendColor(
+    isCore ? 0x7f4f1b : 0x5b3421,
+    isCore ? 0xd9a441 : 0xb87942,
+    hpRatio
+  );
+  graphic
+    .rect(x + 0.03, y + 0.03, 0.94, 0.94)
+    .fill(deckColor)
+    .stroke({ color: isCore ? 0xffec9f : 0x6f4425, width: isCore ? 0.055 : 0.035 });
+  graphic
+    .moveTo(x + 0.16, y + 0.5)
+    .lineTo(x + 0.84, y + 0.5)
+    .stroke({ color: isCore ? 0xffd77a : 0xd79a5d, width: 0.025, alpha: 0.7 });
+
+  if (isCore) {
+    graphic
+      .circle(x + 0.5, y + 0.5, 0.3)
+      .fill(0x7f4f1b)
+      .stroke({ color: 0xffec9f, width: 0.045 })
+      .roundRect(x + 0.16, y + 0.84, 0.68, 0.08, 0.025)
+      .fill(0x2b1d1d)
+      .roundRect(x + 0.18, y + 0.86, 0.64 * hpRatio, 0.04, 0.02)
+      .fill(hpColor(hpRatio));
+  } else if (hpRatio < 1) {
+    graphic
+      .moveTo(x + 0.24, y + 0.22)
+      .lineTo(x + 0.48, y + 0.42)
+      .lineTo(x + 0.36, y + 0.58)
+      .lineTo(x + 0.68, y + 0.78)
+      .stroke({ color: 0x2b1d1d, width: 0.035, alpha: 0.5, cap: "round" });
+  }
+}
+
+function tileKey(col: number, row: number): string {
+  return `${col},${row}`;
+}
+
+function isSameTile(
+  coord: TileCoord | undefined,
+  tile: Pick<RaftView["tiles"][number], "col" | "row">
+): boolean {
+  return coord !== undefined && coord.col === tile.col && coord.row === tile.row;
+}
+
+function drawEnemy(node: EntityNode, enemy: EnemyView): void {
+  const graphic = node.body;
+  const key = `${enemy.kind}|${enemy.radius}`;
+  if (node.enemyBodyKey === key) {
+    return;
+  }
+  node.enemyBodyKey = key;
+  graphic.clear();
   const r = enemy.radius;
 
   if (enemy.kind === "kraken_tentacle") {
@@ -937,31 +1658,64 @@ function drawEnemy(graphic: Graphics, enemy: EnemyView): void {
 }
 
 function drawEnemyGround(
-  graphic: Graphics,
+  node: EntityNode,
   enemy: EnemyView,
   onDeck: boolean,
-  timeMs: number
+  timeMs: number,
+  enemyWakes: boolean
 ): void {
+  const graphic = node.ground;
   const r = enemy.radius;
+  const key = `${onDeck ? "deck" : "water"}|${r}`;
+  if (node.enemyGroundKey !== key) {
+    node.enemyGroundKey = key;
+    graphic.clear();
+    if (onDeck) {
+      graphic
+        .ellipse(0, Math.max(0.16, r * 0.42), Math.max(0.24, r * 0.95), Math.max(0.1, r * 0.28))
+        .fill({ color: 0x1b1712, alpha: 0.28 });
+    } else {
+      const rearX = -Math.max(0.18, r * 0.62);
+      const rearY = Math.max(0.1, r * 0.26);
+      const width = Math.max(0.28, r * 0.72);
+      graphic
+        .arc(rearX, rearY, width, Math.PI * 1.08, Math.PI * 1.86)
+        .stroke({ color: 0xd9fbff, width: 0.035, cap: "round" })
+        .arc(rearX + r * 0.28, rearY + r * 0.16, width * 0.72, Math.PI * 1.12, Math.PI * 1.78)
+        .stroke({ color: 0xffffff, width: 0.025, alpha: 0.72, cap: "round" });
+    }
+  }
 
   if (onDeck) {
-    graphic
-      .ellipse(0, Math.max(0.16, r * 0.42), Math.max(0.24, r * 0.95), Math.max(0.1, r * 0.28))
-      .fill({ color: 0x1b1712, alpha: 0.28 });
+    graphic.visible = true;
+    graphic.scale.set(1);
+    graphic.alpha = 1;
+    return;
+  }
+
+  graphic.visible = enemyWakes;
+  if (!enemyWakes) {
     return;
   }
 
   const phase = (timeMs * 0.002 + (enemy.id.length % 7) * 0.19) % 1;
-  const rearX = -Math.max(0.18, r * 0.62);
-  const rearY = Math.max(0.1, r * 0.26);
-  const width = Math.max(0.28, r * (0.72 + phase * 0.3));
-  const alpha = 0.32 * (1 - phase * 0.45);
+  graphic.scale.set(1 + phase * 0.42);
+  graphic.alpha = 0.32 * (1 - phase * 0.45);
+}
 
-  graphic
-    .arc(rearX, rearY, width, Math.PI * 1.08, Math.PI * 1.86)
-    .stroke({ color: 0xd9fbff, width: 0.035, alpha, cap: "round" })
-    .arc(rearX + r * 0.28, rearY + r * 0.16, width * 0.72, Math.PI * 1.12, Math.PI * 1.78)
-    .stroke({ color: 0xffffff, width: 0.025, alpha: alpha * 0.72, cap: "round" });
+function countEntityGraphics(node: EntityNode): number {
+  return (
+    3 +
+    (node.sprite === undefined ? 0 : 1) +
+    (node.weaponVisual === undefined ? 0 : 1) +
+    (node.weaponTrail === undefined ? 0 : 1) +
+    (node.facing === undefined ? 0 : 1) +
+    (node.hpBack === undefined ? 0 : 1) +
+    (node.hpFill === undefined ? 0 : 1) +
+    (node.label === undefined ? 0 : 1) +
+    (node.reviveRing === undefined ? 0 : 1) +
+    (node.bleedRing === undefined ? 0 : 1)
+  );
 }
 
 function drawModule(graphic: Graphics, module: ModuleView): void {
@@ -973,13 +1727,14 @@ function drawModule(graphic: Graphics, module: ModuleView): void {
   if (module.defId === "repair_station") {
     graphic
       .roundRect(module.col + 0.22, module.row + 0.22, 0.56, 0.56, 0.08)
-      .fill(0x2aa876)
-      .stroke({ color: 0xe7fff6, width: 0.04 })
-      .moveTo(x - 0.16, y)
-      .lineTo(x + 0.16, y)
-      .moveTo(x, y - 0.16)
-      .lineTo(x, y + 0.16)
-      .stroke({ color: 0xe7fff6, width: 0.075, cap: "round" });
+      .fill(0x7f5a27)
+      .stroke({ color: 0xffe2a3, width: 0.04 })
+      .rect(module.col + 0.31, module.row + 0.34, 0.38, 0.08)
+      .fill(0xe9d7a0)
+      .rect(module.col + 0.31, module.row + 0.5, 0.38, 0.08)
+      .fill(0xd7c38a)
+      .circle(x + 0.16, y - 0.04, 0.055)
+      .fill(0x5f3d1a);
   } else {
     graphic
       .circle(x, y, 0.29)
@@ -1045,6 +1800,8 @@ function getOrCreateEntity(
     const ground = new Graphics();
     const body = new Graphics();
     const flash = new Graphics();
+    const weaponVisual = withFacing ? new Graphics() : undefined;
+    const weaponTrail = withFacing ? new Graphics() : undefined;
     const hpBack = new Graphics();
     const hpFill = new Graphics();
     const facing = withFacing ? new Graphics() : undefined;
@@ -1063,6 +1820,12 @@ function getOrCreateEntity(
     const bleedRing = withFacing ? new Graphics() : undefined;
 
     container.addChild(ground, body, flash);
+    if (weaponVisual !== undefined) {
+      container.addChild(weaponVisual);
+    }
+    if (weaponTrail !== undefined) {
+      container.addChild(weaponTrail);
+    }
     if (reviveRing !== undefined && bleedRing !== undefined) {
       container.addChild(bleedRing, reviveRing);
     }
@@ -1079,13 +1842,18 @@ function getOrCreateEntity(
       container,
       ground,
       body,
+      weaponVisual,
+      weaponTrail,
+      weaponVisualDrawn: false,
       facing,
       hpBack,
       hpFill,
       label,
       reviveRing,
       bleedRing,
+      downedRingsVisible: false,
       flash,
+      flashVisible: false,
       flashMs: 0,
       reactionMs: 0,
       reactionDx: 0,
@@ -1103,8 +1871,128 @@ function drawPlayerLabel(node: EntityNode, text: string): void {
     return;
   }
 
-  node.label.text = text;
-  node.label.position.set(0, -0.92);
+  if (node.label.text !== text) {
+    node.label.text = text;
+  }
+  if (node.labelY !== -0.92) {
+    node.label.position.set(0, -0.92);
+    node.labelY = -0.92;
+  }
+}
+
+function drawPlayerWeaponVisual(
+  node: EntityNode,
+  player: PlayerView,
+  clockMs: number,
+  swing: WeaponSwing | undefined
+): void {
+  const graphic = node.weaponVisual;
+  const trail = node.weaponTrail;
+  if (graphic === undefined) {
+    return;
+  }
+
+  const showCutlass =
+    !player.downed && (player.characterId === "captain" || player.weaponIds.includes("cutlass"));
+  graphic.visible = showCutlass;
+  if (trail !== undefined) {
+    trail.visible = showCutlass;
+  }
+  if (!showCutlass) {
+    graphic.position.set(0, 0);
+    graphic.rotation = 0;
+    node.weaponVisualDrawn = false;
+    if (trail !== undefined) {
+      trail.clear();
+    }
+    return;
+  }
+
+  if (!node.weaponVisualDrawn) {
+    graphic.clear();
+    drawFloatingCutlass(graphic);
+    node.weaponVisualDrawn = true;
+  }
+
+  const phase = idPhase(player.id);
+  const bob = Math.sin(clockMs * 0.006 + phase) * 0.035;
+  const sway = Math.sin(clockMs * 0.0035 + phase) * 0.08;
+  const swingAgeMs = swing === undefined ? Number.POSITIVE_INFINITY : clockMs - swing.startedAtMs;
+  const swinging = swingAgeMs < CUTLASS_SWING_DURATION_MS;
+  graphic.scale.set(1);
+
+  if (swinging && swing !== undefined) {
+    const progress = clamp01(swingAgeMs / CUTLASS_SWING_DURATION_MS);
+    const eased = easeOutCubic(progress);
+    const direction = Math.atan2(swing.dy, swing.dx);
+    const bladeAngle = direction - 1.12 + eased * 2.24;
+    const reach = 0.2 + Math.sin(progress * Math.PI) * 0.16;
+    graphic.position.set(Math.cos(direction) * reach, Math.sin(direction) * reach - 0.02);
+    graphic.rotation = bladeAngle;
+    graphic.scale.set(1 + Math.sin(progress * Math.PI) * 0.18);
+    if (trail !== undefined) {
+      trail.clear();
+      drawCutlassMotionTrail(trail, direction, progress);
+    }
+  } else {
+    graphic.position.set(0.48 + Math.cos(clockMs * 0.0025 + phase) * 0.04, -0.18 + bob);
+    graphic.rotation = -0.72 + sway;
+    if (trail !== undefined) {
+      trail.clear();
+    }
+  }
+}
+
+function drawCutlassMotionTrail(graphic: Graphics, direction: number, progress: number): void {
+  const alpha = 1 - progress;
+  const halfArc = 0.72;
+  const start = direction - halfArc;
+  const end = direction + halfArc;
+  const radius = 0.74;
+  const inner = 0.38;
+  const steps = 8;
+
+  graphic.moveTo(Math.cos(start) * inner, Math.sin(start) * inner);
+  for (let step = 0; step <= steps; step += 1) {
+    const angle = start + (end - start) * (step / steps);
+    graphic.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+  }
+  for (let step = steps; step >= 0; step -= 1) {
+    const angle = start + (end - start) * (step / steps);
+    graphic.lineTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+  }
+  graphic
+    .fill({ color: 0xfff2a0, alpha: alpha * 0.22 })
+    .stroke({ color: 0xffffff, width: 0.03, alpha: alpha * 0.58 });
+}
+
+function drawFloatingCutlass(graphic: Graphics): void {
+  graphic
+    .moveTo(-0.18, 0)
+    .lineTo(0.01, 0)
+    .stroke({ color: 0x6b3a19, width: 0.095, cap: "round" })
+    .moveTo(-0.02, -0.13)
+    .lineTo(-0.02, 0.13)
+    .stroke({ color: 0xffc247, width: 0.07, cap: "round" })
+    .moveTo(0, -0.04)
+    .lineTo(0.46, -0.03)
+    .lineTo(0.62, 0)
+    .lineTo(0.46, 0.03)
+    .lineTo(0, 0.04)
+    .lineTo(0, -0.04)
+    .fill(0xf8fbff)
+    .stroke({ color: 0x26364c, width: 0.025 })
+    .moveTo(0.1, -0.012)
+    .lineTo(0.43, -0.008)
+    .stroke({ color: 0xaec7df, width: 0.018, alpha: 0.75, cap: "round" });
+}
+
+function idPhase(id: string): number {
+  let hash = 0;
+  for (let index = 0; index < id.length; index += 1) {
+    hash = (hash * 31 + id.charCodeAt(index)) % 360;
+  }
+  return (hash / 360) * Math.PI * 2;
 }
 
 function drawEnemyLabel(node: EntityNode, enemy: EnemyView): void {
@@ -1113,22 +2001,44 @@ function drawEnemyLabel(node: EntityNode, enemy: EnemyView): void {
   }
 
   const def = ENEMIES[enemy.kind as keyof typeof ENEMIES];
-  node.label.text = def?.name ?? enemy.kind;
-  node.label.position.set(0, -Math.max(0.82, enemy.radius + 0.44));
+  const text = def?.name ?? enemy.kind;
+  const y = -Math.max(0.82, enemy.radius + 0.44);
+  if (node.label.text !== text) {
+    node.label.text = text;
+  }
+  if (node.labelY !== y) {
+    node.label.position.set(0, y);
+    node.labelY = y;
+  }
 }
 
 function drawDownedRings(node: EntityNode, player: PlayerView): void {
-  node.reviveRing?.clear();
-  node.bleedRing?.clear();
-
   if (!player.downed) {
+    if (node.downedRingsVisible) {
+      node.reviveRing?.clear();
+      node.bleedRing?.clear();
+      node.reviveRingKey = undefined;
+      node.bleedRingKey = undefined;
+      node.downedRingsVisible = false;
+    }
     return;
   }
 
   const reviveRatio = clamp01(player.reviveProgressRatio ?? 0);
   const bleedRatio = clamp01(player.bleedOutRatio ?? 0);
-  drawProgressArc(node.reviveRing, 0.58, reviveRatio, 0x8fffd2, 0.08);
-  drawProgressArc(node.bleedRing, 0.7, bleedRatio, 0xff6a6a, 0.06);
+  const reviveKey = Math.round(reviveRatio * 50);
+  const bleedKey = Math.round(bleedRatio * 50);
+  if (node.reviveRingKey !== reviveKey) {
+    node.reviveRing?.clear();
+    drawProgressArc(node.reviveRing, 0.58, reviveRatio, 0x8fffd2, 0.08);
+    node.reviveRingKey = reviveKey;
+  }
+  if (node.bleedRingKey !== bleedKey) {
+    node.bleedRing?.clear();
+    drawProgressArc(node.bleedRing, 0.7, bleedRatio, 0xff6a6a, 0.06);
+    node.bleedRingKey = bleedKey;
+  }
+  node.downedRingsVisible = true;
 }
 
 function drawProgressArc(
@@ -1150,61 +2060,129 @@ function drawProgressArc(
 function drawHpBar(node: EntityNode, ratio: number, y = -0.68, width = 0.84): void {
   const clamped = clamp01(ratio);
   const color = hpColor(clamped);
-  node.hpBack?.clear().roundRect(-width / 2, y, width, 0.11, 0.03).fill(0x2b1d1d);
-  node.hpFill
-    ?.clear()
-    .roundRect(-width / 2 + 0.02, y + 0.02, Math.max(0, width - 0.04) * clamped, 0.07, 0.025)
-    .fill(color);
+  const backKey = `${y}|${width}`;
+  if (node.hpBackKey !== backKey) {
+    node.hpBack?.clear().roundRect(-width / 2, y, width, 0.11, 0.03).fill(0x2b1d1d);
+    node.hpBackKey = backKey;
+  }
+  const fillKey = `${Math.round(clamped * 100)}|${y}|${width}`;
+  if (node.hpFillKey !== fillKey) {
+    node.hpFill
+      ?.clear()
+      .roundRect(-width / 2 + 0.02, y + 0.02, Math.max(0, width - 0.04) * clamped, 0.07, 0.025)
+      .fill(color);
+    node.hpFillKey = fillKey;
+  }
 }
 
 function drawEntityFlash(node: EntityNode, color: number, radius: number): void {
-  node.flash?.clear();
   if (node.flash === undefined || node.flashMs <= 0) {
+    if (node.flashVisible) {
+      node.flash?.clear();
+      node.flashVisible = false;
+      node.flashRadius = undefined;
+      node.flashColor = undefined;
+    }
     return;
   }
 
   const alpha = clamp01(node.flashMs / Math.max(HIT_FLASH_MS, PLAYER_HURT_FLASH_MS)) * 0.58;
-  node.flash.circle(0, 0, radius).fill({ color, alpha });
+  if (!node.flashVisible || node.flashRadius !== radius || node.flashColor !== color) {
+    node.flash.clear().circle(0, 0, radius).fill(color);
+    node.flashRadius = radius;
+    node.flashColor = color;
+    node.flashVisible = true;
+  }
+  node.flash.alpha = alpha;
 }
 
-function drawParticle(
-  graphic: Graphics,
-  particle: ParticleSpec,
-  x: number,
-  y: number,
-  alpha: number
-): void {
-  graphic.position.set(x, y);
-  graphic.clear();
+function particleTextureKey(shape: ParticleSpec["shape"]): VfxTextureKey {
+  if (shape === "bone") {
+    return "particleBone";
+  }
+  if (shape === "spark") {
+    return "particleSpark";
+  }
+  return shape === "coin" ? "particleCoin" : "particleBubble";
+}
 
-  if (particle.shape === "bone") {
-    graphic
-      .roundRect(-particle.radius * 1.8, -particle.radius * 0.45, particle.radius * 3.6, particle.radius * 0.9, particle.radius * 0.45)
-      .fill({ color: particle.color, alpha })
-      .circle(-particle.radius * 1.7, 0, particle.radius * 0.72)
-      .circle(particle.radius * 1.7, 0, particle.radius * 0.72)
-      .fill({ color: particle.color, alpha });
+function drawVfxTextureGraphic(graphic: Graphics, key: VfxTextureKey): void {
+  if (key === "popRing") {
+    graphic.circle(0, 0, 1).stroke({ color: 0xffffff, width: 0.14 });
     return;
   }
-
-  if (particle.shape === "spark") {
+  if (key === "splashRing") {
     graphic
-      .moveTo(-particle.radius * 1.8, 0)
-      .lineTo(particle.radius * 1.8, 0)
-      .moveTo(0, -particle.radius * 1.8)
-      .lineTo(0, particle.radius * 1.8)
-      .stroke({ color: particle.color, width: particle.radius * 0.7, alpha, cap: "round" });
+      .circle(0, 0, 1)
+      .stroke({ color: 0xffffff, width: 0.12 })
+      .moveTo(-0.62, 0.11)
+      .lineTo(-0.28, -0.22)
+      .moveTo(0.28, -0.22)
+      .lineTo(0.62, 0.11)
+      .stroke({ color: 0xffffff, width: 0.08, alpha: 0.75, cap: "round" });
+    return;
+  }
+  if (key === "repairRing") {
+    graphic
+      .circle(0, 0, 1)
+      .stroke({ color: 0xffffff, width: 0.14 })
+      .moveTo(-0.6, 0)
+      .lineTo(0.6, 0)
+      .moveTo(0, -0.6)
+      .lineTo(0, 0.6)
+      .stroke({ color: 0xffffff, width: 0.1, alpha: 0.9, cap: "round" });
+    return;
+  }
+  if (key === "particleBone") {
+    graphic
+      .roundRect(-1.8, -0.45, 3.6, 0.9, 0.45)
+      .fill(0xffffff)
+      .circle(-1.7, 0, 0.72)
+      .circle(1.7, 0, 0.72)
+      .fill(0xffffff);
+    return;
+  }
+  if (key === "particleSpark") {
+    graphic
+      .moveTo(-1.8, 0)
+      .lineTo(1.8, 0)
+      .moveTo(0, -1.8)
+      .lineTo(0, 1.8)
+      .stroke({ color: 0xffffff, width: 0.7, cap: "round" });
+    return;
+  }
+  if (key === "particleCoin") {
+    graphic.circle(0, 0, 1.25).fill(0xffffff).stroke({ color: 0x8f6400, width: 0.45 });
+    return;
+  }
+  if (key === "particleBubble") {
+    graphic.circle(0, 0, 1).fill({ color: 0xffffff, alpha: 0.2 }).stroke({ color: 0xffffff, width: 0.45 });
+    return;
+  }
+  if (key === "pickupFlyOrb") {
+    graphic
+      .circle(0, 0, 1)
+      .fill(0xffffff)
+      .stroke({ color: 0xffffff, width: 0.25 })
+      .moveTo(-1.83, 0)
+      .lineTo(1.83, 0)
+      .moveTo(0, -1.83)
+      .lineTo(0, 1.83)
+      .stroke({ color: 0xffffff, width: 0.2 });
     return;
   }
 
   graphic
-    .circle(0, 0, particle.radius * (particle.shape === "coin" ? 1.25 : 1))
-    .fill({ color: particle.color, alpha: particle.shape === "bubble" ? alpha * 0.2 : alpha })
-    .stroke({
-      color: particle.shape === "bubble" ? particle.color : 0x8f6400,
-      width: particle.radius * 0.45,
-      alpha
-    });
+    .roundRect(-0.14, -0.1, 0.28, 0.2, 0.035)
+    .fill(0xffcf66)
+    .stroke({ color: 0x7c4b19, width: 0.025 })
+    .moveTo(-0.08, -0.09)
+    .lineTo(-0.08, 0.09)
+    .moveTo(0.08, -0.09)
+    .lineTo(0.08, 0.09)
+    .stroke({ color: 0xfff2a0, width: 0.016, alpha: 0.85 })
+    .circle(0, 0, 0.04)
+    .fill(0xeafff8);
 }
 
 function removeMissing(map: Map<string, EntityNode>, seen: ReadonlySet<string>): void {
@@ -1216,7 +2194,55 @@ function removeMissing(map: Map<string, EntityNode>, seen: ReadonlySet<string>):
   }
 }
 
+function removeMissingSprites(map: Map<string, Sprite>, seen: ReadonlySet<string>): void {
+  for (const [id, sprite] of map) {
+    if (!seen.has(id)) {
+      sprite.destroy();
+      map.delete(id);
+    }
+  }
+}
+
+function hideEntitySprite(node: EntityNode): void {
+  if (node.sprite !== undefined) {
+    node.sprite.visible = false;
+  }
+  node.body.visible = true;
+}
+
+function frameKey(assetId: string): string {
+  return `${assetId}/idle`;
+}
+
+function enemySpriteWorldSize(enemy: EnemyView): number {
+  if (enemy.kind === "kraken_head") {
+    return Math.max(1.8, enemy.radius * 2.4);
+  }
+  if (enemy.kind === "kraken_tentacle") {
+    return Math.max(1.35, enemy.radius * 2.8);
+  }
+  return Math.max(0.56, enemy.radius * 2.45);
+}
+
+function projectileSpriteId(kind: string): string {
+  if (kind === "harpoon_gun") {
+    return "harpoon_projectile";
+  }
+  if (kind === "coconut_launcher") {
+    return "coconut_projectile";
+  }
+  if (kind === "cannon") {
+    return "cannon_projectile";
+  }
+  return kind;
+}
+
 function drawSlash(slash: SlashVfx): void {
+  if (slash.weaponId === "cutlass") {
+    drawCutlassSwing(slash);
+    return;
+  }
+
   const t = slash.ageMs / SLASH_DURATION_MS;
   const direction = Math.atan2(slash.dy, slash.dx);
   const halfArc = (slash.arcDegrees * Math.PI) / 360;
@@ -1236,6 +2262,73 @@ function drawSlash(slash: SlashVfx): void {
     .lineTo(0, 0)
     .fill({ color: 0xfff2a0, alpha: (1 - t) * 0.42 })
     .stroke({ color: 0xffffff, width: 0.05, alpha: 1 - t });
+}
+
+function drawCutlassSwing(slash: SlashVfx): void {
+  const t = clamp01(slash.ageMs / SLASH_DURATION_MS);
+  const eased = easeOutCubic(t);
+  const direction = Math.atan2(slash.dy, slash.dx);
+  const halfArc = (slash.arcDegrees * Math.PI) / 360;
+  const start = direction - halfArc * 0.95;
+  const end = direction + halfArc * 0.95;
+  const bladeAngle = start + (end - start) * eased;
+  const alpha = 1 - t;
+  const hilt = 0.22;
+  const tip = Math.min(slash.range * 0.95, 1.3);
+  const guardRadius = 0.16;
+  const handleLength = 0.22;
+  const normal = bladeAngle + Math.PI / 2;
+  const handleAngle = bladeAngle + Math.PI;
+
+  const hiltX = Math.cos(bladeAngle) * hilt;
+  const hiltY = Math.sin(bladeAngle) * hilt;
+  const tipX = Math.cos(bladeAngle) * tip;
+  const tipY = Math.sin(bladeAngle) * tip;
+  const handleX = hiltX + Math.cos(handleAngle) * handleLength;
+  const handleY = hiltY + Math.sin(handleAngle) * handleLength;
+
+  slash.graphic.position.set(slash.ox, slash.oy);
+  slash.graphic.clear();
+
+  drawSwingTrail(slash.graphic, start, bladeAngle, tip, alpha);
+
+  slash.graphic
+    .moveTo(hiltX, hiltY)
+    .lineTo(tipX, tipY)
+    .stroke({ color: 0x26364c, width: 0.13, alpha: alpha * 0.95, cap: "round" })
+    .moveTo(hiltX, hiltY)
+    .lineTo(tipX, tipY)
+    .stroke({ color: 0xf8fbff, width: 0.07, alpha, cap: "round" })
+    .moveTo(hiltX + Math.cos(normal) * guardRadius, hiltY + Math.sin(normal) * guardRadius)
+    .lineTo(hiltX - Math.cos(normal) * guardRadius, hiltY - Math.sin(normal) * guardRadius)
+    .stroke({ color: 0xffc247, width: 0.075, alpha, cap: "round" })
+    .moveTo(hiltX, hiltY)
+    .lineTo(handleX, handleY)
+    .stroke({ color: 0x6b3a19, width: 0.095, alpha, cap: "round" });
+}
+
+function drawSwingTrail(
+  graphic: Graphics,
+  start: number,
+  end: number,
+  radius: number,
+  alpha: number
+): void {
+  const steps = 8;
+  const inner = radius * 0.55;
+
+  graphic.moveTo(Math.cos(start) * inner, Math.sin(start) * inner);
+  for (let step = 0; step <= steps; step += 1) {
+    const angle = start + (end - start) * (step / steps);
+    graphic.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+  }
+  for (let step = steps; step >= 0; step -= 1) {
+    const angle = start + (end - start) * (step / steps);
+    graphic.lineTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+  }
+  graphic
+    .fill({ color: 0xfff2a0, alpha: alpha * 0.28 })
+    .stroke({ color: 0xffffff, width: 0.035, alpha: alpha * 0.75 });
 }
 
 function hpColor(ratio: number): number {
@@ -1266,31 +2359,75 @@ function easeOutCubic(value: number): number {
 }
 
 export function renderHud(root: HTMLElement, state: HudState): void {
-  root.querySelector<HTMLElement>("[data-status]")?.replaceChildren(state.status);
-  root.querySelector<HTMLElement>("[data-wave]")?.replaceChildren(state.waveText);
-  root.querySelector<HTMLElement>("[data-phase]")?.replaceChildren(state.phaseText);
-  root.querySelector<HTMLElement>("[data-coins]")?.replaceChildren(state.coinsText);
-  root.querySelector<HTMLElement>("[data-salvage]")?.replaceChildren(state.salvageText);
-  root.querySelector<HTMLElement>("[data-hp-text]")?.replaceChildren(state.hpText);
+  const cache = getHudRenderCache(root);
+  setHudText(root, cache, "status", "[data-status]", state.status);
+  setHudText(root, cache, "wave", "[data-wave]", state.waveText);
+  setHudText(root, cache, "phase", "[data-phase]", state.phaseText);
+  setHudText(root, cache, "coins", "[data-coins]", state.coinsText);
+  setHudText(root, cache, "salvage", "[data-salvage]", state.salvageText);
+  setHudText(root, cache, "hpText", "[data-hp-text]", state.hpText);
 
   const hpFill = root.querySelector<HTMLElement>("[data-hp-fill]");
   if (hpFill !== null) {
-    hpFill.style.width = `${Math.round(state.hpRatio * 100)}%`;
-    hpFill.style.background = `linear-gradient(90deg, #dc3e40, #2cbe64 ${Math.round(
-      state.hpRatio * 100
-    )}%)`;
+    const hpPercent = Math.round(state.hpRatio * 100);
+    setCachedStyle(cache, "hpWidth", `${hpPercent}%`, (value) => {
+      hpFill.style.width = value;
+    });
+    setCachedStyle(cache, "hpBackground", `linear-gradient(90deg, #dc3e40, #2cbe64 ${hpPercent}%)`, (value) => {
+      hpFill.style.background = value;
+    });
   }
 
   const bossHud = root.querySelector<HTMLElement>("[data-boss-hud]");
   const bossFill = root.querySelector<HTMLElement>("[data-boss-fill]");
-  bossHud?.toggleAttribute("hidden", state.boss === null);
+  setCachedStyle(cache, "bossHidden", state.boss === null ? "1" : "0", (value) => {
+    bossHud?.toggleAttribute("hidden", value === "1");
+  });
   if (state.boss !== null) {
-    root.querySelector<HTMLElement>("[data-boss-name]")?.replaceChildren(state.boss.name);
-    root.querySelector<HTMLElement>("[data-boss-phase]")?.replaceChildren(state.boss.phaseText);
+    setHudText(root, cache, "bossName", "[data-boss-name]", state.boss.name);
+    setHudText(root, cache, "bossPhase", "[data-boss-phase]", state.boss.phaseText);
     if (bossFill !== null) {
-      bossFill.style.width = `${Math.round(state.boss.hpRatio * 100)}%`;
+      setCachedStyle(cache, "bossWidth", `${Math.round(state.boss.hpRatio * 100)}%`, (value) => {
+        bossFill.style.width = value;
+      });
     }
   }
+}
+
+function getHudRenderCache(root: HTMLElement): HudRenderCache {
+  let cache = hudRenderCaches.get(root);
+  if (cache === undefined) {
+    cache = { values: new Map() };
+    hudRenderCaches.set(root, cache);
+  }
+  return cache;
+}
+
+function setHudText(
+  root: HTMLElement,
+  cache: HudRenderCache,
+  key: string,
+  selector: string,
+  value: string
+): void {
+  if (cache.values.get(key) === value) {
+    return;
+  }
+  root.querySelector<HTMLElement>(selector)?.replaceChildren(value);
+  cache.values.set(key, value);
+}
+
+function setCachedStyle(
+  cache: HudRenderCache,
+  key: string,
+  value: string,
+  apply: (value: string) => void
+): void {
+  if (cache.values.get(key) === value) {
+    return;
+  }
+  apply(value);
+  cache.values.set(key, value);
 }
 
 export function bossPhaseText(phase: NonNullable<InterpolatedState["boss"]>["phase"]): string {

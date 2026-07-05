@@ -34,9 +34,14 @@ export function shake(amplitude: number, ageMs: number): ShakeOffset {
 export function particleBurst(
   kind: ParticleBurstKind,
   x: number,
-  y: number
+  y: number,
+  multiplier = 1
 ): ParticleSpec[] {
-  const count = kind === "explosion" ? 18 : kind === "kill" ? 10 : 8;
+  const count = Math.round((kind === "explosion" ? 18 : kind === "kill" ? 10 : 8) * multiplier);
+  if (count <= 0) {
+    return [];
+  }
+
   const baseSpeed = kind === "explosion" ? 1.8 : kind === "kill" ? 1.05 : 0.62;
   const lifeMs = kind === "explosion" ? 540 : kind === "kill" ? 430 : 360;
   const colors =
