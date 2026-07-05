@@ -147,6 +147,7 @@ export interface LobbyPlayer {
 export type ClientMessage =
   | { type: "create" }
   | { type: "join"; code: string }
+  | { type: "rejoin"; code: string; playerId: string }
   | { type: "select"; characterId: string }
   | { type: "lobby_ready"; ready: boolean }
   | {
@@ -195,6 +196,7 @@ export function decodeClientMessage(raw: string): ClientMessage {
     msg.type !== "player_input" &&
     msg.type !== "create" &&
     msg.type !== "join" &&
+    msg.type !== "rejoin" &&
     msg.type !== "select" &&
     msg.type !== "lobby_ready" &&
     msg.type !== "buy" &&

@@ -7,6 +7,7 @@ import {
   createPing,
   buyOffer,
   createWorld,
+  forceDowned,
   purchaseModule,
   rerollShop,
   setCharacter,
@@ -46,6 +47,7 @@ export interface MatchEntry {
     started: boolean;
   };
   conns: Map<string, PlayerId>;
+  disconnected: Set<PlayerId>;
 }
 
 export type PlayerInputMessage = ClientMessage & { type: "player_input" };
@@ -83,7 +85,8 @@ export function createMatchEntry(code: string, seed: number): MatchEntry {
       ready: new Set(),
       started: false
     },
-    conns: new Map()
+    conns: new Map(),
+    disconnected: new Set()
   };
 }
 
@@ -103,9 +106,40 @@ export function removeConnectionFromLobby(
   }
 
   entry.conns.delete(connId);
+  entry.disconnected.delete(playerId);
   entry.lobby.selections.delete(playerId);
   entry.lobby.ready.delete(playerId);
   matchRemovePlayer(entry.match, playerId);
+}
+
+export function disconnectRunningConnection(
+  entry: MatchEntry,
+  connId: string
+): string | null {
+  const playerId = entry.conns.get(connId);
+  if (playerId === undefined) {
+    return null;
+  }
+
+  entry.conns.delete(connId);
+  entry.disconnected.add(playerId);
+  entry.match.latestInputs.delete(playerId);
+  forceDowned(entry.match.world, playerId);
+  return playerId;
+}
+
+export function reattachDisconnectedConnection(
+  entry: MatchEntry,
+  connId: string,
+  playerId: string
+): boolean {
+  if (!entry.disconnected.has(playerId) || !entryHasPlayer(entry, playerId)) {
+    return false;
+  }
+
+  entry.disconnected.delete(playerId);
+  entry.conns.set(connId, playerId);
+  return true;
 }
 
 export function selectLobbyCharacter(

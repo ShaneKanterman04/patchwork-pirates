@@ -128,6 +128,7 @@ describe("protocol codec", () => {
     const messages: ClientMessage[] = [
       { type: "create" },
       { type: "join", code: "ABCD" },
+      { type: "rejoin", code: "ABCD", playerId: "p1" },
       { type: "select", characterId: "captain" },
       { type: "lobby_ready", ready: true }
     ];

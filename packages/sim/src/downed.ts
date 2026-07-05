@@ -8,6 +8,19 @@ import {
 import { clampToRaft } from "./player";
 import type { PlayerInput, PlayerState, Vec2, WorldState } from "./types";
 
+export function forceDowned(world: WorldState, playerId: string): boolean {
+  const player = world.players.find((candidate) => candidate.id === playerId);
+  if (player === undefined || player.downed || player.out) {
+    return false;
+  }
+
+  player.downed = true;
+  player.hp = 0;
+  player.bleedOutTicks = DOWNED_BLEED_OUT_S * TICK_RATE;
+  player.reviveProgressTicks = 0;
+  return true;
+}
+
 export function updateDowned(
   world: WorldState,
   inputs: Map<string, PlayerInput>

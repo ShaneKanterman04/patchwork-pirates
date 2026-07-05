@@ -42,8 +42,8 @@ Work branch `phase-0`. Legend: ✅ done & committed · 🔨 in progress · ⬜ t
   - ✅ 2.2 characters Captain + Fisher — passives + automatic specials (sim+content)
   - ✅ 2.3 ping (Q contextual) + downed/revive + scoreboard wire (sim+protocol+server)
   - ✅ 2.4 lobby: multi-match by code, join, character select, ready-up (server+protocol)
-  - 🔨 2.5 disconnect handling: drop→downed, rejoin by code resumes slot (server)
-  - ⬜ 2.6 co-op client UI: lobby, char select, 2nd player, revive, ping, scoreboard (client)
+  - ✅ 2.5 disconnect handling: drop→downed, rejoin by code resumes slot (server)
+  - 🔨 2.6 co-op client UI: lobby, char select, 2nd player, revive, ping, scoreboard (client)
 - Phases 3–6 ⬜ not started
 
 ---

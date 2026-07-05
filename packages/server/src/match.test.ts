@@ -7,9 +7,11 @@ import {
   createMatchEntry,
   createMatch,
   buildLobbyPlayers,
+  disconnectRunningConnection,
   handleClientMessage,
   matchAddPlayer,
   matchRemovePlayer,
+  reattachDisconnectedConnection,
   selectLobbyCharacter,
   setLobbyReady,
   setInput,
@@ -295,5 +297,47 @@ describe("match", () => {
     expect(second.match.world.players[0]?.id).toBe("p1");
     expect(first.match.world.enemies).toEqual([]);
     expect(second.match.world.enemies).toEqual([]);
+  });
+
+  it("disconnecting a running slot marks it disconnected, downs it, and keeps it in the world", () => {
+    const entry = createMatchEntry("ABCD", 123);
+    const playerId = addConnectionToLobby(entry, "c1");
+    selectLobbyCharacter(entry, playerId, "captain");
+    setLobbyReady(entry, playerId, true);
+
+    expect(entry.match.world.run.phase).toBe("combat");
+
+    const disconnectedPlayerId = disconnectRunningConnection(entry, "c1");
+    const player = entry.match.world.players.find(
+      (candidate) => candidate.id === playerId
+    );
+
+    expect(disconnectedPlayerId).toBe(playerId);
+    expect(entry.conns.has("c1")).toBe(false);
+    expect(entry.disconnected.has(playerId)).toBe(true);
+    expect(entry.match.world.players.map((candidate) => candidate.id)).toEqual([
+      playerId
+    ]);
+    expect(entry.match.latestInputs.has(playerId)).toBe(false);
+    expect(player).toMatchObject({
+      downed: true,
+      out: false,
+      hp: 0,
+      bleedOutTicks: DOWNED_BLEED_OUT_S * TICK_RATE,
+      reviveProgressTicks: 0
+    });
+  });
+
+  it("reattaches a disconnected slot and clears the disconnected mark", () => {
+    const entry = createMatchEntry("ABCD", 123);
+    const playerId = addConnectionToLobby(entry, "c1");
+    selectLobbyCharacter(entry, playerId, "captain");
+    setLobbyReady(entry, playerId, true);
+    disconnectRunningConnection(entry, "c1");
+
+    expect(reattachDisconnectedConnection(entry, "c2", playerId)).toBe(true);
+    expect(entry.disconnected.has(playerId)).toBe(false);
+    expect(entry.conns.get("c2")).toBe(playerId);
+    expect(reattachDisconnectedConnection(entry, "c3", playerId)).toBe(false);
   });
 });

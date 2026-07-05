@@ -13,7 +13,9 @@ import {
   buildSnapshot,
   canStartLobby,
   createMatchEntry,
+  disconnectRunningConnection,
   handleClientMessage,
+  reattachDisconnectedConnection,
   removeConnectionFromLobby,
   selectLobbyCharacter,
   setLobbyReady,
@@ -145,6 +147,9 @@ function routeClientMessage(
     case "join":
       joinLobby(matches, connections, conn, msg.code);
       return;
+    case "rejoin":
+      rejoinMatch(matches, connections, conn, msg.code, msg.playerId);
+      return;
     case "select":
       handleSelect(matches, connections, conn, msg.characterId);
       return;
@@ -217,6 +222,49 @@ function joinLobby(
     snapshot: buildSnapshot(entry.match)
   });
   broadcastLobbyStateForEntry(connections, entry);
+}
+
+function rejoinMatch(
+  matches: Map<string, MatchEntry>,
+  connections: Map<string, ConnectionState>,
+  conn: ConnectionState,
+  requestedCode: string,
+  playerId: string
+): void {
+  const code = normalizeCode(requestedCode);
+  const entry = matches.get(code);
+
+  if (entry === undefined) {
+    send(conn.socket, { type: "lobby_error", message: "Lobby not found." });
+    return;
+  }
+
+  if (isTerminalPhase(entry)) {
+    send(conn.socket, { type: "lobby_error", message: "Match has ended." });
+    return;
+  }
+
+  if (!entry.disconnected.has(playerId)) {
+    send(conn.socket, { type: "lobby_error", message: "Player slot is not disconnected." });
+    return;
+  }
+
+  leaveCurrentLobby(matches, connections, conn);
+  if (!reattachDisconnectedConnection(entry, conn.id, playerId)) {
+    send(conn.socket, { type: "lobby_error", message: "Player slot not found." });
+    return;
+  }
+
+  conn.code = code;
+  conn.playerId = playerId;
+
+  send(conn.socket, { type: "lobby_joined", code, playerId });
+  send(conn.socket, {
+    type: "welcome",
+    playerId,
+    protocolVersion: PROTOCOL_VERSION,
+    snapshot: buildSnapshot(entry.match)
+  });
 }
 
 function handleSelect(
@@ -312,10 +360,15 @@ function leaveCurrentLobby(
 
   const entry = matches.get(conn.code);
   if (entry !== undefined) {
-    removeConnectionFromLobby(entry, conn.id);
-    if (entry.conns.size === 0) {
-      matches.delete(entry.code);
+    if (isPersistentRunPhase(entry)) {
+      disconnectRunningConnection(entry, conn.id);
     } else {
+      removeConnectionFromLobby(entry, conn.id);
+    }
+
+    if (entry.conns.size === 0 && !isPersistentRunPhase(entry)) {
+      matches.delete(entry.code);
+    } else if (!isPersistentRunPhase(entry)) {
       broadcastLobbyStateForEntry(connections, entry);
     }
   }
@@ -373,6 +426,14 @@ function generateLobbyCode(matches: Map<string, MatchEntry>): string {
 
 function normalizeCode(code: string): string {
   return code.trim().toUpperCase();
+}
+
+function isPersistentRunPhase(entry: MatchEntry): boolean {
+  return entry.match.world.run.phase === "combat" || entry.match.world.run.phase === "build";
+}
+
+function isTerminalPhase(entry: MatchEntry): boolean {
+  return entry.match.world.run.phase === "victory" || entry.match.world.run.phase === "defeat";
 }
 
 function send(socket: WebSocket, msg: ServerMessage): void {
