@@ -25,6 +25,7 @@ export function addPlayer(
     hp: PLAYER_MAX_HP,
     maxHp: PLAYER_MAX_HP,
     moveSpeed: PLAYER_MOVE_SPEED,
+    repairSpeed: 1.0,
     weapons: startingWeaponIds.map((defId) => ({ defId, cooldownTicks: 0 })),
     dashCooldown: 0,
     dashTicks: 0,

@@ -2,6 +2,9 @@ import {
   DASH_COOLDOWN_TICKS,
   DASH_DURATION_TICKS,
   DASH_SPEED_MULT,
+  HOLE_REBUILD_RATE,
+  INTERACT_RANGE,
+  PLAYER_REPAIR_RATE,
   SPAWN_INTERVAL_TICKS,
   TICK_RATE
 } from "./constants";
@@ -11,12 +14,14 @@ import {
   clampToRaft,
   normalizeOrZero
 } from "./player";
-import { createRaft } from "./raft";
+import { createRaft, isHole } from "./raft";
 import { updatePlayerWeapons } from "./weapons";
 import type {
   ContentRegistry,
   PlayerId,
   PlayerInput,
+  PlayerState,
+  RaftTile,
   Vec2,
   WorldState
 } from "./types";
@@ -59,6 +64,7 @@ export function createWorld(
     pickups: [],
     projectiles: [],
     events: [],
+    coreDestroyed: false,
     nextEntityId: 1,
     spawnTimer: SPAWN_INTERVAL_TICKS
   };
@@ -93,12 +99,13 @@ export function tick(
     const speed =
       player.moveSpeed * (isDashing ? DASH_SPEED_MULT : 1) / TICK_RATE;
     const direction = isDashing ? player.dashDir : movement;
-    const nextPos: Vec2 = {
+    const nextPos = moveOnRaft(world, player, {
       x: player.pos.x + direction.x * speed,
       y: player.pos.y + direction.y * speed
-    };
+    });
 
-    player.pos = clampToRaft(nextPos);
+    player.pos = nextPos;
+    repairNearestTile(world, player, input);
     player.dashTicks = Math.max(0, player.dashTicks - 1);
     player.dashCooldown = Math.max(0, player.dashCooldown - 1);
     player.prevDash = input.dash;
@@ -110,6 +117,93 @@ export function tick(
 
   world.tick += 1;
   return world;
+}
+
+function moveOnRaft(world: WorldState, player: PlayerState, nextPos: Vec2): Vec2 {
+  const clamped = clampToRaft(nextPos);
+  const currentCol = Math.floor(player.pos.x);
+  const currentRow = Math.floor(player.pos.y);
+
+  const candidateX = {
+    x: clamped.x,
+    y: player.pos.y
+  };
+  const candidateXCol = Math.floor(candidateX.x);
+  const candidateXRow = Math.floor(candidateX.y);
+  const x =
+    isHole(world.raft, candidateXCol, candidateXRow) &&
+    (candidateXCol !== currentCol || candidateXRow !== currentRow)
+      ? player.pos.x
+      : candidateX.x;
+
+  const candidateY = {
+    x,
+    y: clamped.y
+  };
+  const candidateYCol = Math.floor(candidateY.x);
+  const candidateYRow = Math.floor(candidateY.y);
+  const y =
+    isHole(world.raft, candidateYCol, candidateYRow) &&
+    (candidateYCol !== currentCol || candidateYRow !== currentRow)
+      ? player.pos.y
+      : candidateY.y;
+
+  return { x, y };
+}
+
+function repairNearestTile(
+  world: WorldState,
+  player: PlayerState,
+  input: PlayerInput
+): void {
+  if (!input.interact) {
+    return;
+  }
+
+  const tile = nearestRepairTarget(world, player.pos);
+  if (tile === null) {
+    return;
+  }
+
+  const rate = tile.broken ? HOLE_REBUILD_RATE : PLAYER_REPAIR_RATE;
+  tile.hp = Math.min(
+    tile.maxHp,
+    tile.hp + rate * player.repairSpeed / TICK_RATE
+  );
+
+  if (tile.broken && tile.hp >= tile.maxHp) {
+    tile.broken = false;
+    world.events.push({ type: "tile_repaired", col: tile.col, row: tile.row });
+  }
+}
+
+function nearestRepairTarget(
+  world: WorldState,
+  pos: Vec2
+): RaftTile | null {
+  let selected: RaftTile | null = null;
+  let selectedDistanceSquared = Number.POSITIVE_INFINITY;
+  const rangeSquared = INTERACT_RANGE * INTERACT_RANGE;
+
+  for (const tile of world.raft.tiles) {
+    if (!tile.broken && tile.hp >= tile.maxHp) {
+      continue;
+    }
+
+    const dx = tile.col + 0.5 - pos.x;
+    const dy = tile.row + 0.5 - pos.y;
+    const distanceSquared = dx * dx + dy * dy;
+    if (distanceSquared > rangeSquared) {
+      continue;
+    }
+
+    if (distanceSquared < selectedDistanceSquared) {
+      selected = tile;
+      selectedDistanceSquared = distanceSquared;
+    }
+  }
+
+  return selected;
 }
 
 function nextMulberry32State(state: number): number {

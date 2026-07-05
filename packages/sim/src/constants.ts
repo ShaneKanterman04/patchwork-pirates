@@ -8,6 +8,9 @@ export const CORE_MAX_HP = 500;
 export const PLAYER_MAX_HP = 100;
 export const PLAYER_MOVE_SPEED = 4;
 export const PLAYER_RADIUS = 0.4;
+export const PLAYER_REPAIR_RATE = 40;
+export const HOLE_REBUILD_RATE = 20;
+export const INTERACT_RANGE = 1.2;
 
 export const DASH_SPEED_MULT = 3;
 export const DASH_DURATION_S = 0.2;

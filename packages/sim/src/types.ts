@@ -18,6 +18,7 @@ export interface PlayerState {
   hp: number;
   maxHp: number;
   moveSpeed: number;
+  repairSpeed: number;
   weapons: WeaponInstance[];
   dashCooldown: number;
   dashTicks: number;
@@ -108,7 +109,10 @@ export type SimEvent =
       range: number;
     }
   | { type: "enemy_hit"; enemyId: string; damage: number; pos: Vec2 }
-  | { type: "enemy_killed"; enemyId: string; pos: Vec2 };
+  | { type: "enemy_killed"; enemyId: string; pos: Vec2 }
+  | { type: "tile_broken"; col: number; row: number }
+  | { type: "tile_repaired"; col: number; row: number }
+  | { type: "core_destroyed" };
 
 export interface RaftTile {
   col: number;
@@ -135,6 +139,7 @@ export interface WorldState {
   pickups: PickupState[];
   projectiles: ProjectileState[];
   events: SimEvent[];
+  coreDestroyed: boolean;
   nextEntityId: number;
   spawnTimer: number;
 }
