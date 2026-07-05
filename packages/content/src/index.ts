@@ -60,7 +60,7 @@ export const CHUM = {
   maxHp: 18,
   speedTilesPerSec: 2.6,
   contactDamage: 6,
-  contactCooldownS: 0.6,
+  contactCooldownS: 0.75,
   radius: 0.3,
   coinValue: 1,
   salvageValue: 0,
@@ -302,7 +302,7 @@ export const MODULES = {
 export const WAVES = [
   {
     durationS: 30,
-    budget: 12,
+    budget: 10,
     table: [
       { enemyId: "chum", weight: 6, cost: 1 },
       { enemyId: "plank_biter", weight: 1, cost: 2 }
@@ -310,7 +310,7 @@ export const WAVES = [
   },
   {
     durationS: 35,
-    budget: 18,
+    budget: 15,
     table: [
       { enemyId: "chum", weight: 6, cost: 1 },
       { enemyId: "plank_biter", weight: 2, cost: 2 },
