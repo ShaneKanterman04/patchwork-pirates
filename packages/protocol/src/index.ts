@@ -1,3 +1,126 @@
 export const PROTOCOL_VERSION = 1;
 
-export type Message = { type: string };
+export interface PlayerView {
+  id: string;
+  x: number;
+  y: number;
+  hp: number;
+  maxHp: number;
+  facingX: number;
+  facingY: number;
+  downed: boolean;
+  weaponIds: string[];
+}
+
+export interface EnemyView {
+  id: string;
+  kind: string;
+  x: number;
+  y: number;
+  hpRatio: number;
+  radius: number;
+}
+
+export interface PickupView {
+  id: string;
+  kind: string;
+  x: number;
+  y: number;
+}
+
+export interface ProjView {
+  id: string;
+  kind: string;
+  x: number;
+  y: number;
+}
+
+export interface WavePhaseView {
+  number: number;
+  phase: "combat" | "build";
+  timeLeft: number;
+}
+
+export interface Snapshot {
+  tick: number;
+  players: PlayerView[];
+  enemies: EnemyView[];
+  projectiles: ProjView[];
+  pickups: PickupView[];
+  wave: WavePhaseView;
+}
+
+export type WireEvent =
+  | {
+      type: "weapon_fired";
+      wielderId: string;
+      weaponId: string;
+      ox: number;
+      oy: number;
+      dx: number;
+      dy: number;
+      arcDegrees: number;
+      range: number;
+    }
+  | { type: "enemy_hit"; enemyId: string; damage: number; x: number; y: number }
+  | { type: "enemy_killed"; enemyId: string; x: number; y: number };
+
+export type ServerMessage =
+  | {
+      type: "welcome";
+      playerId: string;
+      protocolVersion: number;
+      snapshot: Snapshot;
+    }
+  | { type: "snapshot"; snapshot: Snapshot }
+  | { type: "events"; tick: number; events: WireEvent[] };
+
+export type ClientMessage = {
+  type: "player_input";
+  seq: number;
+  movement: { x: number; y: number };
+  dash: boolean;
+  interact: boolean;
+};
+
+export function encodeServerMessage(msg: ServerMessage): string {
+  return JSON.stringify(msg);
+}
+
+export function decodeServerMessage(raw: string): ServerMessage {
+  const msg = parseJsonRecord(raw);
+
+  if (
+    msg.type !== "welcome" &&
+    msg.type !== "snapshot" &&
+    msg.type !== "events"
+  ) {
+    throw new Error(`Unknown server message type: ${String(msg.type)}`);
+  }
+
+  return msg as ServerMessage;
+}
+
+export function encodeClientMessage(msg: ClientMessage): string {
+  return JSON.stringify(msg);
+}
+
+export function decodeClientMessage(raw: string): ClientMessage {
+  const msg = parseJsonRecord(raw);
+
+  if (msg.type !== "player_input") {
+    throw new Error(`Unknown client message type: ${String(msg.type)}`);
+  }
+
+  return msg as ClientMessage;
+}
+
+function parseJsonRecord(raw: string): Record<string, unknown> {
+  const parsed: unknown = JSON.parse(raw);
+
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error("Protocol message must be a JSON object");
+  }
+
+  return parsed as Record<string, unknown>;
+}

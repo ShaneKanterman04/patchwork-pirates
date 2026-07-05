@@ -11,15 +11,19 @@
   },
   "scripts": {
     "build": "tsc -b",
+    "start": "pnpm --filter @patchwork/sim --filter @patchwork/content --filter @patchwork/protocol build && tsx src/index.ts",
+    "dev": "pnpm --filter @patchwork/sim --filter @patchwork/content --filter @patchwork/protocol build && tsx watch src/index.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@patchwork/content": "workspace:*",
     "@patchwork/protocol": "workspace:*",
-    "@patchwork/sim": "workspace:*"
+    "@patchwork/sim": "workspace:*",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
+    "@types/ws": "^8.18.1",
     "tsx": "^4.20.3"
   }
 }

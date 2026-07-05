@@ -23,9 +23,9 @@ Work branch `phase-0`. Legend: ✅ done & committed · 🔨 in progress · ⬜ t
 - **Phase 0 — Skeleton & proof of feel** 🔨
   - ✅ 0.1 pnpm workspace + determinism lint
   - ✅ 0.2 sim tick loop + movement + dash + static raft
-  - 🔨 0.3 Cutlass + Chum + targeting + combat
-  - ⬜ 0.4 server match loop + WS + snapshots
-  - ⬜ 0.5 client render + interpolation + input
+  - ✅ 0.3 Cutlass + Chum + targeting + combat (content-injection architecture)
+  - ✅ 0.4 server match loop + WS + snapshots (protocol wire contract)
+  - 🔨 0.5 client render + interpolation + input
   - ⬜ exit gate — Shane playtest
 - Phases 1–6 ⬜ not started
 
