@@ -37,6 +37,16 @@ function fireWeapon(
 
   if (def.pattern.kind === "melee_arc") {
     fireMeleeArc(world, wielder, weapon, def, target);
+    return;
+  }
+
+  if (def.pattern.kind === "projectile") {
+    fireProjectile(world, wielder, weapon, def, target);
+    return;
+  }
+
+  if (def.pattern.kind === "lob") {
+    fireLob(world, wielder, weapon, def, target);
   }
 }
 
@@ -47,6 +57,10 @@ function fireMeleeArc(
   def: WeaponDef,
   target: EnemyState
 ): void {
+  if (def.pattern.kind !== "melee_arc") {
+    return;
+  }
+
   const slashDir = directionOrFacing(wielder.pos, target.pos, wielder.facing);
   const arcDegrees = def.pattern.arcDegrees;
 
@@ -75,6 +89,97 @@ function fireMeleeArc(
       pos: { ...enemy.pos }
     });
   }
+
+  weapon.cooldownTicks = Math.round(def.cooldownS * TICK_RATE);
+}
+
+function fireProjectile(
+  world: WorldState,
+  wielder: PlayerState,
+  weapon: WeaponInstance,
+  def: WeaponDef,
+  target: EnemyState
+): void {
+  if (def.pattern.kind !== "projectile") {
+    return;
+  }
+
+  const direction = directionOrFacing(wielder.pos, target.pos, wielder.facing);
+  const speed = def.pattern.projectileSpeed;
+
+  world.projectiles.push({
+    id: nextProjectileId(world),
+    type: def.id,
+    pos: { ...wielder.pos },
+    vel: { x: direction.x * speed, y: direction.y * speed },
+    damage: def.damage,
+    ttl: projectileTtl(def.rangeTiles, speed),
+    ownerId: wielder.id,
+    homing: def.pattern.homing,
+    targetId: def.pattern.homing ? target.id : null,
+    landPos: null,
+    aoeRadius: 0,
+    effect: def.pattern.effect ?? null,
+    pullDistance: def.pattern.pullDistance ?? 0,
+    slowFactor: def.pattern.slowFactor ?? 1,
+    slowDurationTicks: Math.round((def.pattern.slowDurationS ?? 0) * TICK_RATE)
+  });
+
+  world.events.push({
+    type: "weapon_fired",
+    wielderId: wielder.id,
+    weaponId: def.id,
+    origin: { ...wielder.pos },
+    dir: direction,
+    arcDegrees: 0,
+    range: def.rangeTiles
+  });
+
+  weapon.cooldownTicks = Math.round(def.cooldownS * TICK_RATE);
+}
+
+function fireLob(
+  world: WorldState,
+  wielder: PlayerState,
+  weapon: WeaponInstance,
+  def: WeaponDef,
+  target: EnemyState
+): void {
+  if (def.pattern.kind !== "lob") {
+    return;
+  }
+
+  const landPos = { ...target.pos };
+  const direction = directionOrFacing(wielder.pos, landPos, wielder.facing);
+  const speed = def.pattern.projectileSpeed;
+
+  world.projectiles.push({
+    id: nextProjectileId(world),
+    type: def.id,
+    pos: { ...wielder.pos },
+    vel: { x: direction.x * speed, y: direction.y * speed },
+    damage: def.damage,
+    ttl: projectileTtl(distance(wielder.pos, landPos), speed),
+    ownerId: wielder.id,
+    homing: false,
+    targetId: null,
+    landPos,
+    aoeRadius: def.pattern.aoeRadius,
+    effect: null,
+    pullDistance: 0,
+    slowFactor: 1,
+    slowDurationTicks: 0
+  });
+
+  world.events.push({
+    type: "weapon_fired",
+    wielderId: wielder.id,
+    weaponId: def.id,
+    origin: { ...wielder.pos },
+    dir: direction,
+    arcDegrees: 0,
+    range: def.rangeTiles
+  });
 
   weapon.cooldownTicks = Math.round(def.cooldownS * TICK_RATE);
 }
@@ -126,6 +231,20 @@ function magnitude(vector: Vec2): number {
   return Math.sqrt(vector.x * vector.x + vector.y * vector.y);
 }
 
+function distance(a: Vec2, b: Vec2): number {
+  return magnitude({ x: a.x - b.x, y: a.y - b.y });
+}
+
 function dot(a: Vec2, b: Vec2): number {
   return a.x * b.x + a.y * b.y;
+}
+
+function projectileTtl(distanceTiles: number, speedTilesPerSec: number): number {
+  return Math.ceil(distanceTiles / (speedTilesPerSec / TICK_RATE)) + 3;
+}
+
+function nextProjectileId(world: WorldState): string {
+  const id = `p${world.nextEntityId}`;
+  world.nextEntityId += 1;
+  return id;
 }

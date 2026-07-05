@@ -280,7 +280,10 @@ function addEnemy(world: WorldState, id: string, pos: Vec2): EnemyState {
     speed: 2.6,
     contactDamage: 6,
     contactCooldownTicks: 0,
-    contactCooldownMax: Math.round(0.6 * TICK_RATE)
+    contactCooldownMax: Math.round(0.6 * TICK_RATE),
+    slowTicks: 0,
+    slowFactor: 1,
+    attackingTileId: null
   };
 
   world.enemies.push(enemy);

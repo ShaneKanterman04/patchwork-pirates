@@ -9,8 +9,8 @@ describe("content determinism", () => {
   it("replays cutlass and chum simulation deterministically", () => {
     const first = createWorld(99, CONTENT);
     const second = createWorld(99, CONTENT);
-    addPlayer(first, "p1", ["cutlass"]);
-    addPlayer(second, "p1", ["cutlass"]);
+    addPlayer(first, "p1", ["cutlass", "harpoon_gun", "coconut_launcher"]);
+    addPlayer(second, "p1", ["cutlass", "harpoon_gun", "coconut_launcher"]);
 
     for (let i = 0; i < 200; i += 1) {
       const input = replayInput(i);
@@ -21,11 +21,13 @@ describe("content determinism", () => {
     expect({
       players: first.players,
       enemies: first.enemies,
-      pickups: first.pickups
+      pickups: first.pickups,
+      projectiles: first.projectiles
     }).toEqual({
       players: second.players,
       enemies: second.enemies,
-      pickups: second.pickups
+      pickups: second.pickups,
+      projectiles: second.projectiles
     });
   });
 });

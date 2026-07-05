@@ -2,7 +2,8 @@ export * from "./constants";
 export { addPlayer } from "./player";
 export { damageTile, isHole, isWalkable, tileAt } from "./raft";
 export { updateEnemies, spawnEnemies, resolveEnemyDeaths } from "./enemies";
-export { selectTarget } from "./targeting";
+export { selectTarget, threatScore } from "./targeting";
+export { updateProjectiles } from "./projectiles";
 export { updatePlayerWeapons } from "./weapons";
 export { createWorld, mulberry32, nextRandom, tick } from "./world";
 export type {

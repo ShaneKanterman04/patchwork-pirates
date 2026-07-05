@@ -63,7 +63,11 @@ export type WireEvent =
       range: number;
     }
   | { type: "enemy_hit"; enemyId: string; damage: number; x: number; y: number }
-  | { type: "enemy_killed"; enemyId: string; x: number; y: number };
+  | { type: "enemy_killed"; enemyId: string; x: number; y: number }
+  | { type: "explosion"; x: number; y: number; radius: number }
+  | { type: "tile_broken"; col: number; row: number }
+  | { type: "tile_repaired"; col: number; row: number }
+  | { type: "core_destroyed" };
 
 export type ServerMessage =
   | {

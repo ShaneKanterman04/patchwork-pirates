@@ -36,7 +36,18 @@ export type TargetingMode =
   | "random"
   | "boss_or_elite";
 
-export type WeaponPattern = { kind: "melee_arc"; arcDegrees: number };
+export type WeaponPattern =
+  | { kind: "melee_arc"; arcDegrees: number }
+  | {
+      kind: "projectile";
+      projectileSpeed: number;
+      homing: boolean;
+      effect?: "pull_or_slow";
+      pullDistance?: number;
+      slowFactor?: number;
+      slowDurationS?: number;
+    }
+  | { kind: "lob"; projectileSpeed: number; aoeRadius: number };
 
 export interface WeaponDef {
   id: string;
@@ -57,6 +68,9 @@ export interface EnemyDef {
   contactCooldownS: number;
   radius: number;
   coinValue: number;
+  heavy?: boolean;
+  basePriority?: number;
+  elite?: boolean;
 }
 
 export interface ContentRegistry {
@@ -80,6 +94,9 @@ export interface EnemyState {
   contactDamage: number;
   contactCooldownTicks: number;
   contactCooldownMax: number;
+  slowTicks: number;
+  slowFactor: number;
+  attackingTileId: string | null;
 }
 
 export interface PickupState {
@@ -96,6 +113,15 @@ export interface ProjectileState {
   vel: Vec2;
   damage: number;
   ttl: number;
+  ownerId: string;
+  homing: boolean;
+  targetId: string | null;
+  landPos: Vec2 | null;
+  aoeRadius: number;
+  effect: "pull_or_slow" | null;
+  pullDistance: number;
+  slowFactor: number;
+  slowDurationTicks: number;
 }
 
 export type SimEvent =
@@ -110,6 +136,7 @@ export type SimEvent =
     }
   | { type: "enemy_hit"; enemyId: string; damage: number; pos: Vec2 }
   | { type: "enemy_killed"; enemyId: string; pos: Vec2 }
+  | { type: "explosion"; pos: Vec2; radius: number }
   | { type: "tile_broken"; col: number; row: number }
   | { type: "tile_repaired"; col: number; row: number }
   | { type: "core_destroyed" };

@@ -110,8 +110,12 @@ export function buildSnapshot(match: Match): Snapshot {
 }
 
 export function simEventsToWire(events: SimEvent[]): WireEvent[] {
-  return events.map((event) => {
-    if (event.type === "weapon_fired") {
+  return events.map(simEventToWire);
+}
+
+function simEventToWire(event: SimEvent): WireEvent {
+  switch (event.type) {
+    case "weapon_fired":
       return {
         type: "weapon_fired",
         wielderId: event.wielderId,
@@ -123,9 +127,7 @@ export function simEventsToWire(events: SimEvent[]): WireEvent[] {
         arcDegrees: event.arcDegrees,
         range: event.range
       };
-    }
-
-    if (event.type === "enemy_hit") {
+    case "enemy_hit":
       return {
         type: "enemy_hit",
         enemyId: event.enemyId,
@@ -133,13 +135,31 @@ export function simEventsToWire(events: SimEvent[]): WireEvent[] {
         x: event.pos.x,
         y: event.pos.y
       };
+    case "enemy_killed":
+      return {
+        type: "enemy_killed",
+        enemyId: event.enemyId,
+        x: event.pos.x,
+        y: event.pos.y
+      };
+    case "explosion":
+      return {
+        type: "explosion",
+        x: event.pos.x,
+        y: event.pos.y,
+        radius: event.radius
+      };
+    case "tile_broken":
+      return { type: "tile_broken", col: event.col, row: event.row };
+    case "tile_repaired":
+      return { type: "tile_repaired", col: event.col, row: event.row };
+    case "core_destroyed":
+      return { type: "core_destroyed" };
+    default: {
+      // Exhaustiveness guard: a new SimEvent variant fails to compile here
+      // until it is explicitly mapped to the wire (or deliberately dropped).
+      const unhandled: never = event;
+      throw new Error(`unhandled sim event: ${JSON.stringify(unhandled)}`);
     }
-
-    return {
-      type: "enemy_killed",
-      enemyId: event.enemyId,
-      x: event.pos.x,
-      y: event.pos.y
-    };
-  });
+  }
 }

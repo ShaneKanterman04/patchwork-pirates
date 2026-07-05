@@ -102,9 +102,13 @@ export class GameRenderer {
         });
       } else if (event.type === "enemy_hit") {
         this.addPop(event.x, event.y, 0xffffff, HIT_DURATION_MS, "hit");
-      } else {
+      } else if (event.type === "enemy_killed") {
         this.addPop(event.x, event.y, 0x9be7ff, KILL_DURATION_MS, "kill");
+      } else if (event.type === "explosion") {
+        this.addPop(event.x, event.y, 0xffb020, KILL_DURATION_MS, "kill");
       }
+      // tile_broken / tile_repaired / core_destroyed are rendered from raft
+      // snapshot state in packet 1.7 — ignored here for now.
     }
   }
 

@@ -14,6 +14,7 @@ import {
   clampToRaft,
   normalizeOrZero
 } from "./player";
+import { updateProjectiles } from "./projectiles";
 import { createRaft, isHole } from "./raft";
 import { updatePlayerWeapons } from "./weapons";
 import type {
@@ -113,6 +114,7 @@ export function tick(
 
   updatePlayerWeapons(world);
   updateEnemies(world);
+  updateProjectiles(world);
   resolveEnemyDeaths(world);
 
   world.tick += 1;

@@ -46,7 +46,9 @@ export function updateEnemies(world: WorldState): void {
         x: target.pos.x - enemy.pos.x,
         y: target.pos.y - enemy.pos.y
       });
-      const step = enemy.speed / TICK_RATE;
+      const speed =
+        enemy.speed * (enemy.slowTicks > 0 ? enemy.slowFactor : 1);
+      const step = speed / TICK_RATE;
 
       enemy.pos = {
         x: enemy.pos.x + movementDir.x * step,
@@ -65,6 +67,10 @@ export function updateEnemies(world: WorldState): void {
     }
 
     enemy.contactCooldownTicks = Math.max(0, enemy.contactCooldownTicks - 1);
+    enemy.slowTicks = Math.max(0, enemy.slowTicks - 1);
+    if (enemy.slowTicks === 0) {
+      enemy.slowFactor = 1;
+    }
   }
 }
 
@@ -107,7 +113,10 @@ function createEnemy(world: WorldState, def: EnemyDef, pos: Vec2): EnemyState {
     speed: def.speedTilesPerSec,
     contactDamage: def.contactDamage,
     contactCooldownTicks: 0,
-    contactCooldownMax: Math.round(def.contactCooldownS * TICK_RATE)
+    contactCooldownMax: Math.round(def.contactCooldownS * TICK_RATE),
+    slowTicks: 0,
+    slowFactor: 1,
+    attackingTileId: null
   };
 }
 
