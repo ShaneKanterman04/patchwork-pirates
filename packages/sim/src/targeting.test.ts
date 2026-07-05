@@ -48,7 +48,8 @@ const CONTENT: ContentRegistry = {
       elite: false,
       behavior: { kind: "swarmer_melee" }
     }
-  }
+  },
+  waves: []
 };
 
 describe("targeting modes", () => {

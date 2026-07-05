@@ -31,8 +31,8 @@ Work branch `phase-0`. Legend: ✅ done & committed · 🔨 in progress · ⬜ t
   - ✅ 1.1 raft damage: tile HP/holes/repair/rebuild + core HP + movement respects holes (sim)
   - ✅ 1.2 threat-score targeting + Harpoon Gun + Coconut Launcher + projectiles (sim+content) + overseer wire-sync (explosion/tile/core WireEvents)
   - ✅ 1.3 enemies: Spitter Crab, Plank-Biter, Brute Turtle + AI primitives (sim+content)
-  - 🔨 1.4 wave system: budget spawner, 8 waves, phase state machine, run lifecycle (sim+content)
-  - ⬜ 1.5 modules: Cannon + Repair Station (sim+content)
+  - ✅ 1.4 wave system: budget spawner, 8 waves, phase state machine, run lifecycle (sim+content)
+  - 🔨 1.5 modules: Cannon + Repair Station (sim+content)
   - ⬜ 1.6 economy: coins/pickup radius, salvage, shop, build-phase transactions (sim+protocol+content)
   - ⬜ 1.7 client: build/shop UI, raft-damage render, victory/defeat + run stats (client)
 - Phases 2–6 ⬜ not started

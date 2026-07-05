@@ -27,6 +27,7 @@ export const DASH_COOLDOWN_TICKS = Math.round(DASH_COOLDOWN_S * TICK_RATE);
 export const SPAWN_INTERVAL_S = 0.5;
 export const SPAWN_INTERVAL_TICKS = Math.round(SPAWN_INTERVAL_S * TICK_RATE);
 export const MAX_ENEMIES = 24;
+export const BUILD_DURATION_S = 45;
 
 export const CLUSTER_RADIUS = 1.3;
 export const DISTANCE_PENALTY = 1.0;

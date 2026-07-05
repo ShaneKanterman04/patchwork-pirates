@@ -107,7 +107,8 @@ const CONTENT: ContentRegistry = {
     spitter: SPITTER,
     plank_biter: PLANK_BITER,
     brute: BRUTE
-  }
+  },
+  waves: []
 };
 
 describe("spitter crab behavior", () => {

@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  MAX_ENEMIES,
   PLAYER_MOVE_SPEED,
-  RAFT_HEIGHT,
-  RAFT_WIDTH,
-  SPAWN_INTERVAL_TICKS,
   TICK_RATE,
   addPlayer,
   createWorld,
@@ -45,7 +41,8 @@ const TEST_CONTENT: ContentRegistry = {
       coinValue: 1,
       behavior: { kind: "swarmer_melee" }
     }
-  }
+  },
+  waves: []
 };
 
 const IDLE_INPUT: PlayerInput = {
@@ -91,7 +88,7 @@ describe("targeting", () => {
 describe("cutlass", () => {
   it("fires off cooldown with an enemy in range", () => {
     const world = createWorld(1, TEST_CONTENT);
-    world.spawnTimer = Number.MAX_SAFE_INTEGER;
+    world.run.spawnTimer = Number.MAX_SAFE_INTEGER;
     const player = addPlayer(world, "p1", ["cutlass"]);
     const enemy = addEnemy(world, "e1", {
       x: player.pos.x + 1,
@@ -117,7 +114,7 @@ describe("cutlass", () => {
 
   it("does nothing when no enemy is in range", () => {
     const world = createWorld(1, TEST_CONTENT);
-    world.spawnTimer = Number.MAX_SAFE_INTEGER;
+    world.run.spawnTimer = Number.MAX_SAFE_INTEGER;
     const player = addPlayer(world, "p1", ["cutlass"]);
     const enemy = addEnemy(world, "e1", {
       x: player.pos.x + 4,
@@ -133,7 +130,7 @@ describe("cutlass", () => {
 
   it("hits enemies inside the 90 degree wedge and misses behind or out of range", () => {
     const world = createWorld(1, TEST_CONTENT);
-    world.spawnTimer = Number.MAX_SAFE_INTEGER;
+    world.run.spawnTimer = Number.MAX_SAFE_INTEGER;
     const player = addPlayer(world, "p1", ["cutlass"]);
     const ahead = addEnemy(world, "ahead", {
       x: player.pos.x + 0.5,
@@ -167,7 +164,7 @@ describe("cutlass", () => {
 describe("death to coin", () => {
   it("removes dead enemies, drops one coin, and emits enemy_killed", () => {
     const world = createWorld(1, TEST_CONTENT);
-    world.spawnTimer = Number.MAX_SAFE_INTEGER;
+    world.run.spawnTimer = Number.MAX_SAFE_INTEGER;
     const player = addPlayer(world, "p1", ["cutlass"]);
     addEnemy(world, "e1", { x: player.pos.x + 1, y: player.pos.y });
 
@@ -193,7 +190,7 @@ describe("death to coin", () => {
 describe("chum steering and contact", () => {
   it("moves toward nearest player and applies contact damage on cooldown", () => {
     const world = createWorld(1, TEST_CONTENT);
-    world.spawnTimer = Number.MAX_SAFE_INTEGER;
+    world.run.spawnTimer = Number.MAX_SAFE_INTEGER;
     const player = addPlayer(world, "p1");
     const enemy = addEnemy(world, "e1", {
       x: player.pos.x + 0.5,
@@ -214,7 +211,7 @@ describe("chum steering and contact", () => {
 
   it("lets a faster player increase separation while moving away", () => {
     const world = createWorld(1, TEST_CONTENT);
-    world.spawnTimer = Number.MAX_SAFE_INTEGER;
+    world.run.spawnTimer = Number.MAX_SAFE_INTEGER;
     const player = addPlayer(world, "p1");
     player.pos = { x: 2.5, y: 2.5 };
     const enemy = addEnemy(world, "e1", { x: 0.6, y: 2.5 });
@@ -238,30 +235,11 @@ describe("chum steering and contact", () => {
 });
 
 describe("spawner", () => {
-  it("spawns chum outside the raft at the interval and caps enemy count", () => {
-    const world = createWorld(123, { weapons: {}, enemies: TEST_CONTENT.enemies });
-
-    for (let i = 0; i < SPAWN_INTERVAL_TICKS; i += 1) {
-      tick(world, new Map());
-    }
-
-    expect(world.enemies).toHaveLength(1);
-    expect(isOutsideRaft(world.enemies[0]?.pos)).toBe(true);
-
-    for (let i = 1; i < MAX_ENEMIES + 5; i += 1) {
-      for (let j = 0; j < SPAWN_INTERVAL_TICKS; j += 1) {
-        tick(world, new Map());
-      }
-    }
-
-    expect(world.enemies).toHaveLength(MAX_ENEMIES);
-  });
-
-  it("does not spawn or consume rng with an empty registry", () => {
+  it("does not spawn or consume rng without wave content", () => {
     const world = createWorld(123);
     const startRngState = world.rngState;
 
-    for (let i = 0; i < SPAWN_INTERVAL_TICKS * 5; i += 1) {
+    for (let i = 0; i < 100; i += 1) {
       tick(world, new Map());
     }
 
@@ -295,12 +273,4 @@ function distance(a: Vec2, b: Vec2): number {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
   return Math.sqrt(dx * dx + dy * dy);
-}
-
-function isOutsideRaft(pos: Vec2 | undefined): boolean {
-  if (pos === undefined) {
-    return false;
-  }
-
-  return pos.x < 0 || pos.x > RAFT_WIDTH || pos.y < 0 || pos.y > RAFT_HEIGHT;
 }

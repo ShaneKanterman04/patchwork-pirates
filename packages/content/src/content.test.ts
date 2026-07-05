@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import { TICK_RATE, addPlayer, createWorld, tick } from "@patchwork/sim";
-import type { EnemyState, PlayerInput, Vec2, WorldState } from "@patchwork/sim";
+import type {
+  EnemyDef,
+  EnemyState,
+  PlayerInput,
+  Vec2,
+  WorldState
+} from "@patchwork/sim";
 
 import { CONTENT } from "./index";
 
@@ -21,11 +27,57 @@ describe("content determinism", () => {
     }
 
     expect({
+      run: first.run,
       players: first.players,
       enemies: first.enemies,
       pickups: first.pickups,
       projectiles: first.projectiles
     }).toEqual({
+      run: second.run,
+      players: second.players,
+      enemies: second.enemies,
+      pickups: second.pickups,
+      projectiles: second.projectiles
+    });
+  });
+
+  it("replays weighted wave draws and player scaling deterministically", () => {
+    const first = createWorld(123, CONTENT);
+    const second = createWorld(123, CONTENT);
+    addPlayer(first, "p1");
+    addPlayer(first, "p2");
+    addPlayer(second, "p1");
+    addPlayer(second, "p2");
+    const firstWave = CONTENT.waves[0];
+    if (firstWave === undefined) {
+      throw new Error("missing wave 1 content");
+    }
+
+    first.run.budgetRemaining = Math.round(firstWave.budget * 1.7);
+    second.run.budgetRemaining = Math.round(firstWave.budget * 1.7);
+
+    for (let i = 0; i < 60; i += 1) {
+      const input = replayInput(i);
+      tick(first, input);
+      tick(second, input);
+    }
+
+    expect(first.enemies.length).toBeGreaterThan(0);
+    const enemyDefs: Record<string, EnemyDef> = CONTENT.enemies;
+    expect(
+      first.enemies.some((enemy) => {
+        const def = enemyDefs[enemy.type];
+        return def !== undefined && enemy.maxHp > def.maxHp;
+      })
+    ).toBe(true);
+    expect({
+      run: first.run,
+      players: first.players,
+      enemies: first.enemies,
+      pickups: first.pickups,
+      projectiles: first.projectiles
+    }).toEqual({
+      run: second.run,
       players: second.players,
       enemies: second.enemies,
       pickups: second.pickups,

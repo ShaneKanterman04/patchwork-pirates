@@ -5,10 +5,9 @@ import {
   HOLE_REBUILD_RATE,
   INTERACT_RANGE,
   PLAYER_REPAIR_RATE,
-  SPAWN_INTERVAL_TICKS,
   TICK_RATE
 } from "./constants";
-import { resolveEnemyDeaths, spawnEnemies, updateEnemies } from "./enemies";
+import { resolveEnemyDeaths, updateEnemies } from "./enemies";
 import {
   clampMovement,
   clampToRaft,
@@ -16,6 +15,7 @@ import {
 } from "./player";
 import { updateProjectiles } from "./projectiles";
 import { createRaft, isHole } from "./raft";
+import { createRunState, updateRunPostSim, updateRunPreSim } from "./run";
 import { updatePlayerWeapons } from "./weapons";
 import type {
   ContentRegistry,
@@ -49,7 +49,7 @@ export function nextRandom(world: WorldState): number {
   return stateToUnitFloat(scrambleMulberry32State(world.rngState));
 }
 
-const EMPTY_CONTENT: ContentRegistry = { weapons: {}, enemies: {} };
+const EMPTY_CONTENT: ContentRegistry = { weapons: {}, enemies: {}, waves: [] };
 
 export function createWorld(
   seed: number,
@@ -67,7 +67,7 @@ export function createWorld(
     events: [],
     coreDestroyed: false,
     nextEntityId: 1,
-    spawnTimer: SPAWN_INTERVAL_TICKS
+    run: createRunState({ content, players: [] })
   };
 }
 
@@ -77,7 +77,12 @@ export function tick(
 ): WorldState {
   world.events = [];
 
-  spawnEnemies(world);
+  if (world.run.phase === "victory" || world.run.phase === "defeat") {
+    world.tick += 1;
+    return world;
+  }
+
+  updateRunPreSim(world);
 
   for (const player of world.players) {
     const input = inputs.get(player.id) ?? ZERO_INPUT;
@@ -116,6 +121,7 @@ export function tick(
   updateEnemies(world);
   updateProjectiles(world);
   resolveEnemyDeaths(world);
+  updateRunPostSim(world);
 
   world.tick += 1;
   return world;

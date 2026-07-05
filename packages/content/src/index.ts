@@ -1,4 +1,10 @@
-import type { ContentRegistry, EnemyDef, WeaponDef, WorldState } from "@patchwork/sim";
+import type {
+  ContentRegistry,
+  EnemyDef,
+  WaveDef,
+  WeaponDef,
+  WorldState
+} from "@patchwork/sim";
 
 export type ContentWorldState = WorldState;
 
@@ -131,7 +137,87 @@ export const ENEMIES = {
   brute_turtle: BRUTE_TURTLE
 } as const satisfies Record<string, EnemyDef>;
 
+export const WAVES = [
+  {
+    durationS: 30,
+    budget: 12,
+    table: [
+      { enemyId: "chum", weight: 6, cost: 1 },
+      { enemyId: "plank_biter", weight: 1, cost: 2 }
+    ]
+  },
+  {
+    durationS: 35,
+    budget: 18,
+    table: [
+      { enemyId: "chum", weight: 6, cost: 1 },
+      { enemyId: "plank_biter", weight: 2, cost: 2 },
+      { enemyId: "spitter_crab", weight: 1, cost: 3 }
+    ]
+  },
+  {
+    durationS: 42,
+    budget: 26,
+    table: [
+      { enemyId: "chum", weight: 6, cost: 1 },
+      { enemyId: "plank_biter", weight: 2, cost: 2 },
+      { enemyId: "spitter_crab", weight: 2, cost: 3 }
+    ]
+  },
+  {
+    durationS: 48,
+    budget: 34,
+    table: [
+      { enemyId: "chum", weight: 6, cost: 1 },
+      { enemyId: "plank_biter", weight: 2, cost: 2 },
+      { enemyId: "spitter_crab", weight: 2, cost: 3 },
+      { enemyId: "brute_turtle", weight: 1, cost: 8 }
+    ]
+  },
+  {
+    durationS: 54,
+    budget: 44,
+    table: [
+      { enemyId: "chum", weight: 5, cost: 1 },
+      { enemyId: "plank_biter", weight: 3, cost: 2 },
+      { enemyId: "spitter_crab", weight: 2, cost: 3 },
+      { enemyId: "brute_turtle", weight: 1, cost: 8 }
+    ]
+  },
+  {
+    durationS: 60,
+    budget: 56,
+    table: [
+      { enemyId: "chum", weight: 5, cost: 1 },
+      { enemyId: "plank_biter", weight: 3, cost: 2 },
+      { enemyId: "spitter_crab", weight: 3, cost: 3 },
+      { enemyId: "brute_turtle", weight: 1, cost: 8 }
+    ]
+  },
+  {
+    durationS: 68,
+    budget: 70,
+    table: [
+      { enemyId: "chum", weight: 4, cost: 1 },
+      { enemyId: "plank_biter", weight: 3, cost: 2 },
+      { enemyId: "spitter_crab", weight: 3, cost: 3 },
+      { enemyId: "brute_turtle", weight: 2, cost: 8 }
+    ]
+  },
+  {
+    durationS: 75,
+    budget: 95,
+    table: [
+      { enemyId: "chum", weight: 5, cost: 1 },
+      { enemyId: "plank_biter", weight: 4, cost: 2 },
+      { enemyId: "spitter_crab", weight: 4, cost: 3 },
+      { enemyId: "brute_turtle", weight: 3, cost: 8 }
+    ]
+  }
+] satisfies WaveDef[];
+
 export const CONTENT = {
   weapons: WEAPONS,
-  enemies: ENEMIES
+  enemies: ENEMIES,
+  waves: WAVES
 } as const satisfies ContentRegistry;

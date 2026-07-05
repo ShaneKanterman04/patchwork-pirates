@@ -1,12 +1,9 @@
 import {
-  MAX_ENEMIES,
   PLAYER_RADIUS,
   RAFT_HEIGHT,
   RAFT_WIDTH,
-  SPAWN_INTERVAL_TICKS,
   TICK_RATE
 } from "./constants";
-import { nextRandom } from "./world";
 import { isHole, isWalkable, tileAt, damageTile } from "./raft";
 import type {
   EnemyBehavior,
@@ -17,34 +14,6 @@ import type {
   Vec2,
   WorldState
 } from "./types";
-
-export function spawnEnemies(world: WorldState): void {
-  world.spawnTimer = Math.max(0, world.spawnTimer - 1);
-
-  if (world.spawnTimer > 0) {
-    return;
-  }
-
-  world.spawnTimer = SPAWN_INTERVAL_TICKS;
-
-  const enemyDefs = Object.values(world.content.enemies);
-
-  if (enemyDefs.length === 0 || world.enemies.length >= MAX_ENEMIES) {
-    return;
-  }
-
-  const def = enemyDefs[0];
-
-  if (def === undefined) {
-    return;
-  }
-
-  const edge = Math.floor(nextRandom(world) * 4);
-  const offset = nextRandom(world);
-  const pos = spawnPosition(edge, offset);
-
-  world.enemies.push(createEnemy(world, def, pos));
-}
 
 export function updateEnemies(world: WorldState): void {
   for (const enemy of world.enemies) {
@@ -222,7 +191,11 @@ export function resolveEnemyDeaths(world: WorldState): void {
   world.enemies = survivors;
 }
 
-function createEnemy(world: WorldState, def: EnemyDef, pos: Vec2): EnemyState {
+export function createEnemy(
+  world: WorldState,
+  def: EnemyDef,
+  pos: Vec2
+): EnemyState {
   // A single per-enemy timer backs contact attacks and behavior-specific
   // attacks; behavior cooldowns replace contact cooldowns for non-melee AI.
   const cooldownS = behaviorCooldownS(def);
@@ -422,22 +395,6 @@ function nextEntityId(world: WorldState): string {
   const id = `e${world.nextEntityId}`;
   world.nextEntityId += 1;
   return id;
-}
-
-function spawnPosition(edge: number, offset: number): Vec2 {
-  if (edge === 0) {
-    return { x: offset * RAFT_WIDTH, y: -1 };
-  }
-
-  if (edge === 1) {
-    return { x: RAFT_WIDTH + 1, y: offset * RAFT_HEIGHT };
-  }
-
-  if (edge === 2) {
-    return { x: offset * RAFT_WIDTH, y: RAFT_HEIGHT + 1 };
-  }
-
-  return { x: -1, y: offset * RAFT_HEIGHT };
 }
 
 function nearestPlayer(players: PlayerState[], pos: Vec2): PlayerState | null {

@@ -1,7 +1,8 @@
 export * from "./constants";
 export { addPlayer } from "./player";
 export { damageTile, isHole, isWalkable, tileAt } from "./raft";
-export { updateEnemies, spawnEnemies, resolveEnemyDeaths } from "./enemies";
+export { createEnemy, updateEnemies, resolveEnemyDeaths } from "./enemies";
+export { setPlayerReady, updateRunPostSim, updateRunPreSim } from "./run";
 export { selectTarget, threatScore } from "./targeting";
 export { updateProjectiles } from "./projectiles";
 export { updatePlayerWeapons } from "./weapons";
@@ -18,9 +19,13 @@ export type {
   ProjectileState,
   RaftState,
   RaftTile,
+  RunPhase,
+  RunState,
   SimEvent,
   TargetingMode,
   Vec2,
+  WaveDef,
+  WaveSpawnEntry,
   WeaponDef,
   WeaponInstance,
   WeaponPattern,

@@ -97,6 +97,30 @@ export type EnemyBehavior =
 export interface ContentRegistry {
   weapons: Record<string, WeaponDef>;
   enemies: Record<string, EnemyDef>;
+  waves: WaveDef[];
+}
+
+export interface WaveSpawnEntry {
+  enemyId: string;
+  weight: number;
+  cost: number;
+}
+
+export interface WaveDef {
+  durationS: number;
+  budget: number;
+  table: WaveSpawnEntry[];
+}
+
+export type RunPhase = "combat" | "build" | "victory" | "defeat";
+
+export interface RunState {
+  phase: RunPhase;
+  wave: number;
+  phaseTicksLeft: number;
+  budgetRemaining: number;
+  spawnTimer: number;
+  readyPlayerIds: string[];
 }
 
 export interface WeaponInstance {
@@ -191,5 +215,5 @@ export interface WorldState {
   events: SimEvent[];
   coreDestroyed: boolean;
   nextEntityId: number;
-  spawnTimer: number;
+  run: RunState;
 }

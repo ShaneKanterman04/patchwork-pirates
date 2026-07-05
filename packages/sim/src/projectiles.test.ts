@@ -44,7 +44,8 @@ const CONTENT: ContentRegistry = {
   enemies: {
     light: enemyDef("light", false),
     heavy: enemyDef("heavy", true)
-  }
+  },
+  waves: []
 };
 
 const IDLE_INPUT: PlayerInput = {
@@ -56,7 +57,7 @@ const IDLE_INPUT: PlayerInput = {
 describe("harpoon projectile", () => {
   it("firing spawns a homing projectile", () => {
     const world = createWorld(1, CONTENT);
-    world.spawnTimer = Number.MAX_SAFE_INTEGER;
+    world.run.spawnTimer = Number.MAX_SAFE_INTEGER;
     const player = addPlayer(world, "p1", ["harpoon"]);
     addEnemy(world, "e1", "light", { x: player.pos.x + 3, y: player.pos.y });
 
@@ -74,7 +75,7 @@ describe("harpoon projectile", () => {
 
   it("yanks a light enemy toward the wielder and expires after hit", () => {
     const world = createWorld(1, CONTENT);
-    world.spawnTimer = Number.MAX_SAFE_INTEGER;
+    world.run.spawnTimer = Number.MAX_SAFE_INTEGER;
     const player = addPlayer(world, "p1", ["harpoon"]);
     const enemy = addEnemy(world, "e1", "light", {
       x: player.pos.x + 2,
@@ -96,7 +97,7 @@ describe("harpoon projectile", () => {
 
   it("slows a heavy enemy and uses reduced movement while slowed", () => {
     const world = createWorld(1, CONTENT);
-    world.spawnTimer = Number.MAX_SAFE_INTEGER;
+    world.run.spawnTimer = Number.MAX_SAFE_INTEGER;
     const player = addPlayer(world, "p1", ["harpoon"]);
     const enemy = addEnemy(world, "e1", "heavy", {
       x: player.pos.x + 2,
@@ -120,7 +121,7 @@ describe("harpoon projectile", () => {
 describe("coconut lob", () => {
   it("spawns a lob at the cluster and explodes for multi-hit damage", () => {
     const world = createWorld(1, CONTENT);
-    world.spawnTimer = Number.MAX_SAFE_INTEGER;
+    world.run.spawnTimer = Number.MAX_SAFE_INTEGER;
     const player = addPlayer(world, "p1", ["coconut"]);
     addEnemy(world, "sparse", "light", { x: player.pos.x + 0.8, y: player.pos.y });
     const center = addEnemy(world, "center", "light", {
