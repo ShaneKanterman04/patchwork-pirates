@@ -1,5 +1,5 @@
 import { Application, Container, Graphics, Text } from "pixi.js";
-import { CHARACTERS } from "@patchwork/content";
+import { CHARACTERS, ENEMIES } from "@patchwork/content";
 import type {
   EnemyView,
   ModuleView,
@@ -450,7 +450,13 @@ export class GameRenderer {
       );
       node.container.scale.set(popScale(node.reactionMs, HIT_REACTION_MS, 0.16) * node.baseScale);
       drawEnemy(node.body.clear(), enemy);
-      drawHpBar(node, enemy.hpRatio);
+      drawHpBar(
+        node,
+        enemy.hpRatio,
+        -Math.max(0.58, enemy.radius + 0.2),
+        Math.max(0.78, Math.min(1.35, enemy.radius * 1.9))
+      );
+      drawEnemyLabel(node, enemy);
       drawEntityFlash(node, 0xffffff, Math.max(0.34, enemy.radius * 1.25));
     }
 
@@ -824,12 +830,20 @@ function drawEnemy(graphic: Graphics, enemy: EnemyView): void {
   if (enemy.kind === "brute_turtle") {
     graphic
       .ellipse(0, 0.04, r * 1.15, r * 0.82)
-      .fill(0x4d9b60)
-      .stroke({ color: 0x244629, width: 0.07 })
+      .fill(0x1f5d3a)
+      .stroke({ color: 0xd8f2a4, width: 0.07 })
+      .moveTo(-r * 0.68, -r * 0.05)
+      .lineTo(r * 0.68, -r * 0.05)
+      .moveTo(-r * 0.34, -r * 0.46)
+      .lineTo(-r * 0.1, r * 0.48)
+      .moveTo(r * 0.34, -r * 0.46)
+      .lineTo(r * 0.1, r * 0.48)
+      .stroke({ color: 0x96c56a, width: 0.035, alpha: 0.9 })
       .circle(r * 0.62, -r * 0.08, r * 0.28)
-      .fill(0x78bd74)
+      .fill(0x5fae55)
+      .stroke({ color: 0x173822, width: 0.035 })
       .circle(-r * 0.2, -r * 0.12, r * 0.22)
-      .fill(0x2f6f3d);
+      .fill(0x173822);
     return;
   }
 
@@ -847,29 +861,45 @@ function drawEnemy(graphic: Graphics, enemy: EnemyView): void {
 
   if (enemy.kind === "spitter_crab") {
     graphic
-      .circle(0, 0, r)
-      .fill(0xc75878)
-      .stroke({ color: 0x63263d, width: 0.055 })
-      .circle(0, -r * 0.15, r * 0.26)
+      .ellipse(0, 0.05, r * 1.05, r * 0.78)
+      .fill(0xe66b2e)
+      .stroke({ color: 0x6f2d16, width: 0.055 })
+      .circle(-r * 0.28, -r * 0.28, r * 0.16)
       .fill(0xfff2dc)
-      .circle(0, -r * 0.15, r * 0.11)
+      .circle(r * 0.28, -r * 0.28, r * 0.16)
+      .fill(0xfff2dc)
+      .circle(-r * 0.28, -r * 0.28, r * 0.07)
       .fill(0x1c1c24)
-      .moveTo(-r * 1.1, r * 0.1)
-      .lineTo(-r * 0.45, r * 0.25)
-      .moveTo(r * 0.45, r * 0.25)
-      .lineTo(r * 1.1, r * 0.1)
-      .stroke({ color: 0x63263d, width: 0.05 });
+      .circle(r * 0.28, -r * 0.28, r * 0.07)
+      .fill(0x1c1c24)
+      .moveTo(-r * 0.7, r * 0.1)
+      .lineTo(-r * 1.25, -r * 0.18)
+      .lineTo(-r * 1.45, r * 0.05)
+      .moveTo(r * 0.7, r * 0.1)
+      .lineTo(r * 1.25, -r * 0.18)
+      .lineTo(r * 1.45, r * 0.05)
+      .moveTo(-r * 0.58, r * 0.28)
+      .lineTo(-r * 1.05, r * 0.52)
+      .moveTo(r * 0.58, r * 0.28)
+      .lineTo(r * 1.05, r * 0.52)
+      .stroke({ color: 0x6f2d16, width: 0.05, cap: "round" });
     return;
   }
 
   graphic
-    .circle(0, 0, r)
-    .fill(0xde4d3a)
-    .stroke({ color: 0x621e19, width: 0.055 })
-    .circle(-r * 0.26, -r * 0.13, r * 0.11)
+    .ellipse(0, 0, r * 1.08, r * 0.78)
+    .fill(0x22a7a6)
+    .stroke({ color: 0x08464b, width: 0.055 })
+    .moveTo(-r * 1.0, 0)
+    .lineTo(-r * 1.42, -r * 0.35)
+    .lineTo(-r * 1.42, r * 0.35)
+    .lineTo(-r * 1.0, 0)
+    .fill(0x147b82)
+    .stroke({ color: 0x08464b, width: 0.04 })
+    .circle(r * 0.34, -r * 0.14, r * 0.11)
     .fill(0xfff2dc)
-    .circle(r * 0.26, -r * 0.13, r * 0.11)
-    .fill(0xfff2dc);
+    .circle(r * 0.38, -r * 0.14, r * 0.045)
+    .fill(0x102b3a);
 }
 
 function drawModule(graphic: Graphics, module: ModuleView): void {
@@ -955,18 +985,17 @@ function getOrCreateEntity(
     const hpBack = new Graphics();
     const hpFill = new Graphics();
     const facing = withFacing ? new Graphics() : undefined;
-    const label = withFacing
-      ? new Text({
-          text: "",
-          style: {
-            fill: 0xffffff,
-            fontFamily: "Inter, Arial, sans-serif",
-            fontSize: 0.18,
-            fontWeight: "700",
-            stroke: { color: 0x102b3a, width: 0.035 }
-          }
-        })
-      : undefined;
+    const label = new Text({
+      text: "",
+      style: {
+        fill: 0xffffff,
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: withFacing ? 0.18 : 0.16,
+        fontWeight: "800",
+        stroke: { color: 0x102b3a, width: withFacing ? 0.035 : 0.045 },
+        dropShadow: { color: 0x102b3a, blur: 1, distance: 0.025, alpha: 0.9 }
+      }
+    });
     const reviveRing = withFacing ? new Graphics() : undefined;
     const bleedRing = withFacing ? new Graphics() : undefined;
 
@@ -1014,6 +1043,16 @@ function drawPlayerLabel(node: EntityNode, text: string): void {
   node.label.position.set(0, -0.92);
 }
 
+function drawEnemyLabel(node: EntityNode, enemy: EnemyView): void {
+  if (node.label === undefined) {
+    return;
+  }
+
+  const def = ENEMIES[enemy.kind as keyof typeof ENEMIES];
+  node.label.text = def?.name ?? enemy.kind;
+  node.label.position.set(0, -Math.max(0.82, enemy.radius + 0.44));
+}
+
 function drawDownedRings(node: EntityNode, player: PlayerView): void {
   node.reviveRing?.clear();
   node.bleedRing?.clear();
@@ -1044,13 +1083,13 @@ function drawProgressArc(
   graphic.arc(0, 0, radius, start, end).stroke({ color, width, cap: "round" });
 }
 
-function drawHpBar(node: EntityNode, ratio: number): void {
+function drawHpBar(node: EntityNode, ratio: number, y = -0.68, width = 0.84): void {
   const clamped = clamp01(ratio);
   const color = hpColor(clamped);
-  node.hpBack?.clear().roundRect(-0.42, -0.68, 0.84, 0.11, 0.03).fill(0x2b1d1d);
+  node.hpBack?.clear().roundRect(-width / 2, y, width, 0.11, 0.03).fill(0x2b1d1d);
   node.hpFill
     ?.clear()
-    .roundRect(-0.4, -0.66, 0.8 * clamped, 0.07, 0.025)
+    .roundRect(-width / 2 + 0.02, y + 0.02, Math.max(0, width - 0.04) * clamped, 0.07, 0.025)
     .fill(color);
 }
 
@@ -1204,11 +1243,15 @@ export function bossPhaseText(phase: NonNullable<InterpolatedState["boss"]>["pha
 
 function phaseText(phase: InterpolatedState["wave"]["phase"], timeLeft: number): string {
   if (phase === "combat") {
-    return timeLeft > 0 ? `Fight! ${Math.ceil(timeLeft)}s` : "Fight!";
+    return timeLeft > 0
+      ? `FIGHT - survive the wave! ${Math.ceil(timeLeft)}s`
+      : "FIGHT - survive the wave!";
   }
 
   if (phase === "build") {
-    return timeLeft > 0 ? `Build ${Math.ceil(timeLeft)}s` : "Build";
+    return timeLeft > 0
+      ? `BUILD - shop is open, Ready Up when done ${Math.ceil(timeLeft)}s`
+      : "BUILD - shop is open, Ready Up when done";
   }
 
   return phase === "victory" ? "Victory" : "Defeat";

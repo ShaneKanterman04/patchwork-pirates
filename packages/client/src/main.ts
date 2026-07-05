@@ -13,6 +13,17 @@ import type { Connection } from "./net";
 import { GameRenderer, renderHud } from "./render";
 import { applyEventsToStats, applySnapshotToStats, createRunStats } from "./runStats";
 import type { RunStats } from "./runStats";
+import {
+  characterLabel,
+  itemModifiersText,
+  ownedItemText,
+  playerStatText,
+  purchaseSnapshot,
+  purchaseToastText,
+  weaponStackText,
+  weaponStatLine
+} from "./shopReadability";
+import type { PurchaseSnapshot } from "./shopReadability";
 import { canAffordOffer, canPlaceOnTile, ownCoins, screenPointToTile } from "./shopLogic";
 
 const root = document.querySelector<HTMLDivElement>("#app");
@@ -43,14 +54,18 @@ root.innerHTML = `
     .boss-name { font-weight: 900; letter-spacing: 0; text-transform: uppercase; }
     .boss-phase { font-size: 13px; font-weight: 800; text-align: right; }
     .boss-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #ff4f5e, #f7b955); }
-    .shop { position: absolute; right: 16px; top: 16px; width: min(360px, calc(100vw - 32px)); color: #17202a; background: rgba(246, 248, 241, .94); border: 1px solid rgba(38, 54, 68, .25); border-radius: 8px; box-shadow: 0 12px 34px rgba(25, 39, 52, .28); padding: 12px; }
-    .shop[hidden], .end-screen[hidden], .lobby[hidden], .scoreboard[hidden], .revive-hint[hidden], .hint-toast[hidden] { display: none; }
+    .shop { position: absolute; right: 16px; top: 16px; width: min(390px, calc(100vw - 32px)); color: #17202a; background: rgba(246, 248, 241, .94); border: 1px solid rgba(38, 54, 68, .25); border-radius: 8px; box-shadow: 0 12px 34px rgba(25, 39, 52, .28); padding: 12px; }
+    .shop[hidden], .end-screen[hidden], .lobby[hidden], .scoreboard[hidden], .revive-hint[hidden], .hint-toast[hidden], .buy-toast[hidden] { display: none; }
     .shop-head, .shop-actions, .modules { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .shop-head { justify-content: space-between; margin-bottom: 10px; font-weight: 800; }
+    .gear-panel { border: 1px solid #c9d3d2; background: #edf7f3; border-radius: 8px; padding: 8px; margin-bottom: 10px; display: grid; gap: 4px; font-size: 12px; color: #31444c; }
+    .gear-panel strong { color: #162832; font-size: 14px; }
+    .gear-line { overflow-wrap: anywhere; }
     .offers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-    .offer, .module-btn { border: 1px solid #bbc5c8; background: #fffdf6; border-radius: 8px; padding: 8px; min-height: 92px; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; }
+    .offer, .module-btn { border: 1px solid #bbc5c8; background: #fffdf6; border-radius: 8px; padding: 8px; min-height: 116px; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; }
     .offer.sold { color: #6f7b83; background: #eef2ef; }
     .offer-title { font-weight: 800; font-size: 14px; line-height: 1.2; overflow-wrap: anywhere; }
+    .offer-desc { font-size: 12px; line-height: 1.25; color: #263942; }
     .offer-meta { font-size: 12px; color: #48575f; }
     button { border: 1px solid #52636c; background: #17384b; color: #fff; border-radius: 7px; padding: 7px 9px; font-weight: 800; cursor: pointer; }
     button.secondary { background: #fff; color: #17384b; }
@@ -59,7 +74,9 @@ root.innerHTML = `
     .card-actions { display: flex; gap: 6px; }
     .shop-actions { margin-top: 10px; justify-content: space-between; }
     .modules { margin-top: 10px; align-items: stretch; }
-    .module-btn { min-height: 64px; color: #17202a; background: #edf7f3; flex: 1 1 150px; text-align: left; }
+    .module-btn { min-height: 78px; color: #17202a; background: #edf7f3; flex: 1 1 150px; text-align: left; }
+    .module-name { font-weight: 900; }
+    .module-desc { font-size: 12px; color: #465b63; line-height: 1.25; }
     .placement { margin-top: 8px; color: #24424d; font-size: 13px; min-height: 18px; }
     .end-screen { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(13, 28, 38, .72); color: #fff; padding: 24px; }
     .end-panel { width: min(520px, calc(100vw - 48px)); background: #f7f8f1; color: #15242d; border-radius: 8px; padding: 22px; box-shadow: 0 16px 48px rgba(0,0,0,.34); }
@@ -89,6 +106,7 @@ root.innerHTML = `
     .score-name span { color: #65767d; font-size: 12px; }
     .revive-hint { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); color: #fff; background: rgba(16,43,58,.84); border: 1px solid rgba(255,255,255,.28); border-radius: 8px; padding: 9px 12px; font-weight: 900; text-shadow: 0 1px 2px rgba(0,0,0,.4); pointer-events: none; }
     .hint-toast { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); width: min(520px, calc(100vw - 32px)); color: #fffdf6; background: rgba(18, 48, 61, .9); border: 1px solid rgba(255,255,255,.3); border-radius: 8px; box-shadow: 0 8px 24px rgba(8, 22, 31, .26); padding: 10px 14px; font-weight: 900; text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,.34); pointer-events: none; }
+    .buy-toast { position: absolute; left: 50%; top: 72px; transform: translateX(-50%); width: min(520px, calc(100vw - 32px)); color: #15242d; background: rgba(255, 253, 246, .96); border: 1px solid rgba(38,54,68,.24); border-radius: 8px; box-shadow: 0 8px 24px rgba(8, 22, 31, .22); padding: 9px 13px; font-weight: 900; text-align: center; pointer-events: none; }
   </style>
   <div class="game-shell">
     <div class="hud" aria-live="polite">
@@ -116,6 +134,7 @@ root.innerHTML = `
     <div class="lobby" data-lobby></div>
     <div class="scoreboard" data-scoreboard hidden></div>
     <div class="hint-toast" data-hint-toast aria-live="polite" hidden></div>
+    <div class="buy-toast" data-buy-toast aria-live="polite" hidden></div>
     <div class="revive-hint" data-revive-hint hidden>Hold E to revive</div>
     <div class="end-screen" data-end-screen hidden></div>
   </div>
@@ -126,15 +145,17 @@ const shopEl = root.querySelector<HTMLElement>("[data-shop]");
 const lobbyEl = root.querySelector<HTMLElement>("[data-lobby]");
 const scoreboardEl = root.querySelector<HTMLElement>("[data-scoreboard]");
 const hintToastEl = root.querySelector<HTMLElement>("[data-hint-toast]");
+const buyToastEl = root.querySelector<HTMLElement>("[data-buy-toast]");
 const reviveHintEl = root.querySelector<HTMLElement>("[data-revive-hint]");
 const endScreenEl = root.querySelector<HTMLElement>("[data-end-screen]");
 const soundToggleEl = root.querySelector<HTMLButtonElement>("[data-sound-toggle]");
 
-if (shell === null || shopEl === null || lobbyEl === null || scoreboardEl === null || hintToastEl === null || reviveHintEl === null || endScreenEl === null || soundToggleEl === null) {
+if (shell === null || shopEl === null || lobbyEl === null || scoreboardEl === null || hintToastEl === null || buyToastEl === null || reviveHintEl === null || endScreenEl === null || soundToggleEl === null) {
   throw new Error("Missing game shell");
 }
 
 const hintToast = hintToastEl;
+const buyToast = buyToastEl;
 const renderer = await GameRenderer.create(shell);
 const input = new InputTracker(window);
 input.attach();
@@ -152,6 +173,9 @@ let previousOwnDowned = false;
 let previousBossPhase: NonNullable<InterpolatedState["boss"]>["phase"] | undefined;
 let combatStartedAtMs: number | undefined;
 let previousOwnCoins: number | undefined;
+let previousPurchaseState: PurchaseSnapshot | undefined;
+let previousShopOffers: ShopOfferView[] = [];
+let activeBuyToast: { text: string; dismissAtMs: number } | undefined;
 
 if (new URLSearchParams(window.location.search).has("resethints")) {
   resetSeenHints();
@@ -240,6 +264,7 @@ renderer.app.ticker.add((ticker) => {
   updateHints(state, connection.myPlayerId, nowMs);
   renderHud(root, renderer.hudState(state, connection.myPlayerId, connection.status));
   renderShop(shopEl, state, connection.latestSnapshot, connection.myPlayerId, connection.sendInput);
+  updatePurchaseToast(state, connection.myPlayerId, nowMs);
   renderScoreboard(scoreboardEl, state.players, connection.myPlayerId, input.isScoreboardHeld() && lobbyModel.activeRun);
   reviveHintEl.hidden = !ownCanRevive(state.players, connection.myPlayerId);
   renderEndScreen(endScreenEl, state, stats);
@@ -322,6 +347,33 @@ function renderHintToast(nowMs: number): void {
 
   hintToast.hidden = activeHint === undefined;
   hintToast.textContent = activeHint === undefined ? "" : HINT_COPY[activeHint.id];
+}
+
+function updatePurchaseToast(
+  state: InterpolatedState,
+  myPlayerId: string | undefined,
+  nowMs: number
+): void {
+  const ownPlayer = state.players.find((player) => player.id === myPlayerId);
+  const current = purchaseSnapshot(ownPlayer);
+  const toastText = purchaseToastText(previousPurchaseState, current, previousShopOffers);
+
+  if (toastText !== undefined) {
+    activeBuyToast = { text: toastText, dismissAtMs: nowMs + 2_500 };
+  }
+
+  previousPurchaseState = current;
+  previousShopOffers = [...(ownPlayer?.shop?.offers ?? [])];
+  renderBuyToast(nowMs);
+}
+
+function renderBuyToast(nowMs: number): void {
+  if (activeBuyToast !== undefined && nowMs >= activeBuyToast.dismissAtMs) {
+    activeBuyToast = undefined;
+  }
+
+  buyToast.hidden = activeBuyToast === undefined;
+  buyToast.textContent = activeBuyToast?.text ?? "";
 }
 
 function dismissHintForInput(message: ClientMessage): void {
@@ -421,7 +473,11 @@ function renderShop(
     coins,
     salvage,
     ready: locallyReady,
-    module: selectedModuleId ?? null
+    module: selectedModuleId ?? null,
+    characterId: player?.characterId ?? null,
+    weaponIds: player?.weaponIds ?? [],
+    hp: player === undefined ? null : [Math.ceil(player.hp), Math.ceil(player.maxHp)],
+    stats: player?.stats ?? null
   });
 
   if (key === shopRenderKey && shop.childElementCount > 0) {
@@ -440,6 +496,7 @@ function renderShop(
   timer.setAttribute("data-shop-timer", "");
   head.append(el("span", undefined, "Build Shop"), timer);
   shop.append(head);
+  shop.append(renderGearPanel(player));
 
   const offers = el("div", "offers");
   const offerViews = playerShop?.offers ?? [];
@@ -461,16 +518,32 @@ function renderShop(
 
   const moduleWrap = el("div", "modules");
   for (const moduleDef of Object.values(MODULES)) {
-    const moduleButton = button(`${moduleDef.name} ${moduleDef.salvageCost}`, () => {
+    const moduleButton = button("", () => {
       selectedModuleId = selectedModuleId === moduleDef.id ? undefined : moduleDef.id;
     });
     moduleButton.className = "module-btn";
     moduleButton.disabled = salvage < moduleDef.salvageCost;
     moduleButton.classList.toggle("selected", selectedModuleId === moduleDef.id);
+    moduleButton.append(
+      el("span", "module-name", `${moduleDef.name} ${moduleDef.salvageCost} salvage`),
+      el("span", "module-desc", moduleDef.description)
+    );
     moduleWrap.append(moduleButton);
   }
   shop.append(moduleWrap);
   shop.append(el("div", "placement", selectedModuleId === undefined ? "" : "Click an intact deck tile to place it."));
+}
+
+function renderGearPanel(player: PlayerView | undefined): HTMLElement {
+  const panel = el("div", "gear-panel");
+  panel.append(
+    el("strong", undefined, "Your gear"),
+    el("div", "gear-line", `Character: ${characterLabel(player?.characterId)}`),
+    el("div", "gear-line", `Weapons: ${weaponStackText(player?.weaponIds ?? [])}`),
+    el("div", "gear-line", ownedItemText(player)),
+    el("div", "gear-line", playerStatText(player))
+  );
+  return panel;
 }
 
 function renderLobby(container: HTMLElement, model: LobbyViewModel, connection: Connection): void {
@@ -626,9 +699,23 @@ function renderOffer(
     offer.kind === "weapon"
       ? displayName(WEAPONS, offer.defId)
       : displayName(ITEMS, offer.defId);
+  const description =
+    offer.kind === "weapon"
+      ? WEAPONS[offer.defId as keyof typeof WEAPONS]?.description ?? "Weapon upgrade"
+      : itemDefText(offer.defId);
+  const statLine =
+    offer.kind === "weapon"
+      ? weaponDefText(offer.defId)
+      : `${offer.price} coins`;
+  const owned =
+    offer.kind === "weapon"
+      ? player?.weaponIds.filter((id) => id === offer.defId).length ?? 0
+      : 0;
   card.append(
     el("div", "offer-title", title ?? offer.defId),
-    el("div", "offer-meta", `${offer.kind} - ${offer.price} coins`)
+    el("div", "offer-desc", description),
+    el("div", "offer-meta", statLine),
+    el("div", "offer-meta", `${offer.price} coins${owned > 0 ? ` · Owned x${owned} - stacks!` : ""}`)
   );
 
   const actions = el("div", "card-actions");
@@ -641,6 +728,16 @@ function renderOffer(
   card.append(actions);
 
   return card;
+}
+
+function itemDefText(defId: string): string {
+  const item = ITEMS[defId as keyof typeof ITEMS];
+  return item === undefined ? "Item upgrade" : itemModifiersText(item.modifiers);
+}
+
+function weaponDefText(defId: string): string {
+  const weapon = WEAPONS[defId as keyof typeof WEAPONS];
+  return weapon === undefined ? "Weapon stats unavailable" : weaponStatLine(weapon);
 }
 
 function renderEndScreen(container: HTMLElement, state: InterpolatedState, runStats: RunStats): void {

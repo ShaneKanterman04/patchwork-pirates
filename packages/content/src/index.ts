@@ -11,21 +11,25 @@ import type {
 import { KRAKEN_HP } from "@patchwork/sim";
 
 export type ContentWorldState = WorldState;
+type DescribedWeaponDef = WeaponDef & { description: string };
+type DescribedModuleDef = ModuleDef & { description: string };
 
 export const CUTLASS = {
   id: "cutlass",
   name: "Cutlass",
+  description: "Melee slash: hits foes in a wide arc in front of you",
   shopPrice: 12,
   targeting: "nearest",
   cooldownS: 0.7,
   rangeTiles: 1.4,
   damage: 18,
   pattern: { kind: "melee_arc", arcDegrees: 90 }
-} as const satisfies WeaponDef;
+} as const satisfies DescribedWeaponDef;
 
 export const HARPOON_GUN = {
   id: "harpoon_gun",
   name: "Harpoon Gun",
+  description: "Homing shot: pulls small foes, slows big ones",
   shopPrice: 16,
   targeting: "attacking_raft",
   cooldownS: 1.1,
@@ -41,18 +45,19 @@ export const HARPOON_GUN = {
     slowFactor: 0.5,
     slowDurationS: 1.5
   }
-} as const satisfies WeaponDef;
+} as const satisfies DescribedWeaponDef;
 
 export const COCONUT_LAUNCHER = {
   id: "coconut_launcher",
   name: "Coconut Launcher",
+  description: "Lobbed splash: great against tight clusters",
   shopPrice: 20,
   targeting: "densest_cluster",
   cooldownS: 1.6,
   rangeTiles: 5,
   damage: 26,
   pattern: { kind: "lob", projectileSpeed: 7, aoeRadius: 1.3 }
-} as const satisfies WeaponDef;
+} as const satisfies DescribedWeaponDef;
 
 export const CHUM = {
   id: "chum",
@@ -181,6 +186,7 @@ export const KRAKEN_HEAD = {
 export const CANNON = {
   id: "cannon",
   name: "Cannon",
+  description: "Auto-fires at the nearest enemy in range",
   maxHp: 60,
   salvageCost: 12,
   behavior: {
@@ -190,11 +196,12 @@ export const CANNON = {
     damage: 14,
     projectileSpeed: 9
   }
-} as const satisfies ModuleDef;
+} as const satisfies DescribedModuleDef;
 
 export const REPAIR_STATION = {
   id: "repair_station",
   name: "Repair Station",
+  description: "Repairs nearby tiles; faster when you stand next to it",
   maxHp: 60,
   salvageCost: 10,
   behavior: {
@@ -203,13 +210,13 @@ export const REPAIR_STATION = {
     repairRate: 15,
     playerBoostMult: 2.5
   }
-} as const satisfies ModuleDef;
+} as const satisfies DescribedModuleDef;
 
 export const WEAPONS = {
   cutlass: CUTLASS,
   harpoon_gun: HARPOON_GUN,
   coconut_launcher: COCONUT_LAUNCHER
-} as const satisfies Record<string, WeaponDef>;
+} as const satisfies Record<string, DescribedWeaponDef>;
 
 export const CAPTAIN = {
   id: "captain",
@@ -297,7 +304,7 @@ export const ENEMIES = {
 export const MODULES = {
   cannon: CANNON,
   repair_station: REPAIR_STATION
-} as const satisfies Record<string, ModuleDef>;
+} as const satisfies Record<string, DescribedModuleDef>;
 
 export const WAVES = [
   {
