@@ -1,4 +1,13 @@
-import type { EnemyView, PickupView, PlayerView, Snapshot } from "@patchwork/protocol";
+import type {
+  EnemyView,
+  ModuleView,
+  PickupView,
+  PlayerView,
+  ProjView,
+  RaftView,
+  Snapshot,
+  WavePhaseView
+} from "@patchwork/protocol";
 
 export const INTERP_DELAY_MS = 100;
 
@@ -10,7 +19,12 @@ export interface BufferedSnapshot {
 export interface InterpolatedState {
   players: PlayerView[];
   enemies: EnemyView[];
+  projectiles: ProjView[];
   pickups: PickupView[];
+  wave: WavePhaseView;
+  raft?: RaftView;
+  salvage?: number;
+  modules: ModuleView[];
 }
 
 export function interpolate(
@@ -18,7 +32,14 @@ export function interpolate(
   renderTimeMs: number
 ): InterpolatedState {
   if (buffer.length === 0) {
-    return { players: [], enemies: [], pickups: [] };
+    return {
+      players: [],
+      enemies: [],
+      projectiles: [],
+      pickups: [],
+      wave: { number: 1, phase: "combat", timeLeft: 0 },
+      modules: []
+    };
   }
 
   if (buffer.length === 1) {
@@ -47,7 +68,16 @@ export function interpolate(
       return {
         players: interpolateById(older.snapshot.players, newer.snapshot.players, alpha),
         enemies: interpolateById(older.snapshot.enemies, newer.snapshot.enemies, alpha),
-        pickups: interpolateById(older.snapshot.pickups, newer.snapshot.pickups, alpha)
+        projectiles: interpolateById(
+          older.snapshot.projectiles,
+          newer.snapshot.projectiles,
+          alpha
+        ),
+        pickups: interpolateById(older.snapshot.pickups, newer.snapshot.pickups, alpha),
+        wave: newer.snapshot.wave,
+        raft: newer.snapshot.raft,
+        salvage: newer.snapshot.salvage,
+        modules: newer.snapshot.modules?.map((module) => ({ ...module })) ?? []
       };
     }
   }
@@ -59,7 +89,12 @@ function snapshotToState(snapshot: Snapshot): InterpolatedState {
   return {
     players: snapshot.players.map((player) => ({ ...player })),
     enemies: snapshot.enemies.map((enemy) => ({ ...enemy })),
-    pickups: snapshot.pickups.map((pickup) => ({ ...pickup }))
+    projectiles: snapshot.projectiles.map((projectile) => ({ ...projectile })),
+    pickups: snapshot.pickups.map((pickup) => ({ ...pickup })),
+    wave: snapshot.wave,
+    raft: snapshot.raft,
+    salvage: snapshot.salvage,
+    modules: snapshot.modules?.map((module) => ({ ...module })) ?? []
   };
 }
 

@@ -1,7 +1,16 @@
 import { Application, Container, Graphics } from "pixi.js";
-import type { EnemyView, PickupView, PlayerView, WireEvent } from "@patchwork/protocol";
+import type {
+  EnemyView,
+  ModuleView,
+  PickupView,
+  PlayerView,
+  ProjView,
+  RaftView,
+  WireEvent
+} from "@patchwork/protocol";
 import type { ConnectionStatus } from "./net";
 import type { InterpolatedState } from "./interp";
+import type { ViewportTransform } from "./shopLogic";
 
 export const TILE_PX = 60;
 
@@ -13,6 +22,7 @@ const PLAYER_RADIUS = 0.38;
 const SLASH_DURATION_MS = 180;
 const HIT_DURATION_MS = 140;
 const KILL_DURATION_MS = 260;
+const EXPLOSION_DURATION_MS = 360;
 
 interface EntityNode {
   container: Container;
@@ -40,12 +50,15 @@ interface PopVfx {
   x: number;
   y: number;
   color: number;
-  kind: "hit" | "kill";
+  kind: "hit" | "kill" | "explosion";
 }
 
 export interface HudState {
   status: ConnectionStatus;
   waveText: string;
+  phaseText: string;
+  coinsText: string;
+  salvageText: string;
   hpText: string;
   hpRatio: number;
 }
@@ -53,6 +66,8 @@ export interface HudState {
 export class GameRenderer {
   private readonly world = new Container();
   private readonly raft = new Container();
+  private readonly modules = new Map<string, Graphics>();
+  private readonly projectiles = new Map<string, Graphics>();
   private readonly players = new Map<string, EntityNode>();
   private readonly enemies = new Map<string, EntityNode>();
   private readonly pickups = new Map<string, Graphics>();
@@ -105,14 +120,15 @@ export class GameRenderer {
       } else if (event.type === "enemy_killed") {
         this.addPop(event.x, event.y, 0x9be7ff, KILL_DURATION_MS, "kill");
       } else if (event.type === "explosion") {
-        this.addPop(event.x, event.y, 0xffb020, KILL_DURATION_MS, "kill");
+        this.addPop(event.x, event.y, 0xffb020, EXPLOSION_DURATION_MS, "explosion");
       }
-      // tile_broken / tile_repaired / core_destroyed are rendered from raft
-      // snapshot state in packet 1.7 — ignored here for now.
     }
   }
 
   update(state: InterpolatedState, myPlayerId: string | undefined, deltaMs: number): void {
+    this.drawRaft(state.raft);
+    this.updateModules(state.modules);
+    this.updateProjectiles(state.projectiles);
     this.updatePlayers(state.players, myPlayerId);
     this.updateEnemies(state.enemies);
     this.updatePickups(state.pickups);
@@ -124,7 +140,6 @@ export class GameRenderer {
     state: InterpolatedState,
     myPlayerId: string | undefined,
     status: ConnectionStatus,
-    waveNumber: number | undefined
   ): HudState {
     const ownPlayer = state.players.find((player) => player.id === myPlayerId);
     const hpRatio =
@@ -136,9 +151,20 @@ export class GameRenderer {
 
     return {
       status,
-      waveText: `Wave ${waveNumber ?? 1}`,
+      waveText: `Wave ${state.wave.number}`,
+      phaseText: phaseText(state.wave.phase, state.wave.timeLeft),
+      coinsText: `Coins ${ownPlayer?.coins ?? 0}`,
+      salvageText: `Salvage ${state.salvage ?? 0}`,
       hpText,
       hpRatio: clamp01(hpRatio)
+    };
+  }
+
+  viewportTransform(): ViewportTransform {
+    return {
+      scale: this.world.scale.x,
+      offsetX: this.world.position.x,
+      offsetY: this.world.position.y
     };
   }
 
@@ -154,29 +180,52 @@ export class GameRenderer {
     );
   };
 
-  private drawRaft(): void {
+  private drawRaft(raft?: RaftView): void {
     this.raft.removeChildren();
+    const tiles = raft?.tiles ?? fallbackRaft().tiles;
 
-    for (let y = 0; y < RAFT_SIZE_TILES; y += 1) {
-      for (let x = 0; x < RAFT_SIZE_TILES; x += 1) {
-        const isCore = x === 2 && y === 2;
-        const tile = new Graphics();
+    for (const tileView of tiles) {
+      const tile = new Graphics();
+      const x = tileView.col;
+      const y = tileView.row;
+
+      if (tileView.broken) {
         tile
-          .rect(x + 0.03, y + 0.03, 0.94, 0.94)
-          .fill(isCore ? 0xd9a441 : 0xb87942)
-          .stroke({ color: isCore ? 0x7b4b18 : 0x6f4425, width: 0.035 });
-        tile
-          .moveTo(x + 0.16, y + 0.5)
-          .lineTo(x + 0.84, y + 0.5)
-          .stroke({ color: isCore ? 0xffd77a : 0xd79a5d, width: 0.025, alpha: 0.7 });
+          .rect(x + 0.06, y + 0.06, 0.88, 0.88)
+          .fill({ color: 0x317e9b, alpha: 0.72 })
+          .stroke({ color: 0x8ed7ed, width: 0.025, alpha: 0.55 })
+          .moveTo(x + 0.18, y + 0.54)
+          .lineTo(x + 0.82, y + 0.46)
+          .stroke({ color: 0xb9edf6, width: 0.025, alpha: 0.5 });
         this.raft.addChild(tile);
+        continue;
       }
-    }
 
-    // Phase 0 snapshots do not include raft tile state; Phase 1 will replace this static deck.
-    const coreMark = new Graphics();
-    coreMark.circle(2.5, 2.5, 0.28).fill(0x7f4f1b).stroke({ color: 0xffec9f, width: 0.04 });
-    this.raft.addChild(coreMark);
+      const hpRatio = clamp01(tileView.hpRatio);
+      const isCore = tileView.kind === "core";
+      const deckColor = blendColor(isCore ? 0x7f4f1b : 0x5b3421, isCore ? 0xd9a441 : 0xb87942, hpRatio);
+      tile
+        .rect(x + 0.03, y + 0.03, 0.94, 0.94)
+        .fill(deckColor)
+        .stroke({ color: isCore ? 0xffec9f : 0x6f4425, width: isCore ? 0.055 : 0.035 });
+      tile
+        .moveTo(x + 0.16, y + 0.5)
+        .lineTo(x + 0.84, y + 0.5)
+        .stroke({ color: isCore ? 0xffd77a : 0xd79a5d, width: 0.025, alpha: 0.7 });
+
+      if (isCore) {
+        tile
+          .circle(x + 0.5, y + 0.5, 0.3)
+          .fill(0x7f4f1b)
+          .stroke({ color: 0xffec9f, width: 0.045 })
+          .roundRect(x + 0.16, y + 0.84, 0.68, 0.08, 0.025)
+          .fill(0x2b1d1d)
+          .roundRect(x + 0.18, y + 0.86, 0.64 * hpRatio, 0.04, 0.02)
+          .fill(hpColor(hpRatio));
+      }
+
+      this.raft.addChild(tile);
+    }
   }
 
   private updatePlayers(players: readonly PlayerView[], myPlayerId: string | undefined): void {
@@ -218,19 +267,68 @@ export class GameRenderer {
       seen.add(enemy.id);
       const node = getOrCreateEntity(this.enemies, this.world, enemy.id, false);
       node.container.position.set(enemy.x, enemy.y);
-      node.body
-        .clear()
-        .circle(0, 0, enemy.radius)
-        .fill(0xde4d3a)
-        .stroke({ color: 0x621e19, width: 0.055 })
-        .circle(-enemy.radius * 0.28, -enemy.radius * 0.15, enemy.radius * 0.12)
-        .fill(0xfff2dc)
-        .circle(enemy.radius * 0.28, -enemy.radius * 0.15, enemy.radius * 0.12)
-        .fill(0xfff2dc);
+      drawEnemy(node.body.clear(), enemy);
       drawHpBar(node, enemy.hpRatio);
     }
 
     removeMissing(this.enemies, seen);
+  }
+
+  private updateModules(modules: readonly ModuleView[]): void {
+    const seen = new Set<string>();
+
+    for (const module of modules) {
+      seen.add(module.id);
+      let graphic = this.modules.get(module.id);
+
+      if (graphic === undefined) {
+        graphic = new Graphics();
+        this.modules.set(module.id, graphic);
+        this.world.addChild(graphic);
+      }
+
+      drawModule(graphic, module);
+    }
+
+    for (const [id, graphic] of this.modules) {
+      if (!seen.has(id)) {
+        graphic.destroy();
+        this.modules.delete(id);
+      }
+    }
+  }
+
+  private updateProjectiles(projectiles: readonly ProjView[]): void {
+    const seen = new Set<string>();
+
+    for (const projectile of projectiles) {
+      seen.add(projectile.id);
+      let graphic = this.projectiles.get(projectile.id);
+
+      if (graphic === undefined) {
+        graphic = new Graphics();
+        this.projectiles.set(projectile.id, graphic);
+        this.world.addChild(graphic);
+      }
+
+      const isEnemy = projectile.faction === "enemy";
+      graphic.position.set(projectile.x, projectile.y);
+      graphic
+        .clear()
+        .circle(0, 0, isEnemy ? 0.13 : 0.09)
+        .fill(isEnemy ? 0x7ee36d : 0xfff2a0)
+        .stroke({ color: isEnemy ? 0x245820 : 0xffffff, width: 0.025 })
+        .moveTo(isEnemy ? -0.18 : -0.26, 0)
+        .lineTo(0.04, 0)
+        .stroke({ color: isEnemy ? 0xb9ff9e : 0xffffff, width: 0.04, alpha: 0.65 });
+    }
+
+    for (const [id, graphic] of this.projectiles) {
+      if (!seen.has(id)) {
+        graphic.destroy();
+        this.projectiles.delete(id);
+      }
+    }
   }
 
   private updatePickups(pickups: readonly PickupView[]): void {
@@ -289,7 +387,8 @@ export class GameRenderer {
       }
 
       const t = pop.ageMs / pop.durationMs;
-      const radius = pop.kind === "hit" ? 0.12 + t * 0.22 : 0.2 + t * 0.48;
+      const radius =
+        pop.kind === "hit" ? 0.12 + t * 0.22 : pop.kind === "explosion" ? 0.32 + t * 0.9 : 0.2 + t * 0.48;
       pop.graphic.position.set(pop.x, pop.y);
       pop.graphic
         .clear()
@@ -309,6 +408,110 @@ export class GameRenderer {
     this.world.addChild(graphic);
     this.pops.push({ ageMs: 0, durationMs, graphic, x, y, color, kind });
   }
+}
+
+function fallbackRaft(): RaftView {
+  const tiles = [];
+
+  for (let row = 0; row < RAFT_SIZE_TILES; row += 1) {
+    for (let col = 0; col < RAFT_SIZE_TILES; col += 1) {
+      tiles.push({
+        col,
+        row,
+        kind: col === 2 && row === 2 ? ("core" as const) : ("deck" as const),
+        hpRatio: 1,
+        broken: false
+      });
+    }
+  }
+
+  return { width: RAFT_SIZE_TILES, height: RAFT_SIZE_TILES, tiles };
+}
+
+function drawEnemy(graphic: Graphics, enemy: EnemyView): void {
+  const r = enemy.radius;
+
+  if (enemy.kind === "brute_turtle") {
+    graphic
+      .ellipse(0, 0.04, r * 1.15, r * 0.82)
+      .fill(0x4d9b60)
+      .stroke({ color: 0x244629, width: 0.07 })
+      .circle(r * 0.62, -r * 0.08, r * 0.28)
+      .fill(0x78bd74)
+      .circle(-r * 0.2, -r * 0.12, r * 0.22)
+      .fill(0x2f6f3d);
+    return;
+  }
+
+  if (enemy.kind === "plank_biter") {
+    graphic
+      .roundRect(-r * 1.25, -r * 0.42, r * 2.5, r * 0.84, r * 0.16)
+      .fill(0x7b5435)
+      .stroke({ color: 0x3d2617, width: 0.055 })
+      .moveTo(r * 0.25, -r * 0.38)
+      .lineTo(r * 0.62, 0)
+      .lineTo(r * 0.25, r * 0.38)
+      .stroke({ color: 0xfff2dc, width: 0.05 });
+    return;
+  }
+
+  if (enemy.kind === "spitter_crab") {
+    graphic
+      .circle(0, 0, r)
+      .fill(0xc75878)
+      .stroke({ color: 0x63263d, width: 0.055 })
+      .circle(0, -r * 0.15, r * 0.26)
+      .fill(0xfff2dc)
+      .circle(0, -r * 0.15, r * 0.11)
+      .fill(0x1c1c24)
+      .moveTo(-r * 1.1, r * 0.1)
+      .lineTo(-r * 0.45, r * 0.25)
+      .moveTo(r * 0.45, r * 0.25)
+      .lineTo(r * 1.1, r * 0.1)
+      .stroke({ color: 0x63263d, width: 0.05 });
+    return;
+  }
+
+  graphic
+    .circle(0, 0, r)
+    .fill(0xde4d3a)
+    .stroke({ color: 0x621e19, width: 0.055 })
+    .circle(-r * 0.26, -r * 0.13, r * 0.11)
+    .fill(0xfff2dc)
+    .circle(r * 0.26, -r * 0.13, r * 0.11)
+    .fill(0xfff2dc);
+}
+
+function drawModule(graphic: Graphics, module: ModuleView): void {
+  const x = module.col + 0.5;
+  const y = module.row + 0.5;
+  const ratio = clamp01(module.hpRatio);
+  graphic.clear();
+
+  if (module.defId === "repair_station") {
+    graphic
+      .roundRect(module.col + 0.22, module.row + 0.22, 0.56, 0.56, 0.08)
+      .fill(0x2aa876)
+      .stroke({ color: 0xe7fff6, width: 0.04 })
+      .moveTo(x - 0.16, y)
+      .lineTo(x + 0.16, y)
+      .moveTo(x, y - 0.16)
+      .lineTo(x, y + 0.16)
+      .stroke({ color: 0xe7fff6, width: 0.075, cap: "round" });
+  } else {
+    graphic
+      .circle(x, y, 0.29)
+      .fill(0x39485a)
+      .stroke({ color: 0xe4edf5, width: 0.04 })
+      .rect(x + 0.05, y - 0.08, 0.34, 0.16)
+      .fill(0x222933)
+      .stroke({ color: 0xe4edf5, width: 0.025 });
+  }
+
+  graphic
+    .circle(module.col + 0.82, module.row + 0.2, 0.07)
+    .fill(hpColor(ratio))
+    .stroke({ color: 0x1e1e24, width: 0.02 });
 }
 
 function getOrCreateEntity(
@@ -386,6 +589,19 @@ function hpColor(ratio: number): number {
   return (red << 16) + (green << 8) + 64;
 }
 
+function blendColor(damaged: number, healthy: number, ratio: number): number {
+  const r1 = (damaged >> 16) & 0xff;
+  const g1 = (damaged >> 8) & 0xff;
+  const b1 = damaged & 0xff;
+  const r2 = (healthy >> 16) & 0xff;
+  const g2 = (healthy >> 8) & 0xff;
+  const b2 = healthy & 0xff;
+  const red = Math.round(r1 * (1 - ratio) + r2 * ratio);
+  const green = Math.round(g1 * (1 - ratio) + g2 * ratio);
+  const blue = Math.round(b1 * (1 - ratio) + b2 * ratio);
+  return (red << 16) + (green << 8) + blue;
+}
+
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
@@ -393,6 +609,9 @@ function clamp01(value: number): number {
 export function renderHud(root: HTMLElement, state: HudState): void {
   root.querySelector<HTMLElement>("[data-status]")?.replaceChildren(state.status);
   root.querySelector<HTMLElement>("[data-wave]")?.replaceChildren(state.waveText);
+  root.querySelector<HTMLElement>("[data-phase]")?.replaceChildren(state.phaseText);
+  root.querySelector<HTMLElement>("[data-coins]")?.replaceChildren(state.coinsText);
+  root.querySelector<HTMLElement>("[data-salvage]")?.replaceChildren(state.salvageText);
   root.querySelector<HTMLElement>("[data-hp-text]")?.replaceChildren(state.hpText);
 
   const hpFill = root.querySelector<HTMLElement>("[data-hp-fill]");
@@ -402,4 +621,16 @@ export function renderHud(root: HTMLElement, state: HudState): void {
       state.hpRatio * 100
     )}%)`;
   }
+}
+
+function phaseText(phase: InterpolatedState["wave"]["phase"], timeLeft: number): string {
+  if (phase === "combat") {
+    return timeLeft > 0 ? `Fight! ${Math.ceil(timeLeft)}s` : "Fight!";
+  }
+
+  if (phase === "build") {
+    return timeLeft > 0 ? `Build ${Math.ceil(timeLeft)}s` : "Build";
+  }
+
+  return phase === "victory" ? "Victory" : "Defeat";
 }

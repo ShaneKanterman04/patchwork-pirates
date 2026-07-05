@@ -27,7 +27,7 @@ Work branch `phase-0`. Legend: ✅ done & committed · 🔨 in progress · ⬜ t
   - ✅ 0.4 server match loop + WS + snapshots (protocol wire contract)
   - ✅ 0.5 PixiJS client render + interpolation + input capture
   - ⏸ exit gate — Shane playtest (open but NON-BLOCKING; Shane chose "build straight through")
-- **Phase 1 — The core loop, solo** 🔨
+- **Phase 1 — The core loop, solo** 🔨 (all packets built & verified; awaiting playtest)
   - ✅ 1.1 raft damage: tile HP/holes/repair/rebuild + core HP + movement respects holes (sim)
   - ✅ 1.2 threat-score targeting + Harpoon Gun + Coconut Launcher + projectiles (sim+content) + overseer wire-sync (explosion/tile/core WireEvents)
   - ✅ 1.3 enemies: Spitter Crab, Plank-Biter, Brute Turtle + AI primitives (sim+content)
@@ -35,7 +35,8 @@ Work branch `phase-0`. Legend: ✅ done & committed · 🔨 in progress · ⬜ t
   - ✅ 1.5 modules: Cannon + Repair Station (sim+content)
   - ✅ 1.6 economy: coins/pickup radius, salvage, shop, items, transactions (sim+content) [raft-expansion deferred]
   - ✅ 1.6w wire extension: Snapshot raft/core/coins/salvage/run/modules/shop + build messages (protocol+server)
-  - 🔨 1.7 client: build/shop UI, raft-damage render, victory/defeat + run stats (client)
+  - ✅ 1.7 client: build/shop UI, raft-damage render, victory/defeat + run stats (client)
+  - ⏸ exit gate — Shane playtest (full 8-wave solo run; lose 2 ways, win with 2 builds). Overseer verified the stack headlessly (97 tests, run-machine + wire + message smokes); feel/balance is Shane's.
 - Phases 2–6 ⬜ not started
 
 ---
