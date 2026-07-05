@@ -1,5 +1,38 @@
 export const PROTOCOL_VERSION = 1;
 
+export interface RaftTileView {
+  col: number;
+  row: number;
+  kind: "deck" | "core";
+  hpRatio: number;
+  broken: boolean;
+}
+
+export interface RaftView {
+  width: number;
+  height: number;
+  tiles: RaftTileView[];
+}
+
+export interface ModuleView {
+  id: string;
+  defId: string;
+  col: number;
+  row: number;
+  hpRatio: number;
+}
+
+export type ShopOfferView =
+  | { kind: "weapon"; defId: string; price: number }
+  | { kind: "item"; defId: string; price: number }
+  | { kind: "sold" };
+
+export interface ShopView {
+  offers: ShopOfferView[];
+  locked: boolean[];
+  rerollCost: number;
+}
+
 export interface PlayerView {
   id: string;
   x: number;
@@ -10,6 +43,8 @@ export interface PlayerView {
   facingY: number;
   downed: boolean;
   weaponIds: string[];
+  coins?: number;
+  shop?: ShopView;
 }
 
 export interface EnemyView {
@@ -33,11 +68,12 @@ export interface ProjView {
   kind: string;
   x: number;
   y: number;
+  faction?: "player" | "enemy";
 }
 
 export interface WavePhaseView {
   number: number;
-  phase: "combat" | "build";
+  phase: "combat" | "build" | "victory" | "defeat";
   timeLeft: number;
 }
 
@@ -48,6 +84,9 @@ export interface Snapshot {
   projectiles: ProjView[];
   pickups: PickupView[];
   wave: WavePhaseView;
+  raft?: RaftView;
+  salvage?: number;
+  modules?: ModuleView[];
 }
 
 export type WireEvent =
@@ -79,13 +118,19 @@ export type ServerMessage =
   | { type: "snapshot"; snapshot: Snapshot }
   | { type: "events"; tick: number; events: WireEvent[] };
 
-export type ClientMessage = {
-  type: "player_input";
-  seq: number;
-  movement: { x: number; y: number };
-  dash: boolean;
-  interact: boolean;
-};
+export type ClientMessage =
+  | {
+      type: "player_input";
+      seq: number;
+      movement: { x: number; y: number };
+      dash: boolean;
+      interact: boolean;
+    }
+  | { type: "buy"; index: number }
+  | { type: "reroll" }
+  | { type: "lock"; index: number }
+  | { type: "ready"; ready: boolean }
+  | { type: "place_module"; defId: string; col: number; row: number };
 
 export function encodeServerMessage(msg: ServerMessage): string {
   return JSON.stringify(msg);
@@ -112,7 +157,14 @@ export function encodeClientMessage(msg: ClientMessage): string {
 export function decodeClientMessage(raw: string): ClientMessage {
   const msg = parseJsonRecord(raw);
 
-  if (msg.type !== "player_input") {
+  if (
+    msg.type !== "player_input" &&
+    msg.type !== "buy" &&
+    msg.type !== "reroll" &&
+    msg.type !== "lock" &&
+    msg.type !== "ready" &&
+    msg.type !== "place_module"
+  ) {
     throw new Error(`Unknown client message type: ${String(msg.type)}`);
   }
 

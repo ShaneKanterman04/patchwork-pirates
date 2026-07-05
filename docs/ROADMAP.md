@@ -34,8 +34,8 @@ Work branch `phase-0`. Legend: ✅ done & committed · 🔨 in progress · ⬜ t
   - ✅ 1.4 wave system: budget spawner, 8 waves, phase state machine, run lifecycle (sim+content)
   - ✅ 1.5 modules: Cannon + Repair Station (sim+content)
   - ✅ 1.6 economy: coins/pickup radius, salvage, shop, items, transactions (sim+content) [raft-expansion deferred]
-  - 🔨 1.6w wire extension: Snapshot raft/core/coins/salvage/run/modules/shop + build messages (protocol+server)
-  - ⬜ 1.7 client: build/shop UI, raft-damage render, victory/defeat + run stats (client)
+  - ✅ 1.6w wire extension: Snapshot raft/core/coins/salvage/run/modules/shop + build messages (protocol+server)
+  - 🔨 1.7 client: build/shop UI, raft-damage render, victory/defeat + run stats (client)
 - Phases 2–6 ⬜ not started
 
 ---

@@ -9,9 +9,9 @@ import type { RawData } from "ws";
 import {
   buildSnapshot,
   createMatch,
+  handleClientMessage,
   matchAddPlayer,
   matchRemovePlayer,
-  setInput,
   simEventsToWire,
   stepMatch
 } from "./match";
@@ -50,7 +50,7 @@ export function startServer(port = readPort(), seed = Date.now() >>> 0): ServerH
     socket.on("message", (raw) => {
       try {
         const msg = decodeClientMessage(rawDataToString(raw));
-        setInput(match, playerId, msg);
+        handleClientMessage(match, playerId, msg);
       } catch (error) {
         console.warn(
           `dropping invalid client message from ${playerId}: ${String(error)}`

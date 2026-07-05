@@ -1,13 +1,26 @@
 import { CONTENT } from "@patchwork/content";
-import { addPlayer, createWorld, tick } from "@patchwork/sim";
+import {
+  TICK_RATE,
+  addPlayer,
+  buyOffer,
+  createWorld,
+  purchaseModule,
+  rerollShop,
+  setPlayerReady,
+  tick,
+  toggleLock
+} from "@patchwork/sim";
 import type {
   PlayerId,
   PlayerInput,
   SimEvent,
+  ShopOffer,
   WorldState
 } from "@patchwork/sim";
 import type {
   ClientMessage,
+  ShopOfferView,
+  ShopView,
   Snapshot,
   WireEvent
 } from "@patchwork/protocol";
@@ -56,6 +69,43 @@ export function setInput(
   });
 }
 
+export function handleClientMessage(
+  match: Match,
+  playerId: string,
+  msg: ClientMessage
+): void {
+  try {
+    switch (msg.type) {
+      case "player_input":
+        setInput(match, playerId, msg);
+        return;
+      case "buy":
+        buyOffer(match.world, playerId, msg.index);
+        return;
+      case "reroll":
+        rerollShop(match.world, playerId);
+        return;
+      case "lock":
+        toggleLock(match.world, playerId, msg.index);
+        return;
+      case "ready":
+        setPlayerReady(match.world, playerId, msg.ready);
+        return;
+      case "place_module":
+        purchaseModule(match.world, playerId, msg.defId, msg.col, msg.row);
+        return;
+      default:
+        console.warn(
+          `dropping unknown client message from ${playerId}: ${JSON.stringify(msg)}`
+        );
+    }
+  } catch (error) {
+    console.warn(
+      `dropping bad client message from ${playerId}: ${String(error)}`
+    );
+  }
+}
+
 export function stepMatch(match: Match): SimEvent[] {
   const inputs = new Map<PlayerId, PlayerInput>();
 
@@ -83,7 +133,9 @@ export function buildSnapshot(match: Match): Snapshot {
       facingX: player.facing.x,
       facingY: player.facing.y,
       downed: player.hp <= 0,
-      weaponIds: player.weapons.map((weapon) => weapon.defId)
+      weaponIds: player.weapons.map((weapon) => weapon.defId),
+      coins: player.coins,
+      shop: shopToView(player.shop)
     })),
     enemies: match.world.enemies.map((enemy) => ({
       id: enemy.id,
@@ -97,7 +149,8 @@ export function buildSnapshot(match: Match): Snapshot {
       id: projectile.id,
       kind: projectile.type,
       x: projectile.pos.x,
-      y: projectile.pos.y
+      y: projectile.pos.y,
+      faction: projectile.faction
     })),
     pickups: match.world.pickups.map((pickup) => ({
       id: pickup.id,
@@ -105,8 +158,54 @@ export function buildSnapshot(match: Match): Snapshot {
       x: pickup.pos.x,
       y: pickup.pos.y
     })),
-    wave: { number: 1, phase: "combat", timeLeft: 0 }
+    wave: {
+      number: match.world.run.wave,
+      phase: match.world.run.phase,
+      timeLeft: Math.round((match.world.run.phaseTicksLeft / TICK_RATE) * 10) / 10
+    },
+    raft: {
+      width: match.world.raft.width,
+      height: match.world.raft.height,
+      tiles: match.world.raft.tiles.map((tile) => ({
+        col: tile.col,
+        row: tile.row,
+        kind: tile.kind,
+        hpRatio: tile.maxHp > 0 ? tile.hp / tile.maxHp : 0,
+        broken: tile.broken
+      }))
+    },
+    salvage: match.world.salvage,
+    modules: match.world.modules.map((module) => ({
+      id: module.id,
+      defId: module.defId,
+      col: module.col,
+      row: module.row,
+      hpRatio: module.maxHp > 0 ? module.hp / module.maxHp : 0
+    }))
   };
+}
+
+function shopToView(shop: { offers: ShopOffer[]; locked: boolean[]; rerollCost: number }): ShopView {
+  return {
+    offers: shop.offers.map(shopOfferToView),
+    locked: [...shop.locked],
+    rerollCost: shop.rerollCost
+  };
+}
+
+function shopOfferToView(offer: ShopOffer): ShopOfferView {
+  switch (offer.kind) {
+    case "weapon":
+      return { kind: "weapon", defId: offer.defId, price: offer.price };
+    case "item":
+      return { kind: "item", defId: offer.defId, price: offer.price };
+    case "sold":
+      return { kind: "sold" };
+    default: {
+      const unhandled: never = offer;
+      throw new Error(`unhandled shop offer: ${JSON.stringify(unhandled)}`);
+    }
+  }
 }
 
 export function simEventsToWire(events: SimEvent[]): WireEvent[] {

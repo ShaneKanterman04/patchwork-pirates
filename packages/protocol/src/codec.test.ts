@@ -20,13 +20,33 @@ const snapshot: Snapshot = {
       facingX: 1,
       facingY: 0,
       downed: false,
-      weaponIds: ["cutlass"]
+      weaponIds: ["cutlass"],
+      coins: 12,
+      shop: {
+        offers: [
+          { kind: "weapon", defId: "harpoon", price: 8 },
+          { kind: "item", defId: "boots", price: 6 },
+          { kind: "sold" }
+        ],
+        locked: [true, false, false],
+        rerollCost: 3
+      }
     }
   ],
   enemies: [{ id: "e1", kind: "chum", x: 4, y: 5, hpRatio: 0.5, radius: 0.3 }],
-  projectiles: [],
+  projectiles: [{ id: "pr1", kind: "glob", x: 4, y: 4, faction: "enemy" }],
   pickups: [{ id: "c1", kind: "coin", x: 3, y: 3 }],
-  wave: { number: 1, phase: "combat", timeLeft: 0 }
+  wave: { number: 2, phase: "build", timeLeft: 14.5 },
+  raft: {
+    width: 3,
+    height: 2,
+    tiles: [
+      { col: 0, row: 0, kind: "deck", hpRatio: 1, broken: false },
+      { col: 1, row: 0, kind: "core", hpRatio: 0.75, broken: false }
+    ]
+  },
+  salvage: 5,
+  modules: [{ id: "m1", defId: "cannon", col: 2, row: 1, hpRatio: 0.5 }]
 };
 
 describe("protocol codec", () => {
@@ -81,6 +101,20 @@ describe("protocol codec", () => {
     };
 
     expect(decodeClientMessage(encodeClientMessage(msg))).toEqual(msg);
+  });
+
+  it("round-trips build phase client messages", () => {
+    const messages: ClientMessage[] = [
+      { type: "buy", index: 1 },
+      { type: "reroll" },
+      { type: "lock", index: 2 },
+      { type: "ready", ready: true },
+      { type: "place_module", defId: "cannon", col: 1, row: 2 }
+    ];
+
+    for (const msg of messages) {
+      expect(decodeClientMessage(encodeClientMessage(msg))).toEqual(msg);
+    }
   });
 
   it("throws on unknown server message type", () => {
