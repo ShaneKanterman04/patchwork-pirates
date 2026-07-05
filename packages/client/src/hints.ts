@@ -6,6 +6,7 @@ export const HINT_COPY = {
   repair: "Stand near damaged raft tiles with Supplies to repair automatically",
   coins: "Coins buy weapons & items in the build shop",
   build: "Build phase - stand near a deck tile, spend Supplies on modules, then Ready Up",
+  expand: "Stand at the water's edge during BUILD to expand the raft!",
   revive: "Stand next to a downed mate and hold E to revive them",
   boss: "The Kraken! Strike the head when it surfaces - heed the tile warnings"
 } as const;
@@ -18,6 +19,7 @@ export interface HintView {
   nearDamagedTile: boolean;
   coinsIncreased: boolean;
   inBuildPhase: boolean;
+  canExpandRaft: boolean;
   teammateDowned: boolean;
   bossPresent: boolean;
 }
@@ -43,6 +45,10 @@ export function nextHint(seen: ReadonlySet<string>, view: HintView): HintId | nu
 
   if (view.coinsIncreased && !seen.has("coins")) {
     return "coins";
+  }
+
+  if (view.canExpandRaft && !seen.has("expand")) {
+    return "expand";
   }
 
   if (view.inBuildPhase && !seen.has("build")) {

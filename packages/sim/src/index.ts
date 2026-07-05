@@ -1,6 +1,6 @@
 export * from "./constants";
 export { addPlayer } from "./player";
-export { damageTile, isHole, isWalkable, tileAt } from "./raft";
+export { buildTile, damageTile, isHole, isWalkable, tileAt } from "./raft";
 export { forceDowned, updateDowned } from "./downed";
 export { applyAuras, updateSpecials } from "./characters";
 export { startBoss, updateBoss, updateBossAfterSim } from "./boss";

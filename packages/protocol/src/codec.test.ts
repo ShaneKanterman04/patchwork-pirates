@@ -128,6 +128,7 @@ describe("protocol codec", () => {
       { type: "lock", index: 2 },
       { type: "ready", ready: true },
       { type: "place_module", defId: "cannon", col: 1, row: 2 },
+      { type: "build_tile", col: -1, row: 2 },
       { type: "ping" }
     ];
 
@@ -177,5 +178,14 @@ describe("protocol codec", () => {
     expect(() => decodeClientMessage('{"type":"wat"}')).toThrow(
       "Unknown client message type"
     );
+  });
+
+  it("rejects invalid build_tile coordinates", () => {
+    expect(() =>
+      decodeClientMessage('{"type":"build_tile","col":"x","row":2}')
+    ).toThrow("Invalid build_tile coordinates");
+    expect(() =>
+      decodeClientMessage('{"type":"build_tile","col":1,"row":null}')
+    ).toThrow("Invalid build_tile coordinates");
   });
 });

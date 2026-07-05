@@ -93,6 +93,65 @@ export function nearestBuildTile(
   return selected;
 }
 
+export function expansionSites(raft: RaftView | undefined): TileCoord[] {
+  if (raft === undefined) {
+    return [];
+  }
+
+  const occupied = new Set<string>();
+  for (const tile of raft.tiles) {
+    occupied.add(tileKey(tile.col, tile.row));
+  }
+
+  const sites = new Map<string, TileCoord>();
+  for (const tile of raft.tiles) {
+    const neighbors = [
+      { col: tile.col, row: tile.row - 1 },
+      { col: tile.col - 1, row: tile.row },
+      { col: tile.col + 1, row: tile.row },
+      { col: tile.col, row: tile.row + 1 }
+    ];
+
+    for (const neighbor of neighbors) {
+      const key = tileKey(neighbor.col, neighbor.row);
+      if (!occupied.has(key)) {
+        sites.set(key, neighbor);
+      }
+    }
+  }
+
+  return [...sites.values()].sort((a, b) => (a.row === b.row ? a.col - b.col : a.row - b.row));
+}
+
+export function nearestExpansionSite(
+  raft: RaftView | undefined,
+  player: Pick<PlayerView, "x" | "y"> | undefined,
+  rangeTiles = 1.2,
+  sites?: readonly TileCoord[]
+): TileCoord | undefined {
+  if (raft === undefined || player === undefined) {
+    return undefined;
+  }
+
+  let selected: TileCoord | undefined;
+  let selectedDistanceSquared = Number.POSITIVE_INFINITY;
+  const rangeSquared = rangeTiles * rangeTiles;
+
+  for (const site of sites ?? expansionSites(raft)) {
+    const dx = site.col + 0.5 - player.x;
+    const dy = site.row + 0.5 - player.y;
+    const distanceSquared = dx * dx + dy * dy;
+    if (distanceSquared > rangeSquared || distanceSquared >= selectedDistanceSquared) {
+      continue;
+    }
+
+    selected = site;
+    selectedDistanceSquared = distanceSquared;
+  }
+
+  return selected;
+}
+
 export function canAffordOffer(
   offer: ShopOfferView,
   coins: number,
@@ -112,4 +171,8 @@ export function canAffordOffer(
 
 export function ownCoins(player: PlayerView | undefined): number {
   return player?.coins ?? 0;
+}
+
+function tileKey(col: number, row: number): string {
+  return `${col},${row}`;
 }

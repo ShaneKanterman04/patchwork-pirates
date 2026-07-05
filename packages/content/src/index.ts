@@ -14,6 +14,8 @@ export type ContentWorldState = WorldState;
 type DescribedWeaponDef = WeaponDef & { description: string };
 type DescribedModuleDef = ModuleDef & { description: string };
 
+export const TILE_BUILD_SALVAGE_COST = 5;
+
 export const CUTLASS = {
   id: "cutlass",
   name: "Cutlass",
@@ -390,5 +392,6 @@ export const CONTENT = {
   items: ITEMS,
   enemies: ENEMIES,
   modules: MODULES,
+  tileBuildSalvageCost: TILE_BUILD_SALVAGE_COST,
   waves: WAVES
 } as const satisfies ContentRegistry;

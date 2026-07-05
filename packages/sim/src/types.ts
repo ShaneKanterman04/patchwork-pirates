@@ -206,6 +206,7 @@ export interface ContentRegistry {
   items: Record<string, ItemDef>;
   enemies: Record<string, EnemyDef>;
   modules: Record<string, ModuleDef>;
+  tileBuildSalvageCost?: number;
   waves: WaveDef[];
 }
 
@@ -324,6 +325,7 @@ export type SimEvent =
   | { type: "enemy_hit"; enemyId: string; damage: number; pos: Vec2 }
   | { type: "enemy_killed"; enemyId: string; pos: Vec2 }
   | { type: "explosion"; pos: Vec2; radius: number }
+  | { type: "tile_built"; col: number; row: number }
   | { type: "tile_broken"; col: number; row: number }
   | { type: "tile_repaired"; col: number; row: number }
   | { type: "core_destroyed" };
@@ -340,7 +342,12 @@ export interface RaftTile {
 export interface RaftState {
   width: number;
   height: number;
+  minCol: number;
+  minRow: number;
+  maxCol: number;
+  maxRow: number;
   tiles: RaftTile[];
+  tileLookup: Map<string, RaftTile>;
 }
 
 export interface WorldState {

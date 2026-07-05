@@ -2,13 +2,14 @@ import type { WireEvent } from "@patchwork/protocol";
 import { createSfxThrottleState, throttleSfx } from "./sfxThrottle";
 import type { SfxThrottleState } from "./sfxThrottle";
 
-export type SfxKind = "hit" | "kill" | "coin" | "repair" | "wave" | "downed" | "boss";
+export type SfxKind = "hit" | "kill" | "coin" | "repair" | "build" | "wave" | "downed" | "boss";
 
 const MIN_INTERVAL_MS: Record<SfxKind, number> = {
   hit: 70,
   kill: 95,
   coin: 65,
   repair: 130,
+  build: 130,
   wave: 600,
   downed: 400,
   boss: 500
@@ -46,6 +47,8 @@ export class ProceduralAudio {
       this.play("kill");
     } else if (event.type === "tile_repaired") {
       this.play("repair");
+    } else if (event.type === "tile_built") {
+      this.play("build");
     }
   }
 
@@ -78,6 +81,10 @@ export class ProceduralAudio {
     } else if (kind === "repair") {
       this.tone(520, 0.07, "triangle", 0.018, 0);
       this.tone(660, 0.09, "sine", 0.017, 0.055);
+    } else if (kind === "build") {
+      this.tone(360, 0.055, "triangle", 0.014, 0);
+      this.tone(540, 0.08, "sine", 0.012, 0.04);
+      this.noise(0.045, 0.007, 620);
     } else if (kind === "wave") {
       this.tone(392, 0.1, "sine", 0.02, 0);
       this.tone(523, 0.14, "triangle", 0.022, 0.08);

@@ -6,6 +6,7 @@ import {
   TICK_RATE
 } from "./constants";
 import { clampToRaft } from "./player";
+import { tileAt } from "./raft";
 import type { PlayerInput, PlayerState, Vec2, WorldState } from "./types";
 
 export function forceDowned(world: WorldState, playerId: string): boolean {
@@ -134,10 +135,14 @@ function revivePlayer(player: PlayerState): void {
 }
 
 function safeReturnPosition(world: WorldState, player: PlayerState): Vec2 {
-  const base = clampToRaft({
-    x: world.raft.width / 2,
-    y: world.raft.height / 2
-  });
+  const core = tileAt(world.raft, 2, 2);
+  const base = clampToRaft(
+    {
+      x: (core?.col ?? 2) + 0.5,
+      y: (core?.row ?? 2) + 0.5
+    },
+    world.raft
+  );
   const index = world.players.indexOf(player);
   const offsets = [
     { x: 0, y: 0 },
@@ -148,10 +153,13 @@ function safeReturnPosition(world: WorldState, player: PlayerState): Vec2 {
   ];
   const offset = offsets[index % offsets.length] as Vec2;
 
-  return clampToRaft({
-    x: base.x + offset.x,
-    y: base.y + offset.y
-  });
+  return clampToRaft(
+    {
+      x: base.x + offset.x,
+      y: base.y + offset.y
+    },
+    world.raft
+  );
 }
 
 function distance(a: Vec2, b: Vec2): number {

@@ -57,7 +57,16 @@ Work branch `phase-0`. Legend: ✅ done & committed · 🔨 in progress · ⬜ t
   - ⏸ 4.2 movement prediction + reconciliation — DEFERRED per TECH.md (playtest-gated: only if real-internet play feels floaty; MVP ships without it). Reserved `seq` field is in place.
   - ✅ 4.3 onboarding: first-run contextual hints ("Hold E to repair!") (client)
   - ⏸ exit gate — family pair completes a run unassisted + asks to play again (observational; Shane's)
-- Phases 5–6 ⬜ post-MVP (content breadth, meta & ship)
+- **Phase 5 — Content breadth** 🔨 (started)
+  - ✅ 5.0 raft expansion: sparse growable grid + build_tile action (build phase, edge-adjacent,
+    5 salvage, 60-tile cap, negative coords), dashed buildable-water markers + gold nearest pulse,
+    viewport auto-fit, shop "Build Deck Tile" button, tile_built juice + hint (sim+protocol+server+content+client)
+  - ⬜ remaining Phase 5 slices (weapons/enemies/modules/characters) — see below
+- Phase 6 ⬜ post-MVP (meta & ship)
+
+Perf note (2026-07-05): client renderer is retained-mode with pooled VFX and adaptive quality
+tiers (`quality.ts`); use `?debug=perf` for FPS/tier/leak overlay. Keep new render code
+draw-once-then-transform — no per-frame Graphics rebuilds.
 
 ---
 

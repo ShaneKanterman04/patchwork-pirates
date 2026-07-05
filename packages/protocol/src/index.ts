@@ -133,6 +133,7 @@ export type WireEvent =
   | { type: "enemy_hit"; enemyId: string; damage: number; x: number; y: number }
   | { type: "enemy_killed"; enemyId: string; x: number; y: number }
   | { type: "explosion"; x: number; y: number; radius: number }
+  | { type: "tile_built"; col: number; row: number }
   | { type: "tile_broken"; col: number; row: number }
   | { type: "tile_repaired"; col: number; row: number }
   | { type: "core_destroyed" };
@@ -174,6 +175,7 @@ export type ClientMessage =
   | { type: "lock"; index: number }
   | { type: "ready"; ready: boolean }
   | { type: "place_module"; defId: string; col: number; row: number }
+  | { type: "build_tile"; col: number; row: number }
   | { type: "ping" };
 
 export function encodeServerMessage(msg: ServerMessage): string {
@@ -216,9 +218,16 @@ export function decodeClientMessage(raw: string): ClientMessage {
     msg.type !== "lock" &&
     msg.type !== "ready" &&
     msg.type !== "place_module" &&
+    msg.type !== "build_tile" &&
     msg.type !== "ping"
   ) {
     throw new Error(`Unknown client message type: ${String(msg.type)}`);
+  }
+
+  if (msg.type === "build_tile") {
+    if (!Number.isFinite(msg.col) || !Number.isFinite(msg.row)) {
+      throw new Error("Invalid build_tile coordinates");
+    }
   }
 
   return msg as ClientMessage;

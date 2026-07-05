@@ -1,4 +1,4 @@
-import { CHARACTERS, ITEMS, MODULES, WEAPONS } from "@patchwork/content";
+import { CHARACTERS, ITEMS, MODULES, TILE_BUILD_SALVAGE_COST, WEAPONS } from "@patchwork/content";
 import type { ClientMessage, PlayerView, ShopOfferView, Snapshot } from "@patchwork/protocol";
 import { ProceduralAudio } from "./audio";
 import type { LobbyViewModel } from "./coOpLogic";
@@ -26,7 +26,7 @@ import {
   weaponStatLine
 } from "./shopReadability";
 import type { PurchaseSnapshot } from "./shopReadability";
-import { canAffordOffer, nearestBuildTile, ownCoins } from "./shopLogic";
+import { canAffordOffer, nearestBuildTile, nearestExpansionSite, ownCoins } from "./shopLogic";
 
 const root = document.querySelector<HTMLDivElement>("#app");
 
@@ -320,6 +320,8 @@ function hintViewFromState(
       ownCoinsValue !== undefined &&
       ownCoinsValue > previousOwnCoins,
     inBuildPhase: state.wave.phase === "build",
+    canExpandRaft:
+      state.wave.phase === "build" && Math.floor(state.salvage ?? 0) >= TILE_BUILD_SALVAGE_COST,
     teammateDowned:
       state.players.length > 1 &&
       state.players.some((player) => player.id !== myPlayerId && player.downed && !(player.out ?? false)),
@@ -515,6 +517,7 @@ function renderShop(
   const coins = ownCoins(player);
   const salvage = state.salvage ?? snapshot?.salvage ?? 0;
   const buildTarget = buildTargetFor(state, myPlayerId);
+  const expansionTarget = nearestExpansionSite(state.raft, ownPlayer);
 
   shop.hidden = false;
 
@@ -543,6 +546,7 @@ function renderShop(
     salvage,
     ready: locallyReady,
     buildTarget: buildTarget ?? null,
+    expansionTarget: expansionTarget ?? null,
     characterId: player?.characterId ?? null,
     weaponIds: player?.weaponIds ?? [],
     hp: player === undefined ? null : [Math.ceil(player.hp), Math.ceil(player.maxHp)],
@@ -582,6 +586,21 @@ function renderShop(
   shop.append(actions);
 
   const moduleWrap = el("div", "modules");
+  const buildTileButton = button("", () => {
+    const currentOwnPlayer = state.players.find((candidate) => candidate.id === myPlayerId);
+    const target = nearestExpansionSite(state.raft, currentOwnPlayer);
+    if (target !== undefined) {
+      send({ type: "build_tile", col: target.col, row: target.row });
+    }
+  });
+  buildTileButton.className = "module-btn";
+  buildTileButton.disabled = expansionTarget === undefined || salvage < TILE_BUILD_SALVAGE_COST;
+  buildTileButton.append(
+    el("span", "module-name", `Build Deck Tile - ${TILE_BUILD_SALVAGE_COST} Supplies`),
+    el("span", "module-desc", "Expand the raft at the highlighted water edge.")
+  );
+  moduleWrap.append(buildTileButton);
+
   for (const moduleDef of Object.values(MODULES)) {
     const moduleButton = button("", () => {
       const target = buildTargetFor(state, myPlayerId);
@@ -598,7 +617,7 @@ function renderShop(
     moduleWrap.append(moduleButton);
   }
   shop.append(moduleWrap);
-  shop.append(el("div", "placement", placementText(buildTarget, salvage)));
+  shop.append(el("div", "placement", placementText(buildTarget, expansionTarget, salvage)));
 }
 
 function renderGearPanel(player: PlayerView | undefined): HTMLElement {
@@ -627,10 +646,15 @@ function buildTargetFor(
 
 function placementText(
   buildTarget: ReturnType<typeof nearestBuildTile>,
+  expansionTarget: ReturnType<typeof nearestExpansionSite>,
   supplies: number
 ): string {
+  if (expansionTarget !== undefined) {
+    return `Deck expansion target: row ${expansionTarget.row + 1}, col ${expansionTarget.col + 1}. Supplies available: ${Math.floor(supplies)}.`;
+  }
+
   if (buildTarget === undefined) {
-    return "Stand near an empty deck tile to build modules.";
+    return "Stand near an empty deck tile to build modules, or a water edge to expand the raft.";
   }
 
   return `Building target: row ${buildTarget.row + 1}, col ${buildTarget.col + 1}. Supplies available: ${Math.floor(supplies)}.`;

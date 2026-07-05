@@ -8,6 +8,7 @@ describe("contextual hints", () => {
     ["dash", { inCombat: true, combatAgeMs: 3_500 }, ["move"]],
     ["repair", { nearDamagedTile: true }],
     ["coins", { coinsIncreased: true }],
+    ["expand", { canExpandRaft: true }],
     ["build", { inBuildPhase: true }],
     ["revive", { teammateDowned: true }],
     ["boss", { bossPresent: true }]
@@ -37,6 +38,7 @@ describe("contextual hints", () => {
           combatAgeMs: 9_000,
           nearDamagedTile: true,
           coinsIncreased: true,
+          canExpandRaft: true,
           inBuildPhase: true,
           teammateDowned: true,
           bossPresent: true
@@ -52,6 +54,7 @@ describe("contextual hints", () => {
           combatAgeMs: 9_000,
           nearDamagedTile: true,
           coinsIncreased: true,
+          canExpandRaft: true,
           teammateDowned: true,
           bossPresent: true
         })
@@ -67,6 +70,7 @@ function view(overrides: Partial<HintView>): HintView {
     nearDamagedTile: false,
     coinsIncreased: false,
     inBuildPhase: false,
+    canExpandRaft: false,
     teammateDowned: false,
     bossPresent: false,
     ...overrides

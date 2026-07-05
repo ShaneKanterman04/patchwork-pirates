@@ -65,6 +65,7 @@ const EMPTY_CONTENT: ContentRegistry = {
   items: {},
   enemies: {},
   modules: {},
+  tileBuildSalvageCost: 5,
   waves: []
 };
 
@@ -260,7 +261,7 @@ export function collectPickups(world: WorldState): void {
 }
 
 function moveOnRaft(world: WorldState, player: PlayerState, nextPos: Vec2): Vec2 {
-  const clamped = clampToRaft(nextPos);
+  const clamped = clampToRaft(nextPos, world.raft);
   const currentCol = Math.floor(player.pos.x);
   const currentRow = Math.floor(player.pos.y);
 

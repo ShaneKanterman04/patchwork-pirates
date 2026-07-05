@@ -2,6 +2,7 @@ export const TICK_RATE = 30;
 
 export const RAFT_WIDTH = 5;
 export const RAFT_HEIGHT = 5;
+export const MAX_RAFT_TILES = 60;
 export const TILE_MAX_HP = 10;
 export const CORE_MAX_HP = 10;
 

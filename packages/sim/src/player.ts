@@ -2,14 +2,13 @@ import {
   BASE_PICKUP_RADIUS,
   PLAYER_MAX_HP,
   PLAYER_MOVE_SPEED,
-  PLAYER_RADIUS,
-  RAFT_HEIGHT,
-  RAFT_WIDTH
+  PLAYER_RADIUS
 } from "./constants";
 import type {
   CharacterDef,
   PlayerId,
   PlayerState,
+  RaftState,
   Vec2,
   WorldState
 } from "./types";
@@ -117,10 +116,15 @@ function resetBaseStats(player: PlayerState): void {
   player.pickupRadius = BASE_PICKUP_RADIUS;
 }
 
-export function clampToRaft(pos: Vec2): Vec2 {
+export function clampToRaft(pos: Vec2, raft?: RaftState): Vec2 {
+  const minX = raft?.minCol ?? 0;
+  const minY = raft?.minRow ?? 0;
+  const maxX = raft === undefined ? 5 : raft.maxCol + 1;
+  const maxY = raft === undefined ? 5 : raft.maxRow + 1;
+
   return {
-    x: clamp(pos.x, PLAYER_RADIUS, RAFT_WIDTH - PLAYER_RADIUS),
-    y: clamp(pos.y, PLAYER_RADIUS, RAFT_HEIGHT - PLAYER_RADIUS)
+    x: clamp(pos.x, minX + PLAYER_RADIUS, maxX - PLAYER_RADIUS),
+    y: clamp(pos.y, minY + PLAYER_RADIUS, maxY - PLAYER_RADIUS)
   };
 }
 

@@ -1,35 +1,94 @@
 import {
   CORE_MAX_HP,
+  MAX_RAFT_TILES,
   RAFT_HEIGHT,
   RAFT_WIDTH,
   TILE_MAX_HP
 } from "./constants";
 import type { RaftState, RaftTile, WorldState } from "./types";
 
+function tileKey(col: number, row: number): string {
+  return `${col},${row}`;
+}
+
 export function createRaft(): RaftState {
   const tiles: RaftTile[] = [];
+  const tileLookup = new Map<string, RaftTile>();
 
   for (let row = 0; row < RAFT_HEIGHT; row += 1) {
     for (let col = 0; col < RAFT_WIDTH; col += 1) {
       const kind = col === 2 && row === 2 ? "core" : "deck";
       const maxHp = kind === "core" ? CORE_MAX_HP : TILE_MAX_HP;
 
-      tiles.push({
+      const tile: RaftTile = {
         col,
         row,
         hp: maxHp,
         maxHp,
         kind,
         broken: false
-      });
+      };
+
+      tiles.push(tile);
+      tileLookup.set(tileKey(col, row), tile);
     }
   }
 
   return {
     width: RAFT_WIDTH,
     height: RAFT_HEIGHT,
-    tiles
+    minCol: 0,
+    minRow: 0,
+    maxCol: RAFT_WIDTH - 1,
+    maxRow: RAFT_HEIGHT - 1,
+    tiles,
+    tileLookup
   };
+}
+
+export function buildTile(world: WorldState, col: number, row: number): boolean {
+  const salvageCost = world.content.tileBuildSalvageCost ?? 5;
+
+  if (
+    world.run.phase !== "build" ||
+    tileAt(world.raft, col, row) !== undefined ||
+    world.raft.tiles.length >= MAX_RAFT_TILES ||
+    world.salvage < salvageCost
+  ) {
+    return false;
+  }
+
+  const hasNeighbor =
+    tileAt(world.raft, col + 1, row) !== undefined ||
+    tileAt(world.raft, col - 1, row) !== undefined ||
+    tileAt(world.raft, col, row + 1) !== undefined ||
+    tileAt(world.raft, col, row - 1) !== undefined;
+
+  if (!hasNeighbor) {
+    return false;
+  }
+
+  const tile: RaftTile = {
+    col,
+    row,
+    hp: TILE_MAX_HP,
+    maxHp: TILE_MAX_HP,
+    kind: "deck",
+    broken: false
+  };
+
+  world.salvage -= salvageCost;
+  world.raft.tiles.push(tile);
+  world.raft.tileLookup.set(tileKey(col, row), tile);
+  world.raft.minCol = Math.min(world.raft.minCol, col);
+  world.raft.minRow = Math.min(world.raft.minRow, row);
+  world.raft.maxCol = Math.max(world.raft.maxCol, col);
+  world.raft.maxRow = Math.max(world.raft.maxRow, row);
+  world.raft.width = world.raft.maxCol - world.raft.minCol + 1;
+  world.raft.height = world.raft.maxRow - world.raft.minRow + 1;
+  world.events.push({ type: "tile_built", col, row });
+
+  return true;
 }
 
 // Coordinates are raft tile-grid coordinates, not world-space positions.
@@ -65,11 +124,7 @@ export function tileAt(
   col: number,
   row: number
 ): RaftTile | undefined {
-  if (col < 0 || col >= raft.width || row < 0 || row >= raft.height) {
-    return undefined;
-  }
-
-  return raft.tiles[row * raft.width + col];
+  return raft.tileLookup.get(tileKey(col, row));
 }
 
 export function isHole(raft: RaftState, col: number, row: number): boolean {

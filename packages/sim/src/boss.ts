@@ -3,8 +3,6 @@ import {
   BETWEEN_S,
   HEAD_WINDOW_S,
   KRAKEN_HP,
-  RAFT_HEIGHT,
-  RAFT_WIDTH,
   TENTACLE_COUNT,
   TENTACLE_PHASE_S,
   TICK_RATE
@@ -98,7 +96,7 @@ function enterHead(world: WorldState): void {
     return;
   }
 
-  const head = createEnemy(world, def, headPosition(boss.cycles));
+  const head = createEnemy(world, def, headPosition(world, boss.cycles));
   head.hp = boss.hp;
   head.maxHp = boss.maxHp;
   world.enemies.push(head);
@@ -116,7 +114,7 @@ function ensureTentacles(world: WorldState): void {
 
   const tentacles = livingTentacles(world);
   for (let index = 0; index < TENTACLE_COUNT; index += 1) {
-    const pos = tentaclePosition(boss.cycles, index);
+    const pos = tentaclePosition(world, boss.cycles, index);
     const occupied = tentacles.some((tentacle) => samePos(tentacle.pos, pos));
     if (!occupied) {
       world.enemies.push(createEnemy(world, def, pos));
@@ -131,7 +129,7 @@ function spawnBetweenChum(world: WorldState): void {
   }
 
   for (let index = 0; index < BETWEEN_CHUM; index += 1) {
-    world.enemies.push(createEnemy(world, def, chumPosition(index)));
+    world.enemies.push(createEnemy(world, def, chumPosition(world, index)));
   }
 }
 
@@ -183,32 +181,44 @@ function livingTentacles(world: WorldState): EnemyState[] {
   );
 }
 
-function tentaclePosition(cycle: number, index: number): Vec2 {
-  return edgePosition((cycle + index) % 4);
+function tentaclePosition(world: WorldState, cycle: number, index: number): Vec2 {
+  return edgePosition(world, (cycle + index) % 4);
 }
 
-function headPosition(cycle: number): Vec2 {
-  return edgePosition((cycle + 3) % 4);
+function headPosition(world: WorldState, cycle: number): Vec2 {
+  return edgePosition(world, (cycle + 3) % 4);
 }
 
-function chumPosition(index: number): Vec2 {
-  return edgePosition(index % 4, (index + 1) / (BETWEEN_CHUM + 1));
+function chumPosition(world: WorldState, index: number): Vec2 {
+  return edgePosition(world, index % 4, (index + 1) / (BETWEEN_CHUM + 1));
 }
 
-function edgePosition(edge: number, offset = 0.5): Vec2 {
+function edgePosition(world: WorldState, edge: number, offset = 0.5): Vec2 {
   if (edge === 0) {
-    return { x: offset * RAFT_WIDTH, y: -0.2 };
+    return {
+      x: world.raft.minCol + offset * world.raft.width,
+      y: world.raft.minRow - 0.2
+    };
   }
 
   if (edge === 1) {
-    return { x: RAFT_WIDTH + 0.2, y: offset * RAFT_HEIGHT };
+    return {
+      x: world.raft.maxCol + 1.2,
+      y: world.raft.minRow + offset * world.raft.height
+    };
   }
 
   if (edge === 2) {
-    return { x: offset * RAFT_WIDTH, y: RAFT_HEIGHT + 0.2 };
+    return {
+      x: world.raft.minCol + offset * world.raft.width,
+      y: world.raft.maxRow + 1.2
+    };
   }
 
-  return { x: -0.2, y: offset * RAFT_HEIGHT };
+  return {
+    x: world.raft.minCol - 0.2,
+    y: world.raft.minRow + offset * world.raft.height
+  };
 }
 
 function secondsToTicks(seconds: number): number {

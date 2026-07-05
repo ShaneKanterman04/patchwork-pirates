@@ -19,6 +19,7 @@ import type { CollectedPickup } from "./pickupJuice";
 import type { InterpolatedState } from "./interp";
 import { settingsForTier } from "./quality";
 import type { QualitySettings } from "./quality";
+import { expansionSites as computeExpansionSites, nearestExpansionSite as computeNearestExpansionSite } from "./shopLogic";
 import type { TileCoord, ViewportTransform } from "./shopLogic";
 import { loadSpriteAtlas, setSpriteAnimationFrame, setSpriteFrame } from "./sprites";
 import type { SpriteAtlas } from "./sprites";
@@ -26,9 +27,7 @@ import type { SpriteAtlas } from "./sprites";
 export const TILE_PX = 60;
 
 const RAFT_SIZE_TILES = 5;
-const RAFT_CENTER = { x: 2.5, y: 2.5 };
 const VIEW_MARGIN_TILES = 3;
-const VIEW_TILES = RAFT_SIZE_TILES + VIEW_MARGIN_TILES * 2;
 const PLAYER_RADIUS = 0.38;
 const SLASH_DURATION_MS = 180;
 const CUTLASS_SWING_DURATION_MS = 220;
@@ -175,6 +174,13 @@ interface RaftTileNode {
   overlayKey: string;
 }
 
+interface RaftBounds {
+  minCol: number;
+  maxCol: number;
+  minRow: number;
+  maxRow: number;
+}
+
 export interface HudState {
   status: ConnectionStatus;
   waveText: string;
@@ -196,6 +202,8 @@ export class GameRenderer {
   private readonly world = new Container();
   private readonly raft = new Container();
   private readonly raftTiles = new Map<string, RaftTileNode>();
+  private readonly expansionMarkers = new Map<string, Graphics>();
+  private readonly nearestExpansionMarker = new Graphics();
   private readonly modules = new Map<string, Graphics>();
   private readonly moduleSprites = new Map<string, Sprite>();
   private readonly projectiles = new Map<string, Graphics>();
@@ -224,7 +232,12 @@ export class GameRenderer {
   private readonly previousTileState = new Map<string, { hpRatio: number; broken: boolean }>();
   private readonly repairSupplyRemainders = new Map<string, number>();
   private buildTarget: TileCoord | undefined;
+  private readonly expansionSites: TileCoord[] = [];
+  private nearestExpansionSite: TileCoord | undefined;
+  private expansionSitesRaft: RaftView | undefined;
+  private cachedExpansionSites: TileCoord[] = [];
   private defeatSink: DefeatSink | undefined;
+  private raftBounds: RaftBounds = { minCol: 0, maxCol: 4, minRow: 0, maxRow: 4 };
   private readonly previousPickups: PickupRecord[] = [];
   private readonly previousPickupRecords = new Map<string, PickupRecord>();
   private shakeAgeMs = Number.POSITIVE_INFINITY;
@@ -243,6 +256,9 @@ export class GameRenderer {
     this.baseResolution = baseResolution;
     app.stage.addChild(this.world);
     this.world.addChild(this.raft);
+    drawExpansionMarker(this.nearestExpansionMarker, 0xf2c14e, 0.05, 1);
+    this.nearestExpansionMarker.visible = false;
+    this.raft.addChild(this.nearestExpansionMarker);
     this.drawRaft();
     this.resize();
     window.addEventListener("resize", this.resize);
@@ -275,6 +291,12 @@ export class GameRenderer {
     this.buildTarget = target;
   }
 
+  setExpansionSites(sites: readonly TileCoord[], nearest: TileCoord | undefined): void {
+    this.expansionSites.length = 0;
+    this.expansionSites.push(...sites);
+    this.nearestExpansionSite = nearest;
+  }
+
   applyQuality(settings: QualitySettings): void {
     if (
       this.qualitySettings.resolutionScale === settings.resolutionScale &&
@@ -294,6 +316,8 @@ export class GameRenderer {
   perfStats(): { graphicsAlive: number } {
     let graphicsAlive =
       this.raftTiles.size * 3 +
+      this.expansionMarkers.size +
+      1 +
       this.modules.size +
       this.moduleSprites.size +
       this.projectiles.size +
@@ -390,6 +414,9 @@ export class GameRenderer {
         this.addPop(event.x, event.y, 0xffb020, EXPLOSION_DURATION_MS, "explosion");
         this.addParticles("explosion", event.x, event.y);
         this.addShake(0.085);
+      } else if (event.type === "tile_built") {
+        this.addPop(event.col + 0.5, event.row + 0.5, 0x9dd7e8, 200, "repair");
+        this.addShake(0.03);
       } else if (event.type === "tile_broken") {
         this.addShake(0.045);
       } else if (event.type === "core_destroyed") {
@@ -404,9 +431,11 @@ export class GameRenderer {
     deltaMs: number
   ): CollectedPickup[] {
     this.renderClockMs += deltaMs;
+    this.updateExpansionSites(state, myPlayerId);
     this.updateRepairTargets(state.players, state.raft, state.salvage ?? 0);
     this.updateRepairFeedback(state.raft);
     this.drawRaft(state.raft);
+    this.updateExpansionMarkers(state.wave.phase);
     this.updateTelegraphs(state.enemies);
     this.updateModules(state.modules);
     this.updateProjectiles(state.projectiles);
@@ -468,20 +497,31 @@ export class GameRenderer {
   }
 
   private readonly resize = (): void => {
+    this.fitViewportToRaftBounds();
+  };
+
+  private fitViewportToRaftBounds(): void {
+    const widthTiles = this.raftBounds.maxCol - this.raftBounds.minCol + 1;
+    const heightTiles = this.raftBounds.maxRow - this.raftBounds.minRow + 1;
+    const viewWidthTiles = widthTiles + VIEW_MARGIN_TILES * 2;
+    const viewHeightTiles = heightTiles + VIEW_MARGIN_TILES * 2;
     const fitTilePx = Math.max(
       36,
-      Math.min(TILE_PX, window.innerWidth / VIEW_TILES, window.innerHeight / VIEW_TILES)
+      Math.min(TILE_PX, window.innerWidth / viewWidthTiles, window.innerHeight / viewHeightTiles)
     );
+    const centerX = (this.raftBounds.minCol + this.raftBounds.maxCol + 1) / 2;
+    const centerY = (this.raftBounds.minRow + this.raftBounds.maxRow + 1) / 2;
     this.world.scale.set(fitTilePx);
-    this.baseWorldX = window.innerWidth / 2 - RAFT_CENTER.x * fitTilePx;
-    this.baseWorldY = window.innerHeight / 2 - RAFT_CENTER.y * fitTilePx;
+    this.baseWorldX = window.innerWidth / 2 - centerX * fitTilePx;
+    this.baseWorldY = window.innerHeight / 2 - centerY * fitTilePx;
     this.world.position.set(this.baseWorldX, this.baseWorldY);
-  };
+  }
 
   private drawRaft(raft?: RaftView): void {
     const tiles = this.defeatSink?.tiles ?? raft?.tiles ?? fallbackRaft().tiles;
     const seen = new Set<string>();
     const sinking = this.defeatSink !== undefined;
+    this.updateRaftBounds(tiles);
 
     for (const tileView of tiles) {
       const key = tileKey(tileView.col, tileView.row);
@@ -536,6 +576,105 @@ export class GameRenderer {
         this.raftTiles.delete(key);
       }
     }
+  }
+
+  private updateRaftBounds(tiles: readonly RaftView["tiles"][number][]): void {
+    let minCol = 0;
+    let maxCol = 4;
+    let minRow = 0;
+    let maxRow = 4;
+
+    if (tiles.length > 0) {
+      minCol = Number.POSITIVE_INFINITY;
+      maxCol = Number.NEGATIVE_INFINITY;
+      minRow = Number.POSITIVE_INFINITY;
+      maxRow = Number.NEGATIVE_INFINITY;
+
+      for (const tile of tiles) {
+        minCol = Math.min(minCol, tile.col);
+        maxCol = Math.max(maxCol, tile.col);
+        minRow = Math.min(minRow, tile.row);
+        maxRow = Math.max(maxRow, tile.row);
+      }
+    }
+
+    if (
+      this.raftBounds.minCol === minCol &&
+      this.raftBounds.maxCol === maxCol &&
+      this.raftBounds.minRow === minRow &&
+      this.raftBounds.maxRow === maxRow
+    ) {
+      return;
+    }
+
+    this.raftBounds = { minCol, maxCol, minRow, maxRow };
+    this.fitViewportToRaftBounds();
+  }
+
+  private updateExpansionMarkers(phase: InterpolatedState["wave"]["phase"]): void {
+    const visible = phase === "build" && this.defeatSink === undefined;
+    const seen = new Set<string>();
+
+    for (const site of this.expansionSites) {
+      const key = tileKey(site.col, site.row);
+      seen.add(key);
+      let marker = this.expansionMarkers.get(key);
+
+      if (marker === undefined) {
+        marker = new Graphics();
+        drawExpansionMarker(marker, 0x9dd7e8, 0.03, 0.35);
+        marker.position.set(site.col, site.row);
+        this.expansionMarkers.set(key, marker);
+        this.raft.addChildAt(marker, 0);
+      }
+
+      marker.visible = visible;
+    }
+
+    for (const [key, marker] of this.expansionMarkers) {
+      if (!seen.has(key)) {
+        marker.destroy();
+        this.expansionMarkers.delete(key);
+      }
+    }
+
+    this.nearestExpansionMarker.visible = visible && this.nearestExpansionSite !== undefined;
+
+    if (!visible) {
+      return;
+    }
+
+    if (this.nearestExpansionSite !== undefined) {
+      const pulse = (Math.sin(this.renderClockMs * 0.006) + 1) / 2;
+      this.nearestExpansionMarker.position.set(
+        this.nearestExpansionSite.col,
+        this.nearestExpansionSite.row
+      );
+      this.nearestExpansionMarker.alpha = 0.55 + pulse * 0.35;
+    }
+  }
+
+  private updateExpansionSites(state: InterpolatedState, myPlayerId: string | undefined): void {
+    if (state.wave.phase !== "build") {
+      if (this.expansionSites.length > 0 || this.nearestExpansionSite !== undefined) {
+        this.setExpansionSites([], undefined);
+      }
+      this.expansionSitesRaft = undefined;
+      return;
+    }
+
+    // interp passes snapshot references through, so the raft object only
+    // changes identity when a new snapshot arrives — recompute the (allocating)
+    // site scan on that identity change, not every frame.
+    const player = state.players.find((candidate) => candidate.id === myPlayerId);
+    if (state.raft !== this.expansionSitesRaft) {
+      this.expansionSitesRaft = state.raft;
+      this.cachedExpansionSites = computeExpansionSites(state.raft);
+    }
+    this.setExpansionSites(
+      this.cachedExpansionSites,
+      computeNearestExpansionSite(state.raft, player, undefined, this.cachedExpansionSites)
+    );
   }
 
   private updateRepairTargets(
@@ -1451,6 +1590,45 @@ function drawTileAffordances(
       .circle(x + 0.5, y + 0.5, 0.18)
       .stroke({ color: 0xffffff, width: 0.035, alpha: 0.72 });
   }
+}
+
+function drawExpansionMarker(
+  graphic: Graphics,
+  color: number,
+  width: number,
+  alpha: number
+): void {
+  const min = 0.11;
+  const max = 0.89;
+  const dashA = 0.17;
+  const dashB = 0.39;
+  const dashC = 0.61;
+  const dashD = 0.83;
+
+  graphic
+    .clear()
+    .moveTo(dashA, min)
+    .lineTo(dashB, min)
+    .moveTo(dashC, min)
+    .lineTo(dashD, min)
+    .moveTo(dashA, max)
+    .lineTo(dashB, max)
+    .moveTo(dashC, max)
+    .lineTo(dashD, max)
+    .moveTo(min, dashA)
+    .lineTo(min, dashB)
+    .moveTo(min, dashC)
+    .lineTo(min, dashD)
+    .moveTo(max, dashA)
+    .lineTo(max, dashB)
+    .moveTo(max, dashC)
+    .lineTo(max, dashD)
+    .stroke({ color, width, alpha, cap: "round" })
+    .moveTo(0.38, 0.5)
+    .lineTo(0.62, 0.5)
+    .moveTo(0.5, 0.38)
+    .lineTo(0.5, 0.62)
+    .stroke({ color, width: Math.max(0.025, width * 0.72), alpha: Math.min(1, alpha + 0.05), cap: "round" });
 }
 
 function drawRaftTileBase(

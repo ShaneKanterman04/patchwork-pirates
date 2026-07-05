@@ -1,7 +1,5 @@
 import {
   PLAYER_RADIUS,
-  RAFT_HEIGHT,
-  RAFT_WIDTH,
   TICK_RATE
 } from "./constants";
 import { isHole, isWalkable, tileAt, damageTile } from "./raft";
@@ -429,7 +427,7 @@ function movePlayerOnRaft(
   currentPos: Vec2,
   nextPos: Vec2
 ): Vec2 {
-  const clamped = clampToRaft(nextPos);
+  const clamped = clampToRaft(nextPos, world.raft);
   const currentCol = Math.floor(currentPos.x);
   const currentRow = Math.floor(currentPos.y);
 
@@ -455,10 +453,10 @@ function movePlayerOnRaft(
   return isWalkable(world.raft, candidate.x, candidate.y) ? candidate : currentPos;
 }
 
-function clampToRaft(pos: Vec2): Vec2 {
+function clampToRaft(pos: Vec2, raft: WorldState["raft"]): Vec2 {
   return {
-    x: clamp(pos.x, PLAYER_RADIUS, RAFT_WIDTH - PLAYER_RADIUS),
-    y: clamp(pos.y, PLAYER_RADIUS, RAFT_HEIGHT - PLAYER_RADIUS)
+    x: clamp(pos.x, raft.minCol + PLAYER_RADIUS, raft.maxCol + 1 - PLAYER_RADIUS),
+    y: clamp(pos.y, raft.minRow + PLAYER_RADIUS, raft.maxRow + 1 - PLAYER_RADIUS)
   };
 }
 

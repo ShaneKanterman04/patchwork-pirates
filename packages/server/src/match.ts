@@ -4,8 +4,9 @@ import {
   REVIVE_S,
   TICK_RATE,
   addPlayer,
-  createPing,
+  buildTile,
   buyOffer,
+  createPing,
   createWorld,
   forceDowned,
   purchaseModule,
@@ -255,6 +256,9 @@ export function handleClientMessage(
       case "place_module":
         purchaseModule(match.world, playerId, msg.defId, msg.col, msg.row);
         return;
+      case "build_tile":
+        buildTile(match.world, msg.col, msg.row);
+        return;
       case "ping":
         createPing(match.world, playerId);
         return;
@@ -503,6 +507,8 @@ function simEventToWire(event: SimEvent): WireEvent {
         y: event.pos.y,
         radius: event.radius
       };
+    case "tile_built":
+      return { type: "tile_built", col: event.col, row: event.row };
     case "tile_broken":
       return { type: "tile_broken", col: event.col, row: event.row };
     case "tile_repaired":

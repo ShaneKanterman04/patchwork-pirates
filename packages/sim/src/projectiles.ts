@@ -1,8 +1,6 @@
 import {
   MARK_DAMAGE_MULT,
   PLAYER_RADIUS,
-  RAFT_HEIGHT,
-  RAFT_WIDTH,
   TICK_RATE
 } from "./constants";
 import { damageTile, isWalkable } from "./raft";
@@ -185,7 +183,7 @@ function applyProjectileEffect(
   };
   const pullDistance = Math.min(projectile.pullDistance, magnitude(offset));
   const direction = normalize(offset);
-  const candidate = clampEnemyToRaft({
+  const candidate = clampEnemyToRaft(world, {
     x: enemy.pos.x + direction.x * pullDistance,
     y: enemy.pos.y + direction.y * pullDistance
   });
@@ -288,10 +286,18 @@ function move(projectile: ProjectileState): void {
   };
 }
 
-function clampEnemyToRaft(pos: Vec2): Vec2 {
+function clampEnemyToRaft(world: WorldState, pos: Vec2): Vec2 {
   return {
-    x: clamp(pos.x, PLAYER_RADIUS, RAFT_WIDTH - PLAYER_RADIUS),
-    y: clamp(pos.y, PLAYER_RADIUS, RAFT_HEIGHT - PLAYER_RADIUS)
+    x: clamp(
+      pos.x,
+      world.raft.minCol + PLAYER_RADIUS,
+      world.raft.maxCol + 1 - PLAYER_RADIUS
+    ),
+    y: clamp(
+      pos.y,
+      world.raft.minRow + PLAYER_RADIUS,
+      world.raft.maxRow + 1 - PLAYER_RADIUS
+    )
   };
 }
 

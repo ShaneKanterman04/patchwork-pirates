@@ -4,10 +4,13 @@ import {
   CORE_MAX_HP,
   DAMAGED_TILE_HP_PER_SUPPLY,
   HOLE_REBUILD_RATE,
+  MAX_RAFT_TILES,
+  PLAYER_RADIUS,
   PLAYER_REPAIR_RATE,
   TILE_MAX_HP,
   TICK_RATE,
   addPlayer,
+  buildTile,
   createWorld,
   damageTile,
   isHole,
@@ -68,6 +71,83 @@ describe("raft passability", () => {
     expect(isWalkable(world.raft, 0.5, 0.5)).toBe(true);
     expect(isWalkable(world.raft, -0.1, 0.5)).toBe(false);
     expect(isHole(world.raft, -1, 0)).toBe(false);
+  });
+});
+
+describe("buildTile", () => {
+  it("builds an edge-adjacent tile during build phase, spends salvage, and emits tile_built", () => {
+    const world = createWorld(1);
+    world.run.phase = "build";
+    world.salvage = 7;
+
+    expect(buildTile(world, 5, 2)).toBe(true);
+
+    expect(world.salvage).toBe(2);
+    expect(tileAt(world.raft, 5, 2)).toMatchObject({
+      col: 5,
+      row: 2,
+      hp: TILE_MAX_HP,
+      maxHp: TILE_MAX_HP,
+      kind: "deck",
+      broken: false
+    });
+    expect(world.events).toEqual([{ type: "tile_built", col: 5, row: 2 }]);
+  });
+
+  it("rejects non-adjacent, occupied, combat phase, insufficient salvage, and max tile builds", () => {
+    const world = createWorld(1);
+    world.run.phase = "build";
+    world.salvage = 500;
+
+    expect(buildTile(world, 7, 7)).toBe(false);
+    expect(buildTile(world, 0, 0)).toBe(false);
+
+    world.run.phase = "combat";
+    expect(buildTile(world, 5, 2)).toBe(false);
+
+    world.run.phase = "build";
+    world.salvage = 4;
+    expect(buildTile(world, 5, 2)).toBe(false);
+
+    world.salvage = 500;
+    for (let col = 5; world.raft.tiles.length < MAX_RAFT_TILES; col += 1) {
+      expect(buildTile(world, col, 0)).toBe(true);
+    }
+
+    expect(world.raft.tiles).toHaveLength(MAX_RAFT_TILES);
+    expect(buildTile(world, 40, 0)).toBe(false);
+  });
+
+  it("supports negative-coordinate builds in bounds, lookup, walkability, and movement clamps", () => {
+    const world = createWorld(1);
+    world.run.phase = "build";
+    world.salvage = 5;
+
+    expect(buildTile(world, -1, 2)).toBe(true);
+    expect(world.raft).toMatchObject({
+      minCol: -1,
+      minRow: 0,
+      maxCol: 4,
+      maxRow: 4,
+      width: 6,
+      height: 5
+    });
+    expect(tileAt(world.raft, -1, 2)).toBeDefined();
+    expect(isWalkable(world.raft, -0.5, 2.5)).toBe(true);
+
+    const player = addPlayer(world, "p1");
+    player.pos = { x: -0.4, y: 2.5 };
+    player.moveSpeed = 30;
+
+    tick(
+      world,
+      new Map([
+        ["p1", { movement: { x: -1, y: 0 }, dash: false, interact: false }]
+      ])
+    );
+
+    expect(player.pos.x).toBe(-1 + PLAYER_RADIUS);
+    expect(player.pos.y).toBe(2.5);
   });
 });
 

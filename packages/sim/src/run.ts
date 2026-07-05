@@ -3,8 +3,6 @@ import {
   BUILD_DURATION_S,
   MAX_ENEMIES,
   PRICE_WAVE_SCALE,
-  RAFT_HEIGHT,
-  RAFT_WIDTH,
   REROLL_COST_STEP,
   SPAWN_INTERVAL_TICKS,
   TICK_RATE,
@@ -462,18 +460,30 @@ function spawnPosition(world: WorldState): Vec2 {
   const offset = nextRandom(world);
 
   if (edge === 0) {
-    return { x: offset * RAFT_WIDTH, y: -1 };
+    return {
+      x: world.raft.minCol + offset * world.raft.width,
+      y: world.raft.minRow - 1
+    };
   }
 
   if (edge === 1) {
-    return { x: RAFT_WIDTH + 1, y: offset * RAFT_HEIGHT };
+    return {
+      x: world.raft.maxCol + 2,
+      y: world.raft.minRow + offset * world.raft.height
+    };
   }
 
   if (edge === 2) {
-    return { x: offset * RAFT_WIDTH, y: RAFT_HEIGHT + 1 };
+    return {
+      x: world.raft.minCol + offset * world.raft.width,
+      y: world.raft.maxRow + 2
+    };
   }
 
-  return { x: -1, y: offset * RAFT_HEIGHT };
+  return {
+    x: world.raft.minCol - 1,
+    y: world.raft.minRow + offset * world.raft.height
+  };
 }
 
 function scaledEnemyDef(def: EnemyDef, world: WorldState): EnemyDef {
