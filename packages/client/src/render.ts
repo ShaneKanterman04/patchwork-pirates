@@ -41,6 +41,10 @@ const PLAYER_HURT_FLASH_MS = 180;
 const PICKUP_FLY_MS = 320;
 const REPAIR_SUPPLY_FLY_MS = 700;
 const REPAIR_TILE_HP = 10;
+// Mirrors packages/sim/src/constants.ts; client cannot import sim.
+const DAMAGED_TILE_HP_PER_SUPPLY = 4;
+// Mirrors packages/sim/src/constants.ts; client cannot import sim.
+const BROKEN_TILE_HP_PER_SUPPLY = 2.5;
 const DEFEAT_TILE_STAGGER_MS = 110;
 const DEFEAT_TILE_SINK_MS = 650;
 const DEFEAT_UI_DELAY_MS = 220;
@@ -726,6 +730,7 @@ export class GameRenderer {
         this.addRepairSupplyFliesForHpGain(
           key,
           Math.max(0, tile.hpRatio - previous.hpRatio) * REPAIR_TILE_HP,
+          previous.broken,
           tile.col + 0.5,
           tile.row + 0.5
         );
@@ -1323,6 +1328,7 @@ export class GameRenderer {
   private addRepairSupplyFliesForHpGain(
     tileKeyValue: string,
     hpGain: number,
+    wasBroken: boolean,
     targetX: number,
     targetY: number
   ): void {
@@ -1331,7 +1337,8 @@ export class GameRenderer {
       return;
     }
 
-    const available = (this.repairSupplyRemainders.get(tileKeyValue) ?? 0) + hpGain;
+    const hpPerSupply = wasBroken ? BROKEN_TILE_HP_PER_SUPPLY : DAMAGED_TILE_HP_PER_SUPPLY;
+    const available = (this.repairSupplyRemainders.get(tileKeyValue) ?? 0) + hpGain / hpPerSupply;
     const supplyPackets = Math.floor(available);
     this.repairSupplyRemainders.set(tileKeyValue, available - supplyPackets);
 

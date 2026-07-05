@@ -65,7 +65,7 @@ export const CHUM = {
   id: "chum",
   name: "Chum",
   maxHp: 18,
-  speedTilesPerSec: 2.6,
+  speedTilesPerSec: 2.0,
   contactDamage: 6,
   contactCooldownS: 0.75,
   radius: 0.3,
