@@ -240,10 +240,29 @@ function updateCombatPhase(world: WorldState): void {
   updateBudgetSpawner(world);
   world.run.phaseTicksLeft -= 1;
 
-  if (world.run.phaseTicksLeft > 0) {
+  const timerExpired = world.run.phaseTicksLeft <= 0;
+  // Auto-clear: once nothing more can spawn AND every enemy is dead, end the
+  // wave immediately rather than waiting out the timer on an empty sea.
+  const clearedEarly =
+    world.enemies.length === 0 && waveSpawnExhausted(world, waveDef);
+
+  if (!timerExpired && !clearedEarly) {
     return;
   }
 
+  endCombatWave(world);
+}
+
+function waveSpawnExhausted(world: WorldState, waveDef: WaveDef | undefined): boolean {
+  if (world.run.budgetRemaining <= 0 || waveDef === undefined) {
+    return true;
+  }
+  return !waveDef.table.some(
+    (entry) => entry.weight > 0 && entry.cost <= world.run.budgetRemaining
+  );
+}
+
+function endCombatWave(world: WorldState): void {
   world.enemies = [];
   world.projectiles = world.projectiles.filter(
     (projectile) => projectile.faction !== "enemy"

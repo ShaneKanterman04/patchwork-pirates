@@ -88,6 +88,34 @@ describe("run phase machine", () => {
     });
   });
 
+  it("auto-ends a non-boss wave early once the budget is spent and all enemies are dead", () => {
+    const world = createWorld(7, TEST_CONTENT);
+    addPlayer(world, "p1");
+    startRun(world); // wave 1: budget 3, duration 10s (300 ticks)
+
+    // Spend the whole spawn budget (spawns the wave's chum over a few intervals).
+    let guard = 0;
+    while (world.run.budgetRemaining > 0 && guard < 3000) {
+      tick(world, new Map([["p1", IDLE_INPUT]]));
+      guard += 1;
+    }
+    expect(world.run.phase).toBe("combat");
+    expect(world.enemies.length).toBeGreaterThan(0);
+    expect(world.tick).toBeLessThan(ONE_COST_WAVE.durationS * TICK_RATE);
+
+    // Kill every enemy: one tick resolves the deaths, the next detects the
+    // cleared sea and ends the wave — all well before the timer would.
+    for (const enemy of world.enemies) {
+      enemy.hp = 0;
+    }
+    tick(world, new Map([["p1", IDLE_INPUT]]));
+    expect(world.enemies).toEqual([]);
+    tick(world, new Map([["p1", IDLE_INPUT]]));
+
+    expect(world.run.phase).toBe("build");
+    expect(world.tick).toBeLessThan(ONE_COST_WAVE.durationS * TICK_RATE);
+  });
+
   it("sets victory when non-boss wave 8 combat expires as a fallback", () => {
     const content = {
       ...TEST_CONTENT,
