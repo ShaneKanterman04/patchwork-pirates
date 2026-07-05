@@ -45,6 +45,7 @@ const CONTENT: ContentRegistry = {
     light: enemyDef("light", false),
     heavy: enemyDef("heavy", true)
   },
+  modules: {},
   waves: []
 };
 

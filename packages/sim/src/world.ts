@@ -8,6 +8,7 @@ import {
   TICK_RATE
 } from "./constants";
 import { resolveEnemyDeaths, updateEnemies } from "./enemies";
+import { updateModules } from "./modules";
 import {
   clampMovement,
   clampToRaft,
@@ -49,7 +50,12 @@ export function nextRandom(world: WorldState): number {
   return stateToUnitFloat(scrambleMulberry32State(world.rngState));
 }
 
-const EMPTY_CONTENT: ContentRegistry = { weapons: {}, enemies: {}, waves: [] };
+const EMPTY_CONTENT: ContentRegistry = {
+  weapons: {},
+  enemies: {},
+  modules: {},
+  waves: []
+};
 
 export function createWorld(
   seed: number,
@@ -64,6 +70,7 @@ export function createWorld(
     enemies: [],
     pickups: [],
     projectiles: [],
+    modules: [],
     events: [],
     coreDestroyed: false,
     nextEntityId: 1,
@@ -118,6 +125,7 @@ export function tick(
   }
 
   updatePlayerWeapons(world);
+  updateModules(world);
   updateEnemies(world);
   updateProjectiles(world);
   resolveEnemyDeaths(world);

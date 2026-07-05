@@ -1,6 +1,7 @@
 import type {
   ContentRegistry,
   EnemyDef,
+  ModuleDef,
   WaveDef,
   WeaponDef,
   WorldState
@@ -124,6 +125,31 @@ export const BRUTE_TURTLE = {
   }
 } as const satisfies EnemyDef;
 
+export const CANNON = {
+  id: "cannon",
+  name: "Cannon",
+  maxHp: 60,
+  behavior: {
+    kind: "cannon",
+    cooldownS: 1.0,
+    rangeTiles: 4,
+    damage: 14,
+    projectileSpeed: 9
+  }
+} as const satisfies ModuleDef;
+
+export const REPAIR_STATION = {
+  id: "repair_station",
+  name: "Repair Station",
+  maxHp: 60,
+  behavior: {
+    kind: "repair_station",
+    radiusTiles: 1.8,
+    repairRate: 15,
+    playerBoostMult: 2.5
+  }
+} as const satisfies ModuleDef;
+
 export const WEAPONS = {
   cutlass: CUTLASS,
   harpoon_gun: HARPOON_GUN,
@@ -136,6 +162,11 @@ export const ENEMIES = {
   plank_biter: PLANK_BITER,
   brute_turtle: BRUTE_TURTLE
 } as const satisfies Record<string, EnemyDef>;
+
+export const MODULES = {
+  cannon: CANNON,
+  repair_station: REPAIR_STATION
+} as const satisfies Record<string, ModuleDef>;
 
 export const WAVES = [
   {
@@ -219,5 +250,6 @@ export const WAVES = [
 export const CONTENT = {
   weapons: WEAPONS,
   enemies: ENEMIES,
+  modules: MODULES,
   waves: WAVES
 } as const satisfies ContentRegistry;

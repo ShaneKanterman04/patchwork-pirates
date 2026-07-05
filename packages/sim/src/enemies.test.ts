@@ -108,6 +108,7 @@ const CONTENT: ContentRegistry = {
     plank_biter: PLANK_BITER,
     brute: BRUTE
   },
+  modules: {},
   waves: []
 };
 

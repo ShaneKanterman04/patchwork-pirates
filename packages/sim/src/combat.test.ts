@@ -42,6 +42,7 @@ const TEST_CONTENT: ContentRegistry = {
       behavior: { kind: "swarmer_melee" }
     }
   },
+  modules: {},
   waves: []
 };
 

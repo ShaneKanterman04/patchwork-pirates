@@ -49,6 +49,7 @@ const CONTENT: ContentRegistry = {
       behavior: { kind: "swarmer_melee" }
     }
   },
+  modules: {},
   waves: []
 };
 

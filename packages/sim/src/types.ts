@@ -74,6 +74,28 @@ export interface EnemyDef {
   behavior: EnemyBehavior;
 }
 
+export type ModuleBehavior =
+  | {
+      kind: "cannon";
+      cooldownS: number;
+      rangeTiles: number;
+      damage: number;
+      projectileSpeed: number;
+    }
+  | {
+      kind: "repair_station";
+      radiusTiles: number;
+      repairRate: number;
+      playerBoostMult: number;
+    };
+
+export interface ModuleDef {
+  id: string;
+  name: string;
+  maxHp: number;
+  behavior: ModuleBehavior;
+}
+
 export type EnemyBehavior =
   | { kind: "swarmer_melee" }
   | {
@@ -97,6 +119,7 @@ export type EnemyBehavior =
 export interface ContentRegistry {
   weapons: Record<string, WeaponDef>;
   enemies: Record<string, EnemyDef>;
+  modules: Record<string, ModuleDef>;
   waves: WaveDef[];
 }
 
@@ -171,6 +194,16 @@ export interface ProjectileState {
   slowDurationTicks: number;
 }
 
+export interface ModuleState {
+  id: string;
+  defId: string;
+  col: number;
+  row: number;
+  hp: number;
+  maxHp: number;
+  cooldownTicks: number;
+}
+
 export type SimEvent =
   | {
       type: "weapon_fired";
@@ -212,6 +245,7 @@ export interface WorldState {
   enemies: EnemyState[];
   pickups: PickupState[];
   projectiles: ProjectileState[];
+  modules: ModuleState[];
   events: SimEvent[];
   coreDestroyed: boolean;
   nextEntityId: number;

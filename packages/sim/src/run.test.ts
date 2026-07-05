@@ -46,6 +46,7 @@ const TEST_CONTENT: ContentRegistry = {
     chum: CHUM,
     plank_biter: BITER
   },
+  modules: {},
   waves: [ONE_COST_WAVE, TWO_COST_WAVE]
 };
 
@@ -136,6 +137,7 @@ describe("budget spawner", () => {
     const world = createWorld(4, {
       weapons: {},
       enemies: { chum: CHUM },
+      modules: {},
       waves: []
     });
     addPlayer(world, "p1");
