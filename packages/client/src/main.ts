@@ -18,6 +18,7 @@ import type { RunStats } from "./runStats";
 import {
   characterLabel,
   itemModifiersText,
+  optionalItemIds,
   ownedItemText,
   playerStatText,
   purchaseSnapshot,
@@ -554,6 +555,7 @@ function renderShop(
 
   const key = JSON.stringify({
     offers: playerShop?.offers ?? [],
+    locked: playerShop?.locked ?? [],
     rerollCost: playerShop?.rerollCost ?? 0,
     coins,
     salvage,
@@ -562,6 +564,7 @@ function renderShop(
     expansionTarget: expansionTarget ?? null,
     characterId: player?.characterId ?? null,
     weaponIds: player?.weaponIds ?? [],
+    itemIds: optionalItemIds(player) ?? null,
     hp: player === undefined ? null : [Math.ceil(player.hp), Math.ceil(player.maxHp)],
     stats: player?.stats ?? null
   });

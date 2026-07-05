@@ -193,7 +193,7 @@ function formatNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, "");
 }
 
-function optionalItemIds(player: PlayerView | undefined): readonly string[] | undefined {
+export function optionalItemIds(player: PlayerView | undefined): readonly string[] | undefined {
   if (player === undefined || !("itemIds" in player)) {
     return undefined;
   }
