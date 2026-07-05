@@ -118,11 +118,14 @@ export const MVP_SPRITE_ASSETS: readonly SpriteAssetSpec[] = [
       { name: "walk_0", promptAction: "same captain as idle reference, walking pose frame 1, facing right; change only legs and small body tilt", optional: true },
       { name: "walk_1", promptAction: "same captain as idle reference, walking pose frame 2, facing right; opposite leg forward", optional: true },
       { name: "walk_2", promptAction: "same captain as idle reference, walking pose frame 3, facing right; passing step", optional: true },
-      { name: "walk_3", promptAction: "same captain as idle reference, walking pose frame 4, facing right; opposite passing step", optional: true }
+      { name: "walk_3", promptAction: "same captain as idle reference, walking pose frame 4, facing right; opposite passing step", optional: true },
+      { name: "attack_0", promptAction: "same captain as idle reference, cutlass swing windup pose, facing right; change only arms and body tilt", optional: true },
+      { name: "attack_1", promptAction: "same captain as idle reference, cutlass swing follow-through pose, facing right; change only arms and body tilt", optional: true }
     ],
     animations: [
       { name: "idle", frames: ["idle", "idle_1"], fps: 2, loop: true },
-      { name: "walk", frames: ["walk_0", "walk_1", "walk_2", "walk_3"], fps: 8, loop: true }
+      { name: "walk", frames: ["walk_0", "walk_1", "walk_2", "walk_3"], fps: 8, loop: true },
+      { name: "attack", frames: ["attack_0", "attack_1"], fps: 6, loop: false }
     ]
   },
   {
@@ -136,11 +139,14 @@ export const MVP_SPRITE_ASSETS: readonly SpriteAssetSpec[] = [
       { name: "walk_0", promptAction: "same fisher as idle reference, walking pose frame 1, facing right; compact fishing gear", optional: true },
       { name: "walk_1", promptAction: "same fisher as idle reference, walking pose frame 2, facing right; opposite leg forward", optional: true },
       { name: "walk_2", promptAction: "same fisher as idle reference, walking pose frame 3, facing right; passing step", optional: true },
-      { name: "walk_3", promptAction: "same fisher as idle reference, walking pose frame 4, facing right; opposite passing step", optional: true }
+      { name: "walk_3", promptAction: "same fisher as idle reference, walking pose frame 4, facing right; opposite passing step", optional: true },
+      { name: "attack_0", promptAction: "same fisher as idle reference, fishing cast windup pose, facing right; change only arms, rod, and body tilt", optional: true },
+      { name: "attack_1", promptAction: "same fisher as idle reference, fishing cast follow-through pose, facing right; line arcing forward compactly", optional: true }
     ],
     animations: [
       { name: "idle", frames: ["idle", "idle_1"], fps: 2, loop: true },
-      { name: "walk", frames: ["walk_0", "walk_1", "walk_2", "walk_3"], fps: 8, loop: true }
+      { name: "walk", frames: ["walk_0", "walk_1", "walk_2", "walk_3"], fps: 8, loop: true },
+      { name: "attack", frames: ["attack_0", "attack_1"], fps: 6, loop: false }
     ]
   },
   {
@@ -153,9 +159,14 @@ export const MVP_SPRITE_ASSETS: readonly SpriteAssetSpec[] = [
       { name: "move_0", promptAction: "same chum as idle reference, swim cycle frame 1, facing right; tail bent up", optional: true },
       { name: "move_1", promptAction: "same chum as idle reference, swim cycle frame 2, facing right; tail centered", optional: true },
       { name: "move_2", promptAction: "same chum as idle reference, swim cycle frame 3, facing right; tail bent down", optional: true },
-      { name: "move_3", promptAction: "same chum as idle reference, swim cycle frame 4, facing right; tail centered", optional: true }
+      { name: "move_3", promptAction: "same chum as idle reference, swim cycle frame 4, facing right; tail centered", optional: true },
+      { name: "attack_0", promptAction: "same chum as idle reference, bite lunge windup pose, facing right; jaw open and body reared back", optional: true },
+      { name: "attack_1", promptAction: "same chum as idle reference, bite lunge strike pose, facing right; snapping forward with readable teeth", optional: true }
     ],
-    animations: [{ name: "move", frames: ["move_0", "move_1", "move_2", "move_3"], fps: 8, loop: true }]
+    animations: [
+      { name: "move", frames: ["move_0", "move_1", "move_2", "move_3"], fps: 8, loop: true },
+      { name: "attack", frames: ["attack_0", "attack_1"], fps: 6, loop: false }
+    ]
   },
   {
     id: "spitter_crab",
@@ -167,9 +178,14 @@ export const MVP_SPRITE_ASSETS: readonly SpriteAssetSpec[] = [
       { name: "move_0", promptAction: "same crab as idle reference, scuttle cycle frame 1, facing right; legs tucked", optional: true },
       { name: "move_1", promptAction: "same crab as idle reference, scuttle cycle frame 2, facing right; legs spread", optional: true },
       { name: "move_2", promptAction: "same crab as idle reference, scuttle cycle frame 3, facing right; opposite legs tucked", optional: true },
-      { name: "move_3", promptAction: "same crab as idle reference, scuttle cycle frame 4, facing right; opposite legs spread", optional: true }
+      { name: "move_3", promptAction: "same crab as idle reference, scuttle cycle frame 4, facing right; opposite legs spread", optional: true },
+      { name: "attack_0", promptAction: "same crab as idle reference, spit windup pose, facing right; claws raised and cheeks puffed", optional: true },
+      { name: "attack_1", promptAction: "same crab as idle reference, spit burst strike pose, facing right; small green glob ejecting forward", optional: true }
     ],
-    animations: [{ name: "move", frames: ["move_0", "move_1", "move_2", "move_3"], fps: 8, loop: true }]
+    animations: [
+      { name: "move", frames: ["move_0", "move_1", "move_2", "move_3"], fps: 8, loop: true },
+      { name: "attack", frames: ["attack_0", "attack_1"], fps: 6, loop: false }
+    ]
   },
   {
     id: "plank_biter",
@@ -181,9 +197,14 @@ export const MVP_SPRITE_ASSETS: readonly SpriteAssetSpec[] = [
       { name: "move_0", promptAction: "same plank biter as idle reference, bite cycle frame 1, facing right; jaw open", optional: true },
       { name: "move_1", promptAction: "same plank biter as idle reference, bite cycle frame 2, facing right; jaw closing", optional: true },
       { name: "move_2", promptAction: "same plank biter as idle reference, bite cycle frame 3, facing right; jaw closed", optional: true },
-      { name: "move_3", promptAction: "same plank biter as idle reference, bite cycle frame 4, facing right; jaw reopening", optional: true }
+      { name: "move_3", promptAction: "same plank biter as idle reference, bite cycle frame 4, facing right; jaw reopening", optional: true },
+      { name: "attack_0", promptAction: "same plank biter as idle reference, board-chomp windup pose, facing right; jaw opened wide and body pulled back", optional: true },
+      { name: "attack_1", promptAction: "same plank biter as idle reference, board-chomp strike pose, facing right; snapping down on a small plank edge", optional: true }
     ],
-    animations: [{ name: "move", frames: ["move_0", "move_1", "move_2", "move_3"], fps: 7, loop: true }]
+    animations: [
+      { name: "move", frames: ["move_0", "move_1", "move_2", "move_3"], fps: 8, loop: true },
+      { name: "attack", frames: ["attack_0", "attack_1"], fps: 6, loop: false }
+    ]
   },
   {
     id: "brute_turtle",
@@ -195,9 +216,14 @@ export const MVP_SPRITE_ASSETS: readonly SpriteAssetSpec[] = [
       { name: "move_0", promptAction: "same brute turtle as idle reference, heavy walk cycle frame 1, facing right", optional: true },
       { name: "move_1", promptAction: "same brute turtle as idle reference, heavy walk cycle frame 2, facing right", optional: true },
       { name: "move_2", promptAction: "same brute turtle as idle reference, heavy walk cycle frame 3, facing right", optional: true },
-      { name: "move_3", promptAction: "same brute turtle as idle reference, heavy walk cycle frame 4, facing right", optional: true }
+      { name: "move_3", promptAction: "same brute turtle as idle reference, heavy walk cycle frame 4, facing right", optional: true },
+      { name: "attack_0", promptAction: "same brute turtle as idle reference, shell ram windup pose, facing right; body crouched and shell angled back", optional: true },
+      { name: "attack_1", promptAction: "same brute turtle as idle reference, shell ram strike pose, facing right; lunging forward with heavy shell leading", optional: true }
     ],
-    animations: [{ name: "move", frames: ["move_0", "move_1", "move_2", "move_3"], fps: 6, loop: true }]
+    animations: [
+      { name: "move", frames: ["move_0", "move_1", "move_2", "move_3"], fps: 8, loop: true },
+      { name: "attack", frames: ["attack_0", "attack_1"], fps: 6, loop: false }
+    ]
   },
   {
     id: "kraken_tentacle",
@@ -206,9 +232,19 @@ export const MVP_SPRITE_ASSETS: readonly SpriteAssetSpec[] = [
     subject: "purple kraken tentacle segment with suction cups and clear curled silhouette",
     frames: [
       { name: "idle", promptAction: "rising upward from water, centered" },
-      { name: "idle_1", promptAction: "same kraken tentacle as idle reference, slight sway pose, centered", optional: true }
+      { name: "idle_1", promptAction: "same kraken tentacle as idle reference, slight sway pose, centered", optional: true },
+      { name: "move_0", promptAction: "same kraken tentacle as idle reference, swim sway cycle frame 1, centered; curl leaning left", optional: true },
+      { name: "move_1", promptAction: "same kraken tentacle as idle reference, swim sway cycle frame 2, centered; curl upright", optional: true },
+      { name: "move_2", promptAction: "same kraken tentacle as idle reference, swim sway cycle frame 3, centered; curl leaning right", optional: true },
+      { name: "move_3", promptAction: "same kraken tentacle as idle reference, swim sway cycle frame 4, centered; curl upright", optional: true },
+      { name: "attack_0", promptAction: "same kraken tentacle as idle reference, raised coil windup pose, centered; tip lifted high", optional: true },
+      { name: "attack_1", promptAction: "same kraken tentacle as idle reference, downward slam strike pose, centered; tip slamming down with strong curve", optional: true }
     ],
-    animations: [{ name: "idle", frames: ["idle", "idle_1"], fps: 2, loop: true }]
+    animations: [
+      { name: "idle", frames: ["idle", "idle_1"], fps: 2, loop: true },
+      { name: "move", frames: ["move_0", "move_1", "move_2", "move_3"], fps: 8, loop: true },
+      { name: "attack", frames: ["attack_0", "attack_1"], fps: 6, loop: false }
+    ]
   },
   {
     id: "kraken_head",
@@ -217,9 +253,16 @@ export const MVP_SPRITE_ASSETS: readonly SpriteAssetSpec[] = [
     subject: "large purple kraken head with expressive eyes and readable mouth",
     frames: [
       { name: "idle", promptAction: "looming forward, centered" },
-      { name: "idle_1", promptAction: "same kraken head as idle reference, slight breathing pose, centered; change only expression and tentacle sway", optional: true }
+      { name: "idle_1", promptAction: "same kraken head as idle reference, slight breathing pose, centered; change only expression and tentacle sway", optional: true },
+      { name: "move_0", promptAction: "same kraken head as idle reference, phase-driven looming cycle frame 1, centered; eyes narrowed slightly", optional: true },
+      { name: "move_1", promptAction: "same kraken head as idle reference, phase-driven looming cycle frame 2, centered; head lifted slightly", optional: true },
+      { name: "move_2", promptAction: "same kraken head as idle reference, phase-driven looming cycle frame 3, centered; mouth opened slightly", optional: true },
+      { name: "move_3", promptAction: "same kraken head as idle reference, phase-driven looming cycle frame 4, centered; head settled back", optional: true }
     ],
-    animations: [{ name: "idle", frames: ["idle", "idle_1"], fps: 2, loop: true }]
+    animations: [
+      { name: "idle", frames: ["idle", "idle_1"], fps: 2, loop: true },
+      { name: "move", frames: ["move_0", "move_1", "move_2", "move_3"], fps: 8, loop: true }
+    ]
   },
   {
     id: "cannon",
@@ -276,6 +319,42 @@ export const MVP_SPRITE_ASSETS: readonly SpriteAssetSpec[] = [
     sizeClass: "projectile",
     subject: "small green enemy spit glob projectile with readable splash shape",
     frames: [{ name: "idle", promptAction: "flying right, centered" }]
+  },
+  {
+    id: "anchor_flail",
+    category: "weapon",
+    sizeClass: "small",
+    subject: "compact iron anchor weapon on a short chain",
+    frames: [{ name: "idle", promptAction: "top-down three-quarter view, compact iron anchor with short chain, centered", optional: true }]
+  },
+  {
+    id: "seagull_bell",
+    category: "weapon",
+    sizeClass: "small",
+    subject: "small summoned seagull weapon marker with bright bell accent",
+    frames: [
+      { name: "idle", promptAction: "gull diving and pointing down, wings swept back, centered", optional: true },
+      { name: "idle_1", promptAction: "same seagull bell as idle reference, wings flared while diving down, centered", optional: true }
+    ],
+    animations: [{ name: "idle", frames: ["idle", "idle_1"], fps: 6, loop: true }]
+  },
+  {
+    id: "puddle",
+    category: "weapon",
+    sizeClass: "small",
+    subject: "translucent water puddle hazard viewed top-down",
+    frames: [
+      { name: "idle", promptAction: "translucent water puddle top-down, centered, readable ripple edge", optional: true },
+      { name: "idle_1", promptAction: "same puddle as idle reference, subtle ripple variation, centered; change only water ripple shape", optional: true }
+    ],
+    animations: [{ name: "idle", frames: ["idle", "idle_1"], fps: 2, loop: true }]
+  },
+  {
+    id: "trap",
+    category: "weapon",
+    sizeClass: "small",
+    subject: "armed snap-trap hazard with chunky metal jaws",
+    frames: [{ name: "idle", promptAction: "armed snap-trap with jaws open, top-down three-quarter view, centered", optional: true }]
   }
 ];
 

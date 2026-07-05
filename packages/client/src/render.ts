@@ -39,6 +39,12 @@ const PING_LIFE_MS = 3_000;
 const HIT_FLASH_MS = 130;
 const HIT_REACTION_MS = 150;
 const PLAYER_HURT_FLASH_MS = 180;
+const PLAYER_ATTACK_READ_MS = 260;
+const PLAYER_ATTACK_PULSE_STRENGTH = 0.08;
+const ENEMY_ATTACK_READ_MS = 220;
+const ENEMY_ATTACK_PULSE_STRENGTH = 0.22;
+const ENEMY_WINDUP_SCALE = 1.06;
+const ENEMY_WINDUP_ROTATION = 0.06;
 const PICKUP_FLY_MS = 320;
 const REPAIR_SUPPLY_FLY_MS = 700;
 const REPAIR_TILE_HP = 10;
@@ -115,6 +121,9 @@ interface EntityNode {
   reactionDx: number;
   reactionDy: number;
   baseScale: number;
+  animStartMs: number;
+  lastAnimState?: string;
+  animStateStartedAtMs: number;
 }
 
 interface SlashVfx {
@@ -131,6 +140,7 @@ interface SlashVfx {
 
 interface WeaponSwing {
   startedAtMs: number;
+  lastAttackMs: number;
   dx: number;
   dy: number;
 }
@@ -253,6 +263,7 @@ export class GameRenderer {
   private readonly raftTiles = new Map<string, RaftTileNode>();
   private readonly expansionMarkers = new Map<string, Graphics>();
   private readonly hazardNodes = new Map<string, Graphics>();
+  private readonly hazardSprites = new Map<string, Sprite>();
   private readonly nearestExpansionMarker = new Graphics();
   private readonly modules = new Map<string, Graphics>();
   private readonly moduleSprites = new Map<string, Sprite>();
@@ -370,6 +381,7 @@ export class GameRenderer {
       this.raftTiles.size * 3 +
       this.expansionMarkers.size +
       this.hazardNodes.size +
+      this.hazardSprites.size +
       1 +
       this.modules.size +
       this.moduleSprites.size +
@@ -432,14 +444,23 @@ export class GameRenderer {
   pushEvents(events: readonly WireEvent[]): void {
     for (const event of events) {
       if (event.type === "weapon_fired") {
+        const existingSwing = this.weaponSwings.get(event.wielderId);
         if (event.weaponId === "cutlass") {
           this.weaponSwings.set(event.wielderId, {
             startedAtMs: this.renderClockMs,
+            lastAttackMs: this.renderClockMs,
             dx: event.dx,
             dy: event.dy
           });
           continue;
         }
+
+        this.weaponSwings.set(event.wielderId, {
+          startedAtMs: existingSwing?.startedAtMs ?? Number.NEGATIVE_INFINITY,
+          lastAttackMs: this.renderClockMs,
+          dx: existingSwing?.dx ?? event.dx,
+          dy: existingSwing?.dy ?? event.dy
+        });
 
         this.addPop(event.ox + event.dx * 0.45, event.oy + event.dy * 0.45, 0xfff2c9, 120, "hit");
         const graphic = new Graphics();
@@ -839,6 +860,8 @@ export class GameRenderer {
       this.previousPlayerPositions.set(player.id, { x: player.x, y: player.y });
       node.container.position.set(player.x, player.y);
       node.container.scale.set(popScale(node.flashMs, PLAYER_HURT_FLASH_MS, 0.1) * node.baseScale);
+      node.container.rotation = 0;
+      resetEntityVisualTransform(node);
       node.body.clear();
 
       if (player.downed) {
@@ -851,11 +874,17 @@ export class GameRenderer {
           .fill(0x8a929c);
       } else {
         const assetId = player.characterId ?? "captain";
-        if (!this.applyEntityVisual(node, assetId, moving ? "walk" : "idle", PLAYER_RADIUS * 2.15)) {
+        const attackWindow = playerAttackWindow(this.weaponSwings.get(player.id), this.renderClockMs);
+        const preferences = attackWindow.active ? ["attack", moving ? "walk" : "idle"] : [moving ? "walk" : "idle"];
+        const spriteApplied = this.applyEntityVisual(node, assetId, preferences, PLAYER_RADIUS * 2.15);
+        if (!spriteApplied) {
           node.body
             .circle(0, 0, PLAYER_RADIUS)
             .fill(isOwn ? 0x2f80ed : characterColor(player.characterId))
             .stroke({ color: isOwn ? 0xffffff : 0x12362c, width: isOwn ? 0.075 : 0.045 });
+        }
+        if (attackWindow.active && node.spriteKey !== `${assetId}/attack`) {
+          applyEntityVisualPulse(node, attackWindow.ageMs, PLAYER_ATTACK_READ_MS, PLAYER_ATTACK_PULSE_STRENGTH);
         }
       }
 
@@ -866,7 +895,8 @@ export class GameRenderer {
       const weaponSwing = this.weaponSwings.get(player.id);
       if (
         weaponSwing !== undefined &&
-        this.renderClockMs - weaponSwing.startedAtMs >= CUTLASS_SWING_DURATION_MS
+        this.renderClockMs - weaponSwing.startedAtMs >= CUTLASS_SWING_DURATION_MS &&
+        this.renderClockMs - weaponSwing.lastAttackMs >= PLAYER_ATTACK_READ_MS
       ) {
         this.weaponSwings.delete(player.id);
       }
@@ -951,18 +981,21 @@ export class GameRenderer {
         enemy.y + node.reactionDy * nudge
       );
       node.container.scale.set(popScale(node.reactionMs, HIT_REACTION_MS, 0.16) * node.baseScale);
+      node.container.rotation = 0;
       const bobY =
         onDeck && this.qualitySettings.enemyDeckBob
           ? enemyBobOffset(enemy.id, this.renderClockMs)
           : 0;
       node.body.position.set(0, bobY);
       node.flash?.position.set(0, bobY);
+      resetEntityVisualTransform(node);
+      updateEntityAnimState(node, enemy.anim, this.renderClockMs);
       drawEnemyGround(node, enemy, onDeck, this.renderClockMs, this.qualitySettings.enemyWakes);
-      const animationName =
-        enemy.kind === "kraken_head" || enemy.kind === "kraken_tentacle" ? "idle" : "move";
-      if (!this.applyEntityVisual(node, enemy.kind, animationName, enemySpriteWorldSize(enemy))) {
+      const preferences = enemyAnimationPreferences(enemy);
+      if (!this.applyEntityVisual(node, enemy.kind, preferences, enemySpriteWorldSize(enemy))) {
         drawEnemy(node, enemy);
       }
+      applyEnemyProceduralAttackRead(node, enemy, this.renderClockMs);
       drawHpBar(
         node,
         enemy.hpRatio,
@@ -1042,10 +1075,30 @@ export class GameRenderer {
         this.raft.addChildAt(graphic, 0);
       }
 
+      const spriteApplied = this.applyWorldSprite(
+        this.hazardSprites,
+        hazard.id,
+        frameKey(hazard.kind),
+        hazard.x,
+        hazard.y,
+        hazard.radius * 2
+      );
+      const sprite = this.hazardSprites.get(hazard.id);
+      graphic.visible = !spriteApplied;
       if (hazard.kind === "puddle") {
-        graphic.alpha = 0.85 + 0.15 * Math.sin(this.renderClockMs * 0.004 + idPhase(hazard.id));
+        const alpha = 0.85 + 0.15 * Math.sin(this.renderClockMs * 0.004 + idPhase(hazard.id));
+        graphic.alpha = alpha;
+        if (sprite !== undefined) {
+          sprite.alpha = alpha;
+        }
       } else {
         graphic.alpha = 1;
+        if (sprite !== undefined) {
+          sprite.alpha = 1;
+        }
+      }
+      if (!spriteApplied) {
+        graphic.position.set(hazard.x, hazard.y);
       }
     }
 
@@ -1055,6 +1108,7 @@ export class GameRenderer {
         this.hazardNodes.delete(id);
       }
     }
+    removeMissingSprites(this.hazardSprites, seen);
   }
 
   private updateModules(modules: readonly ModuleView[]): void {
@@ -1110,10 +1164,16 @@ export class GameRenderer {
   private applyEntityVisual(
     node: EntityNode,
     assetId: string,
-    animationName: string,
+    preferences: readonly string[],
     visibleWorldSize: number
   ): boolean {
-    const animation = this.spriteAtlas?.animation(assetId, animationName);
+    const selectedAnimationName = preferences.find(
+      (name) => this.spriteAtlas?.animation(assetId, name) !== undefined
+    );
+    const animation =
+      selectedAnimationName === undefined
+        ? undefined
+        : this.spriteAtlas?.animation(assetId, selectedAnimationName);
     const frame = this.spriteAtlas?.frame(frameKey(assetId));
     if (animation === undefined && frame === undefined) {
       hideEntitySprite(node);
@@ -1125,13 +1185,19 @@ export class GameRenderer {
       node.container.addChildAt(node.sprite, 2);
     }
 
-    const spriteKey = animation === undefined ? frameKey(assetId) : `${assetId}/${animationName}`;
+    const spriteKey = animation === undefined ? frameKey(assetId) : `${assetId}/${selectedAnimationName}`;
     if (node.spriteKey !== spriteKey) {
       node.spriteKey = spriteKey;
+      node.animStartMs = this.renderClockMs;
     }
     node.sprite.position.set(node.body.position.x, node.body.position.y);
     if (animation !== undefined) {
-      setSpriteAnimationFrame(node.sprite, animation, this.renderClockMs, visibleWorldSize);
+      setSpriteAnimationFrame(
+        node.sprite,
+        animation,
+        this.renderClockMs - node.animStartMs,
+        visibleWorldSize
+      );
     } else if (frame !== undefined) {
       setSpriteFrame(node.sprite, frame, visibleWorldSize);
     }
@@ -2285,7 +2351,9 @@ function getOrCreateEntity(
       reactionMs: 0,
       reactionDx: 0,
       reactionDy: 0,
-      baseScale: 1
+      baseScale: 1,
+      animStartMs: 0,
+      animStateStartedAtMs: 0
     };
     map.set(id, node);
   }
@@ -2646,6 +2714,88 @@ function hideEntitySprite(node: EntityNode): void {
     node.sprite.visible = false;
   }
   node.body.visible = true;
+}
+
+function resetEntityVisualTransform(node: EntityNode): void {
+  node.body.scale.set(1);
+  node.body.rotation = 0;
+  if (node.sprite !== undefined) {
+    node.sprite.rotation = 0;
+  }
+}
+
+function playerAttackWindow(
+  swing: WeaponSwing | undefined,
+  clockMs: number
+): { active: boolean; ageMs: number } {
+  if (swing === undefined) {
+    return { active: false, ageMs: Number.POSITIVE_INFINITY };
+  }
+
+  const ageMs = clockMs - swing.lastAttackMs;
+  return { active: ageMs < PLAYER_ATTACK_READ_MS, ageMs };
+}
+
+function updateEntityAnimState(node: EntityNode, animState: string | undefined, clockMs: number): void {
+  if (node.lastAnimState !== animState) {
+    node.lastAnimState = animState;
+    node.animStateStartedAtMs = clockMs;
+  }
+}
+
+// Static preference lists — this runs per enemy per frame; don't allocate.
+const PREFS_MOVE = ["move"] as const;
+const PREFS_MOVE_IDLE = ["move", "idle"] as const;
+const PREFS_ATTACK = ["attack", "move"] as const;
+const PREFS_ATTACK_IDLE = ["attack", "move", "idle"] as const;
+const PREFS_WINDUP = ["windup", "attack", "move"] as const;
+const PREFS_WINDUP_IDLE = ["windup", "attack", "move", "idle"] as const;
+
+function enemyAnimationPreferences(enemy: EnemyView): readonly string[] {
+  const kraken = enemy.kind === "kraken_head" || enemy.kind === "kraken_tentacle";
+  if (enemy.anim === "attack") {
+    return kraken ? PREFS_ATTACK_IDLE : PREFS_ATTACK;
+  }
+  if (enemy.anim === "windup") {
+    return kraken ? PREFS_WINDUP_IDLE : PREFS_WINDUP;
+  }
+  return kraken ? PREFS_MOVE_IDLE : PREFS_MOVE;
+}
+
+function applyEnemyProceduralAttackRead(node: EntityNode, enemy: EnemyView, clockMs: number): void {
+  if (enemy.anim !== "windup" && enemy.anim !== "attack") {
+    return;
+  }
+
+  const winningAnimation = node.spriteKey?.slice(enemy.kind.length + 1);
+  if (winningAnimation === "attack" || winningAnimation === "windup") {
+    return;
+  }
+
+  if (enemy.anim === "windup") {
+    const phase = 0.5 + 0.5 * Math.sin((clockMs - node.animStateStartedAtMs) * 0.012);
+    const direction = enemy.x < RAFT_SIZE_TILES / 2 ? -1 : 1;
+    applyEntityVisualTransform(node, ENEMY_WINDUP_SCALE, direction * ENEMY_WINDUP_ROTATION * phase);
+    return;
+  }
+
+  const ageMs = clockMs - node.animStateStartedAtMs;
+  applyEntityVisualPulse(node, ageMs, ENEMY_ATTACK_READ_MS, ENEMY_ATTACK_PULSE_STRENGTH);
+}
+
+function applyEntityVisualPulse(
+  node: EntityNode,
+  ageMs: number,
+  durationMs: number,
+  strength: number
+): void {
+  applyEntityVisualTransform(node, popScale(ageMs, durationMs, strength), 0);
+}
+
+function applyEntityVisualTransform(node: EntityNode, scale: number, rotation: number): void {
+  const visual = node.sprite?.visible === true ? node.sprite : node.body;
+  visual.scale.set(visual.scale.x * scale, visual.scale.y * scale);
+  visual.rotation += rotation;
 }
 
 function frameKey(assetId: string): string {

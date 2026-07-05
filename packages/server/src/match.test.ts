@@ -98,7 +98,9 @@ describe("match", () => {
       slowFactor: 1,
       attackingTileId: "2,3",
       telegraphTicks: 13,
-      markTicks: 0
+      markTicks: 0,
+      animState: "windup" as const,
+      attackAnimTicks: 0
     });
 
     const snapshot = buildSnapshot(match);

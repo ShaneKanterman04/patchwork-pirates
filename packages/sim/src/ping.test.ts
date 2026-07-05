@@ -134,7 +134,9 @@ function addEnemy(world: WorldState, id: string, pos: Vec2): EnemyState {
     slowFactor: 1,
     attackingTileId: null,
     telegraphTicks: 0,
-    markTicks: 0
+    markTicks: 0,
+    animState: "move" as const,
+    attackAnimTicks: 0
   };
 
   world.enemies.push(enemy);

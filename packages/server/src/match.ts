@@ -323,6 +323,7 @@ export function buildSnapshot(match: Match): Snapshot {
     enemies: match.world.enemies.map((enemy) => ({
       id: enemy.id,
       kind: enemy.type,
+      anim: enemy.animState,
       x: enemy.pos.x,
       y: enemy.pos.y,
       hpRatio: enemy.maxHp === 0 ? 0 : enemy.hp / enemy.maxHp,

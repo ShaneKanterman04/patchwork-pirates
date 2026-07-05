@@ -42,6 +42,7 @@ const snapshot: Snapshot = {
     {
       id: "e1",
       kind: "kraken_tentacle",
+      anim: "windup",
       x: 4,
       y: 5,
       hpRatio: 0.5,

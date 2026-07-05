@@ -38,7 +38,7 @@ describe("sprite pipeline", () => {
 
       expect(issues).toEqual([]);
       expect(manifest.version).toBe(2);
-      expect(Object.keys(manifest.frames).length).toBe(MVP_SPRITE_ASSETS.length);
+      expect(Object.keys(manifest.frames).length).toBe(requiredFrameCount());
       expect(Object.keys(manifest.animations)).toEqual([]);
     } finally {
       await rm(dir, { recursive: true, force: true });
@@ -160,4 +160,11 @@ function rect(
       image.data[offset + 3] = a;
     }
   }
+}
+
+function requiredFrameCount(): number {
+  return MVP_SPRITE_ASSETS.reduce(
+    (count, asset) => count + asset.frames.filter((frame) => frame.optional !== true).length,
+    0
+  );
 }

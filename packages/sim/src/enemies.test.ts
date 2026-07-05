@@ -101,6 +101,21 @@ const BRUTE = enemyDef({
   }
 });
 
+const TENTACLE = enemyDef({
+  id: "tentacle",
+  maxHp: 60,
+  speed: 0,
+  contactDamage: 0,
+  cooldownS: 1.5,
+  radius: 0.45,
+  behavior: {
+    kind: "tentacle",
+    attackCooldownS: 1.5,
+    telegraphS: 0.2,
+    tileDamage: 3
+  }
+});
+
 const CONTENT: ContentRegistry = {
   weapons: { harpoon: HARPOON },
   characters: {},
@@ -109,7 +124,8 @@ const CONTENT: ContentRegistry = {
     chum: CHUM,
     spitter: SPITTER,
     plank_biter: PLANK_BITER,
-    brute: BRUTE
+    brute: BRUTE,
+    tentacle: TENTACLE
   },
   modules: {},
   waves: []
@@ -277,6 +293,46 @@ describe("enemy behavior dispatch", () => {
   });
 });
 
+describe("enemy animation state", () => {
+  it("reports attack during a contact hit window and returns to move while swimming", () => {
+    const world = createWorld(1, CONTENT);
+    const player = addPlayer(world, "p1");
+    player.pos = { x: 2.5, y: 2.5 };
+    const chum = addEnemy(world, "chum1", "chum", { x: 2.9, y: 2.5 });
+
+    updateEnemies(world);
+
+    expect(chum.animState).toBe("attack");
+
+    for (let i = 0; i < Math.round(0.3 * TICK_RATE); i += 1) {
+      updateEnemies(world);
+    }
+
+    expect(chum.animState).toBe("move");
+  });
+
+  it("reports windup while telegraphing and attack when the slam lands", () => {
+    const world = createWorld(1, CONTENT);
+    const tentacle = addEnemy(world, "tentacle1", "tentacle", {
+      x: -0.2,
+      y: 0.5
+    });
+
+    updateEnemies(world);
+
+    expect(tentacle.animState).toBe("windup");
+
+    while (tentacle.telegraphTicks > 1) {
+      updateEnemies(world);
+      expect(tentacle.animState).toBe("windup");
+    }
+
+    updateEnemies(world);
+
+    expect(tentacle.animState).toBe("attack");
+  });
+});
+
 function enemyDef(args: {
   id: string;
   maxHp: number;
@@ -308,7 +364,7 @@ function enemyDef(args: {
 function addEnemy(
   world: WorldState,
   id: string,
-  type: "chum" | "spitter" | "plank_biter" | "brute",
+  type: "chum" | "spitter" | "plank_biter" | "brute" | "tentacle",
   pos: Vec2
 ): EnemyState {
   const def = world.content.enemies[type];
@@ -319,6 +375,7 @@ function addEnemy(
   const enemy: EnemyState = {
     id,
     type,
+    animState: "move",
     pos,
     hp: def.maxHp,
     maxHp: def.maxHp,
@@ -327,6 +384,7 @@ function addEnemy(
     contactDamage: def.contactDamage,
     contactCooldownTicks: 0,
     contactCooldownMax: Math.round(behaviorCooldownS(def) * TICK_RATE),
+    attackAnimTicks: 0,
     slowTicks: 0,
     slowFactor: 1,
     attackingTileId: null,

@@ -59,6 +59,7 @@ export interface PlayerView {
 export interface EnemyView {
   id: string;
   kind: string;
+  anim?: string;
   x: number;
   y: number;
   hpRatio: number;

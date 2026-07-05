@@ -13,8 +13,11 @@ import type {
   WorldState
 } from "./types";
 
+const ATTACK_ANIM_TICKS = Math.round(0.3 * TICK_RATE);
+
 export function updateEnemies(world: WorldState): void {
   for (const enemy of world.enemies) {
+    enemy.attackAnimTicks = Math.max(0, enemy.attackAnimTicks - 1);
     if (enemy.telegraphTicks === 0) {
       enemy.attackingTileId = null;
     }
@@ -29,6 +32,7 @@ export function updateEnemies(world: WorldState): void {
     if (enemy.slowTicks === 0) {
       enemy.slowFactor = 1;
     }
+    enemy.animState = enemyAnimState(enemy);
   }
 }
 
@@ -73,6 +77,7 @@ function updateSwarmerMelee(world: WorldState, enemy: EnemyState): void {
     enemy.contactCooldownTicks === 0
   ) {
     target.hp = Math.max(0, target.hp - enemy.contactDamage);
+    startAttackAnim(enemy);
     enemy.contactCooldownTicks = enemy.contactCooldownMax;
   }
 }
@@ -114,6 +119,7 @@ function updateRangedLobber(
   }
 
   spawnEnemyLob(world, enemy, landPos, behavior);
+  startAttackAnim(enemy);
   enemy.contactCooldownTicks = enemy.contactCooldownMax;
 }
 
@@ -137,6 +143,7 @@ function updateTileEater(
   enemy.attackingTileId = tileId(targetTile);
   if (enemy.contactCooldownTicks === 0) {
     damageTile(world, targetTile.col, targetTile.row, behavior.tileDamage);
+    startAttackAnim(enemy);
     enemy.contactCooldownTicks = enemy.contactCooldownMax;
   }
 }
@@ -165,6 +172,7 @@ function updateTankSmasher(
       damageTile(world, tile.col, tile.row, behavior.tileDamage);
       enemy.attackingTileId = tileId(tile);
     }
+    startAttackAnim(enemy);
     enemy.contactCooldownTicks = enemy.contactCooldownMax;
   }
 }
@@ -181,6 +189,7 @@ function updateTentacle(
       if (target !== null) {
         damageTile(world, target.col, target.row, behavior.tileDamage);
       }
+      startAttackAnim(enemy);
       enemy.attackingTileId = null;
       enemy.contactCooldownTicks = enemy.contactCooldownMax;
     }
@@ -286,12 +295,30 @@ export function createEnemy(
     contactDamage: def.contactDamage,
     contactCooldownTicks: 0,
     contactCooldownMax: Math.round(cooldownS * TICK_RATE),
+    attackAnimTicks: 0,
     slowTicks: 0,
     slowFactor: 1,
     attackingTileId: null,
     telegraphTicks: 0,
-    markTicks: 0
+    markTicks: 0,
+    animState: "move"
   };
+}
+
+function startAttackAnim(enemy: EnemyState): void {
+  enemy.attackAnimTicks = ATTACK_ANIM_TICKS;
+}
+
+function enemyAnimState(enemy: EnemyState): EnemyState["animState"] {
+  if (enemy.attackAnimTicks > 0) {
+    return "attack";
+  }
+
+  if (enemy.telegraphTicks > 0) {
+    return "windup";
+  }
+
+  return "move";
 }
 
 function behaviorCooldownS(def: EnemyDef): number {

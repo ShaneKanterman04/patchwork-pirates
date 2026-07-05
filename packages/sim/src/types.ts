@@ -265,6 +265,7 @@ export interface WeaponInstance {
 export interface EnemyState {
   id: string;
   type: string;
+  animState: "move" | "windup" | "attack";
   pos: Vec2;
   hp: number;
   maxHp: number;
@@ -273,6 +274,7 @@ export interface EnemyState {
   contactDamage: number;
   contactCooldownTicks: number;
   contactCooldownMax: number;
+  attackAnimTicks: number;
   slowTicks: number;
   slowFactor: number;
   attackingTileId: string | null;
