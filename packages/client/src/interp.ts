@@ -1,6 +1,7 @@
 import type {
   BossView,
   EnemyView,
+  HazardView,
   ModuleView,
   PickupView,
   PingView,
@@ -29,6 +30,7 @@ export interface InterpolatedState {
   salvage?: number;
   supplyCap?: number;
   modules: ModuleView[];
+  hazards: HazardView[];
   boss?: BossView | null;
 }
 
@@ -45,6 +47,7 @@ export function interpolate(
       pings: [],
       wave: { number: 1, phase: "lobby", timeLeft: 0 },
       modules: [],
+      hazards: [],
       boss: null
     };
   }
@@ -87,6 +90,7 @@ export function interpolate(
         salvage: newer.snapshot.salvage,
         supplyCap: newer.snapshot.supplyCap,
         modules: newer.snapshot.modules ?? [],
+        hazards: newer.snapshot.hazards ?? [],
         boss: newer.snapshot.boss ?? null
       };
     }
@@ -107,6 +111,7 @@ function snapshotToState(snapshot: Snapshot): InterpolatedState {
     salvage: snapshot.salvage,
     supplyCap: snapshot.supplyCap,
     modules: snapshot.modules ?? [],
+    hazards: snapshot.hazards ?? [],
     boss: snapshot.boss ?? null
   };
 }

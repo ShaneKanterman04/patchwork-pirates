@@ -4,18 +4,24 @@ import { interpolate } from "./interp";
 
 describe("interpolate", () => {
   it("renders a single snapshot directly", () => {
-    const state = interpolate([{ recvTimeMs: 100, snapshot: snapshot(1) }], 120);
+    const source = snapshot(1);
+    source.hazards = [{ id: "h1", kind: "puddle", x: 2, y: 3, radius: 0.8 }];
+    const state = interpolate([{ recvTimeMs: 100, snapshot: source }], 120);
 
     expect(state.players[0]?.x).toBe(1);
     expect(state.enemies[0]?.x).toBe(3);
     expect(state.pickups[0]?.x).toBe(4);
+    expect(state.hazards).toBe(source.hazards);
   });
 
   it("lerps entities matched by id between bracketing snapshots", () => {
+    const older = snapshot(0);
+    const newer = snapshot(10);
+    newer.hazards = [{ id: "h1", kind: "trap", x: 5, y: 6, radius: 0.5 }];
     const state = interpolate(
       [
-        { recvTimeMs: 100, snapshot: snapshot(0) },
-        { recvTimeMs: 200, snapshot: snapshot(10) }
+        { recvTimeMs: 100, snapshot: older },
+        { recvTimeMs: 200, snapshot: newer }
       ],
       150
     );
@@ -24,6 +30,7 @@ describe("interpolate", () => {
     expect(state.players[0]?.y).toBe(6);
     expect(state.enemies[0]?.x).toBe(7);
     expect(state.pickups[0]?.x).toBe(8);
+    expect(state.hazards).toBe(newer.hazards);
   });
 
   it("adds new entities at their new position and drops old-only entities", () => {

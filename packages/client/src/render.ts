@@ -2,6 +2,7 @@ import { Application, Container, Graphics, Sprite, Text, Texture } from "pixi.js
 import { CHARACTERS, ENEMIES } from "@patchwork/content";
 import type {
   EnemyView,
+  HazardView,
   ModuleView,
   PickupView,
   PlayerView,
@@ -207,10 +208,12 @@ export class GameRenderer {
   private readonly raft = new Container();
   private readonly raftTiles = new Map<string, RaftTileNode>();
   private readonly expansionMarkers = new Map<string, Graphics>();
+  private readonly hazardNodes = new Map<string, Graphics>();
   private readonly nearestExpansionMarker = new Graphics();
   private readonly modules = new Map<string, Graphics>();
   private readonly moduleSprites = new Map<string, Sprite>();
   private readonly projectiles = new Map<string, Graphics>();
+  private readonly projectileFallbackKeys = new Map<string, string>();
   private readonly projectileSprites = new Map<string, Sprite>();
   private readonly players = new Map<string, EntityNode>();
   private readonly enemies = new Map<string, EntityNode>();
@@ -321,6 +324,7 @@ export class GameRenderer {
     let graphicsAlive =
       this.raftTiles.size * 3 +
       this.expansionMarkers.size +
+      this.hazardNodes.size +
       1 +
       this.modules.size +
       this.moduleSprites.size +
@@ -418,6 +422,9 @@ export class GameRenderer {
         this.addPop(event.x, event.y, 0xffb020, EXPLOSION_DURATION_MS, "explosion");
         this.addParticles("explosion", event.x, event.y);
         this.addShake(0.085);
+      } else if (event.type === "trap_triggered") {
+        this.addPop(event.x, event.y, 0xd9e5ec, 180, "hit");
+        this.addShake(0.035);
       } else if (event.type === "tile_built") {
         this.addPop(event.col + 0.5, event.row + 0.5, 0x9dd7e8, 200, "repair");
         this.addShake(0.03);
@@ -441,6 +448,7 @@ export class GameRenderer {
     this.drawRaft(state.raft);
     this.updateExpansionMarkers(state.wave.phase);
     this.updateTelegraphs(state.enemies);
+    this.updateHazards(state.hazards);
     this.updateModules(state.modules);
     this.updateProjectiles(state.projectiles);
     this.updatePlayers(state.players, myPlayerId, deltaMs);
@@ -965,6 +973,36 @@ export class GameRenderer {
     }
   }
 
+  private updateHazards(hazards: readonly HazardView[]): void {
+    const seen = new Set<string>();
+
+    for (const hazard of hazards) {
+      seen.add(hazard.id);
+      let graphic = this.hazardNodes.get(hazard.id);
+
+      if (graphic === undefined) {
+        graphic = new Graphics();
+        drawHazard(graphic, hazard);
+        graphic.position.set(hazard.x, hazard.y);
+        this.hazardNodes.set(hazard.id, graphic);
+        this.raft.addChildAt(graphic, 0);
+      }
+
+      if (hazard.kind === "puddle") {
+        graphic.alpha = 0.85 + 0.15 * Math.sin(this.renderClockMs * 0.004 + idPhase(hazard.id));
+      } else {
+        graphic.alpha = 1;
+      }
+    }
+
+    for (const [id, graphic] of this.hazardNodes) {
+      if (!seen.has(id)) {
+        graphic.destroy();
+        this.hazardNodes.delete(id);
+      }
+    }
+  }
+
   private updateModules(modules: readonly ModuleView[]): void {
     const seen = new Set<string>();
 
@@ -1098,16 +1136,17 @@ export class GameRenderer {
       );
       graphic.visible = !spriteApplied;
       if (!spriteApplied) {
-        const isEnemy = projectile.faction === "enemy";
         graphic.position.set(projectile.x, projectile.y);
-        graphic
-          .clear()
-          .circle(0, 0, isEnemy ? 0.13 : 0.09)
-          .fill(isEnemy ? 0x7ee36d : 0xfff2a0)
-          .stroke({ color: isEnemy ? 0x245820 : 0xffffff, width: 0.025 })
-          .moveTo(isEnemy ? -0.18 : -0.26, 0)
-          .lineTo(0.04, 0)
-          .stroke({ color: isEnemy ? 0xb9ff9e : 0xffffff, width: 0.04, alpha: 0.65 });
+        graphic.rotation =
+          projectile.kind === "anchor_flail" ? this.renderClockMs * 0.0014 : 0;
+        const fallbackKey =
+          projectile.kind === "anchor_flail" || projectile.kind === "seagull_bell"
+            ? projectile.kind
+            : `${projectile.kind}|${projectile.faction}`;
+        if (this.projectileFallbackKeys.get(projectile.id) !== fallbackKey) {
+          drawProjectileFallback(graphic, projectile.kind, projectile.faction);
+          this.projectileFallbackKeys.set(projectile.id, fallbackKey);
+        }
       }
     }
 
@@ -1115,6 +1154,7 @@ export class GameRenderer {
       if (!seen.has(id)) {
         graphic.destroy();
         this.projectiles.delete(id);
+        this.projectileFallbackKeys.delete(id);
       }
     }
     removeMissingSprites(this.projectileSprites, seen);
@@ -1636,6 +1676,52 @@ function drawExpansionMarker(
     .moveTo(0.5, 0.38)
     .lineTo(0.5, 0.62)
     .stroke({ color, width: Math.max(0.025, width * 0.72), alpha: Math.min(1, alpha + 0.05), cap: "round" });
+}
+
+function drawHazard(graphic: Graphics, hazard: HazardView): void {
+  graphic.clear();
+  if (hazard.kind === "puddle") {
+    drawPuddleHazard(graphic, hazard.radius);
+  } else if (hazard.kind === "trap") {
+    drawTrapHazard(graphic, hazard.radius);
+  }
+}
+
+function drawPuddleHazard(graphic: Graphics, radius: number): void {
+  graphic
+    .ellipse(0, 0, radius, radius * 0.72)
+    .fill({ color: 0x2f8fb3, alpha: 0.34 })
+    .stroke({ color: 0x9fdcef, width: 0.03, alpha: 0.5 })
+    .arc(-radius * 0.22, -radius * 0.1, radius * 0.24, Math.PI * 1.08, Math.PI * 1.58)
+    .stroke({ color: 0xc8f4ff, width: 0.025, alpha: 0.42, cap: "round" })
+    .arc(radius * 0.25, radius * 0.08, radius * 0.16, Math.PI * 0.1, Math.PI * 0.52)
+    .stroke({ color: 0xc8f4ff, width: 0.02, alpha: 0.36, cap: "round" });
+}
+
+function drawTrapHazard(graphic: Graphics, radius: number): void {
+  const jawRadius = radius * 0.72;
+  graphic
+    .circle(0, 0, radius * 0.36)
+    .stroke({ color: 0x6b4a2b, width: radius * 0.16, alpha: 0.95 })
+    .arc(0, 0, jawRadius, Math.PI * 0.12, Math.PI * 0.88)
+    .stroke({ color: 0x9aa7b0, width: radius * 0.11, alpha: 0.96, cap: "round" })
+    .arc(0, 0, jawRadius, Math.PI * 1.12, Math.PI * 1.88)
+    .stroke({ color: 0x9aa7b0, width: radius * 0.11, alpha: 0.96, cap: "round" })
+    .circle(0, 0, radius * 0.1)
+    .fill(0xe8933a);
+
+  drawTrapTeeth(graphic, radius, -1);
+  drawTrapTeeth(graphic, radius, 1);
+}
+
+function drawTrapTeeth(graphic: Graphics, radius: number, side: -1 | 1): void {
+  const baseY = side * radius * 0.34;
+  for (const x of [-0.22, 0, 0.22]) {
+    graphic
+      .moveTo(x * radius, baseY)
+      .lineTo(x * radius, side * radius * 0.08)
+      .stroke({ color: 0xd9e5ec, width: radius * 0.045, alpha: 0.9, cap: "round" });
+  }
 }
 
 function drawRaftTileBase(
@@ -2420,6 +2506,73 @@ function projectileSpriteId(kind: string): string {
     return "cannon_projectile";
   }
   return kind;
+}
+
+function drawProjectileFallback(
+  graphic: Graphics,
+  kind: string,
+  faction: ProjView["faction"]
+): void {
+  if (kind === "anchor_flail") {
+    drawAnchorFlailProjectile(graphic);
+    return;
+  }
+
+  if (kind === "seagull_bell") {
+    drawSeagullBellProjectile(graphic);
+    return;
+  }
+
+  const isEnemy = faction === "enemy";
+  graphic
+    .clear()
+    .circle(0, 0, isEnemy ? 0.13 : 0.09)
+    .fill(isEnemy ? 0x7ee36d : 0xfff2a0)
+    .stroke({ color: isEnemy ? 0x245820 : 0xffffff, width: 0.025 })
+    .moveTo(isEnemy ? -0.18 : -0.26, 0)
+    .lineTo(0.04, 0)
+    .stroke({ color: isEnemy ? 0xb9ff9e : 0xffffff, width: 0.04, alpha: 0.65 });
+}
+
+function drawAnchorFlailProjectile(graphic: Graphics): void {
+  graphic
+    .clear()
+    .circle(0, -0.21, 0.055)
+    .stroke({ color: 0xaebfcd, width: 0.025 })
+    .moveTo(0, -0.15)
+    .lineTo(0, 0.18)
+    .moveTo(-0.11, -0.03)
+    .lineTo(0.11, -0.03)
+    .moveTo(-0.18, 0.08)
+    .quadraticCurveTo(-0.18, 0.24, -0.04, 0.22)
+    .moveTo(0.18, 0.08)
+    .quadraticCurveTo(0.18, 0.24, 0.04, 0.22)
+    .stroke({ color: 0x3a4753, width: 0.055, cap: "round", join: "round" })
+    .moveTo(0, -0.15)
+    .lineTo(0, 0.17)
+    .moveTo(-0.1, -0.03)
+    .lineTo(0.1, -0.03)
+    .stroke({ color: 0xaebfcd, width: 0.018, cap: "round" });
+}
+
+function drawSeagullBellProjectile(graphic: Graphics): void {
+  graphic
+    .clear()
+    .ellipse(0, 0.04, 0.07, 0.17)
+    .fill(0xf4f8fb)
+    .stroke({ color: 0xaebfcd, width: 0.018 })
+    .moveTo(-0.04, -0.03)
+    .lineTo(-0.25, -0.18)
+    .lineTo(-0.1, 0.04)
+    .moveTo(0.04, -0.03)
+    .lineTo(0.25, -0.18)
+    .lineTo(0.1, 0.04)
+    .fill(0xf4f8fb)
+    .stroke({ color: 0xaebfcd, width: 0.018, join: "round" })
+    .moveTo(-0.035, 0.19)
+    .lineTo(0, 0.29)
+    .lineTo(0.035, 0.19)
+    .fill(0xe8933a);
 }
 
 function drawSlash(slash: SlashVfx): void {

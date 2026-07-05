@@ -13,6 +13,7 @@ import {
   rerollShop,
   setCharacter,
   setPlayerReady,
+  sellWeapon,
   startRun,
   supplyCapacity,
   tick,
@@ -244,6 +245,9 @@ export function handleClientMessage(
       case "buy":
         buyOffer(match.world, playerId, msg.index);
         return;
+      case "sell_weapon":
+        sellWeapon(match.world, playerId, msg.index);
+        return;
       case "reroll":
         rerollShop(match.world, playerId);
         return;
@@ -369,6 +373,13 @@ export function buildSnapshot(match: Match): Snapshot {
       x: ping.x,
       y: ping.y
     })),
+    hazards: match.world.hazards.map((hazard) => ({
+      id: hazard.id,
+      kind: hazard.kind,
+      x: roundViewNumber(hazard.pos.x),
+      y: roundViewNumber(hazard.pos.y),
+      radius: roundViewNumber(hazard.radius)
+    })),
     boss:
       match.world.boss === null
         ? null
@@ -444,6 +455,10 @@ function ratio(value: number, max: number): number {
   return Math.min(1, Math.max(0, value / max));
 }
 
+function roundViewNumber(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
+
 function shopToView(shop: { offers: ShopOffer[]; locked: boolean[]; rerollCost: number }): ShopView {
   return {
     offers: shop.offers.map(shopOfferToView),
@@ -507,6 +522,8 @@ function simEventToWire(event: SimEvent): WireEvent {
         y: event.pos.y,
         radius: event.radius
       };
+    case "trap_triggered":
+      return { type: "trap_triggered", x: event.x, y: event.y };
     case "tile_built":
       return { type: "tile_built", col: event.col, row: event.row };
     case "tile_broken":

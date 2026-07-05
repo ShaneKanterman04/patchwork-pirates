@@ -97,6 +97,14 @@ export interface PingView {
   y: number;
 }
 
+export interface HazardView {
+  id: string;
+  kind: string;
+  x: number;
+  y: number;
+  radius: number;
+}
+
 export interface WavePhaseView {
   number: number;
   phase: "lobby" | "combat" | "build" | "victory" | "defeat";
@@ -115,6 +123,7 @@ export interface Snapshot {
   supplyCap?: number;
   modules?: ModuleView[];
   pings?: PingView[];
+  hazards?: HazardView[];
   boss?: BossView | null;
 }
 
@@ -133,6 +142,7 @@ export type WireEvent =
   | { type: "enemy_hit"; enemyId: string; damage: number; x: number; y: number }
   | { type: "enemy_killed"; enemyId: string; x: number; y: number }
   | { type: "explosion"; x: number; y: number; radius: number }
+  | { type: "trap_triggered"; x: number; y: number }
   | { type: "tile_built"; col: number; row: number }
   | { type: "tile_broken"; col: number; row: number }
   | { type: "tile_repaired"; col: number; row: number }
@@ -171,6 +181,7 @@ export type ClientMessage =
       interact: boolean;
     }
   | { type: "buy"; index: number }
+  | { type: "sell_weapon"; index: number }
   | { type: "reroll" }
   | { type: "lock"; index: number }
   | { type: "ready"; ready: boolean }
@@ -214,6 +225,7 @@ export function decodeClientMessage(raw: string): ClientMessage {
     msg.type !== "select" &&
     msg.type !== "lobby_ready" &&
     msg.type !== "buy" &&
+    msg.type !== "sell_weapon" &&
     msg.type !== "reroll" &&
     msg.type !== "lock" &&
     msg.type !== "ready" &&
@@ -227,6 +239,12 @@ export function decodeClientMessage(raw: string): ClientMessage {
   if (msg.type === "build_tile") {
     if (!Number.isFinite(msg.col) || !Number.isFinite(msg.row)) {
       throw new Error("Invalid build_tile coordinates");
+    }
+  }
+
+  if (msg.type === "sell_weapon") {
+    if (typeof msg.index !== "number" || !Number.isInteger(msg.index) || msg.index < 0) {
+      throw new Error("Invalid sell_weapon index");
     }
   }
 

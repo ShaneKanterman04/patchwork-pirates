@@ -15,6 +15,7 @@ import {
   purchaseModule,
   rerollShop,
   resolveEnemyDeaths,
+  sellWeapon,
   startRun,
   supplyCapacity,
   tick,
@@ -260,6 +261,84 @@ describe("shop transactions", () => {
     expect(buyOffer(world, "p1", 3)).toBe(false);
     world.run.phase = "combat";
     expect(buyOffer(world, "p1", 3)).toBe(false);
+  });
+
+  it("sells a weapon in build phase and refunds half its shop price", () => {
+    const world = createWorld(3, CONTENT);
+    const player = addPlayer(world, "p1", ["cutlass", "harpoon", "cutlass"]);
+    player.coins = 4;
+    world.run.phase = "build";
+
+    expect(sellWeapon(world, "p1", 1)).toBe(true);
+
+    expect(player.weapons.map((weapon) => weapon.defId)).toEqual([
+      "cutlass",
+      "cutlass"
+    ]);
+    expect(player.coins).toBe(14);
+  });
+
+  it("rejects invalid weapon sales without changing player state", () => {
+    const world = createWorld(3, CONTENT);
+    const player = addPlayer(world, "p1", ["cutlass", "harpoon"]);
+    player.coins = 4;
+    world.run.phase = "combat";
+
+    expect(sellWeapon(world, "p1", 1)).toBe(false);
+
+    world.run.phase = "build";
+    const before = {
+      coins: player.coins,
+      weapons: player.weapons.map((weapon) => weapon.defId)
+    };
+
+    expect(sellWeapon(world, "p1", 2)).toBe(false);
+    expect(sellWeapon(world, "p1", 0.5)).toBe(false);
+    expect(sellWeapon(world, "missing", 0)).toBe(false);
+
+    player.weapons = [{ defId: "cutlass", cooldownTicks: 0 }];
+    expect(sellWeapon(world, "p1", 0)).toBe(false);
+
+    player.weapons = [
+      { defId: "cutlass", cooldownTicks: 0 },
+      { defId: "missing_weapon", cooldownTicks: 0 }
+    ];
+    expect(sellWeapon(world, "p1", 1)).toBe(false);
+
+    expect(player.coins).toBe(before.coins);
+    expect(player.weapons.map((weapon) => weapon.defId)).toEqual([
+      "cutlass",
+      "missing_weapon"
+    ]);
+  });
+
+  it("allows selling from four weapons and buying back to the cap", () => {
+    const world = createWorld(3, CONTENT);
+    const player = addPlayer(world, "p1", [
+      "cutlass",
+      "harpoon",
+      "cutlass",
+      "harpoon"
+    ]);
+    player.coins = 10;
+    world.run.phase = "build";
+    player.shop = {
+      offers: [{ kind: "weapon", defId: "cutlass", price: 10 }],
+      locked: [false],
+      rerollCost: BASE_REROLL_COST
+    };
+
+    expect(buyOffer(world, "p1", 0)).toBe(false);
+    expect(sellWeapon(world, "p1", 1)).toBe(true);
+    expect(player.weapons).toHaveLength(3);
+    expect(buyOffer(world, "p1", 0)).toBe(true);
+
+    expect(player.weapons.map((weapon) => weapon.defId)).toEqual([
+      "cutlass",
+      "cutlass",
+      "harpoon",
+      "cutlass"
+    ]);
   });
 
   it("rerolls unlocked non-sold offers, escalates cost, respects locks, and toggles locks", () => {

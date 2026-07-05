@@ -61,6 +61,67 @@ export const COCONUT_LAUNCHER = {
   pattern: { kind: "lob", projectileSpeed: 7, aoeRadius: 1.3 }
 } as const satisfies DescribedWeaponDef;
 
+export const ANCHOR_FLAIL = {
+  id: "anchor_flail",
+  name: "Anchor Flail",
+  description: "Orbiting anchor: pulses damage around itself as it circles you",
+  shopPrice: 18,
+  targeting: "nearest",
+  cooldownS: 0.5,
+  rangeTiles: 1.85,
+  damage: 18,
+  pattern: { kind: "orbit", orbitRadius: 1.3, orbitPeriodS: 2.2, hitRadius: 0.55 }
+} as const satisfies DescribedWeaponDef;
+
+export const SEAGULL_BELL = {
+  id: "seagull_bell",
+  name: "Seagull Bell",
+  description: "Rings a bell: a gull dives your target from above",
+  shopPrice: 22,
+  targeting: "nearest",
+  cooldownS: 2.2,
+  rangeTiles: 6,
+  damage: 30,
+  pattern: { kind: "dive", projectileSpeed: 12, aoeRadius: 0.6 }
+} as const satisfies DescribedWeaponDef;
+
+export const LEAKY_BUCKET = {
+  id: "leaky_bucket",
+  name: "Leaky Bucket",
+  description: "Drips slowing puddles behind you as you move",
+  shopPrice: 14,
+  targeting: "nearest",
+  cooldownS: 0.9,
+  rangeTiles: 0.8,
+  damage: 6,
+  pattern: {
+    kind: "trail",
+    puddleRadius: 0.8,
+    puddleTtlS: 4,
+    slowFactor: 0.55,
+    dps: 6,
+    minMoveTiles: 0.5
+  }
+} as const satisfies DescribedWeaponDef;
+
+export const CRAB_TRAP = {
+  id: "crab_trap",
+  name: "Crab Trap",
+  description: "Sets snapping traps that root the first foe to step in",
+  shopPrice: 16,
+  targeting: "nearest",
+  cooldownS: 3,
+  rangeTiles: 0.5,
+  damage: 45,
+  pattern: {
+    kind: "trap",
+    trapRadius: 0.5,
+    trapDamage: 45,
+    rootS: 0.8,
+    maxActive: 3
+  }
+} as const satisfies DescribedWeaponDef;
+
 export const CHUM = {
   id: "chum",
   name: "Chum",
@@ -215,7 +276,11 @@ export const REPAIR_STATION = {
 export const WEAPONS = {
   cutlass: CUTLASS,
   harpoon_gun: HARPOON_GUN,
-  coconut_launcher: COCONUT_LAUNCHER
+  coconut_launcher: COCONUT_LAUNCHER,
+  anchor_flail: ANCHOR_FLAIL,
+  seagull_bell: SEAGULL_BELL,
+  leaky_bucket: LEAKY_BUCKET,
+  crab_trap: CRAB_TRAP
 } as const satisfies Record<string, DescribedWeaponDef>;
 
 export const CAPTAIN = {

@@ -7,6 +7,7 @@ import {
   playerStatText,
   purchaseSnapshot,
   purchaseToastText,
+  sellRefund,
   weaponStackText,
   weaponStatLine
 } from "./shopReadability";
@@ -26,8 +27,15 @@ describe("shop readability helpers", () => {
   it("formats weapon stats and stacks compactly", () => {
     expect(weaponStatLine(WEAPONS.cutlass)).toBe("DMG 18 · every 0.7s · range 1.4");
     expect(weaponStackText(["cutlass", "coconut_launcher", "cutlass"])).toBe(
-      "Cutlass x2, Coconut Launcher x1"
+      "Weapons 3/4: Cutlass x2, Coconut Launcher x1"
     );
+    expect(weaponStackText([])).toBe("Weapons 0/4: None");
+  });
+
+  it("calculates weapon sale refunds from shop prices", () => {
+    expect(sellRefund("cutlass", WEAPONS)).toBe(Math.floor(WEAPONS.cutlass.shopPrice / 2));
+    expect(sellRefund("odd_price", { odd_price: { shopPrice: 13 } })).toBe(6);
+    expect(sellRefund("missing", WEAPONS)).toBeUndefined();
   });
 
   it("summarizes the visible gear fields while guarding missing item wire data", () => {

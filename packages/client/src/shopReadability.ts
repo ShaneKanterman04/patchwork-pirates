@@ -15,6 +15,12 @@ export interface PurchaseSnapshot {
   weaponIds: readonly string[];
 }
 
+interface WeaponPriceDef {
+  shopPrice?: number;
+}
+
+const WEAPON_CAP = 4;
+
 export function itemModifiersText(modifiers: ItemModifiers): string {
   const parts: string[] = [];
   appendFlat(parts, modifiers.maxHp, "Max HP");
@@ -32,7 +38,7 @@ export function weaponStatLine(def: (typeof WEAPONS)[keyof typeof WEAPONS]): str
 
 export function weaponStackText(weaponIds: readonly string[]): string {
   if (weaponIds.length === 0) {
-    return "None";
+    return `Weapons 0/${WEAPON_CAP}: None`;
   }
 
   const counts = new Map<string, number>();
@@ -40,9 +46,18 @@ export function weaponStackText(weaponIds: readonly string[]): string {
     counts.set(id, (counts.get(id) ?? 0) + 1);
   }
 
-  return [...counts.entries()]
+  const weapons = [...counts.entries()]
     .map(([id, count]) => `${WEAPONS[id as keyof typeof WEAPONS]?.name ?? id} x${count}`)
     .join(", ");
+  return `Weapons ${weaponIds.length}/${WEAPON_CAP}: ${weapons}`;
+}
+
+export function sellRefund(
+  defId: string,
+  registry: Record<string, WeaponPriceDef | undefined>
+): number | undefined {
+  const price = registry[defId]?.shopPrice;
+  return typeof price === "number" ? Math.floor(price / 2) : undefined;
 }
 
 export function characterLabel(characterId: PlayerView["characterId"]): string {

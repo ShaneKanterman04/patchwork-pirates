@@ -12,6 +12,7 @@ export {
   rerollShop,
   setCharacter,
   setPlayerReady,
+  sellWeapon,
   startRun,
   toggleLock,
   updateRunPostSim,
@@ -19,6 +20,7 @@ export {
 } from "./run";
 export { selectTarget, threatScore } from "./targeting";
 export { updateProjectiles } from "./projectiles";
+export { updateHazards } from "./hazards";
 export { updatePlayerWeapons } from "./weapons";
 export {
   collectPickups,
@@ -38,6 +40,7 @@ export type {
   EnemyBehavior,
   EnemyDef,
   EnemyState,
+  HazardState,
   ItemDef,
   ModuleBehavior,
   ModuleDef,

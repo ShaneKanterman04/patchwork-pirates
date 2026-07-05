@@ -61,7 +61,11 @@ Work branch `phase-0`. Legend: ✅ done & committed · 🔨 in progress · ⬜ t
   - ✅ 5.0 raft expansion: sparse growable grid + build_tile action (build phase, edge-adjacent,
     5 salvage, 60-tile cap, negative coords), dashed buildable-water markers + gold nearest pulse,
     viewport auto-fit, shop "Build Deck Tile" button, tile_built juice + hint (sim+protocol+server+content+client)
-  - ⬜ remaining Phase 5 slices (weapons/enemies/modules/characters) — see below
+  - ✅ 5.1 weapons slice: Anchor Flail (orbit primitive), Seagull Bell (dive), Leaky Bucket
+    (trail → ground-hazard system), Crab Trap (trap); replaceable 4-slot loadout (sell_weapon,
+    half-price refund, keep ≥1); loadout UI (Weapons n/4, Sell buttons, slots-full copy);
+    hazard wire (Snapshot.hazards + trap_triggered) + client render/audio
+  - ⬜ remaining Phase 5 slices (enemies/modules/characters) — see below
 - Phase 6 ⬜ post-MVP (meta & ship)
 
 Perf note (2026-07-05): client renderer is retained-mode with pooled VFX and adaptive quality

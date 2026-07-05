@@ -15,6 +15,7 @@ import { applyAuras, updateSpecials } from "./characters";
 import { updateBossAfterSim } from "./boss";
 import { hasDownedPlayerInReviveRange, updateDowned } from "./downed";
 import { resolveEnemyDeaths, updateEnemies } from "./enemies";
+import { updateHazards } from "./hazards";
 import { supplyCapacity, updateModules } from "./modules";
 import {
   clampMovement,
@@ -84,6 +85,7 @@ export function createWorld(
     pickups: [],
     pings: [],
     projectiles: [],
+    hazards: [],
     modules: [],
     events: [],
     coreDestroyed: false,
@@ -166,6 +168,7 @@ export function tick(
   updateModules(world);
   updateEnemies(world);
   updateProjectiles(world);
+  updateHazards(world);
   resolveEnemyDeaths(world);
   updateBossAfterSim(world);
   updateDowned(world, inputs);

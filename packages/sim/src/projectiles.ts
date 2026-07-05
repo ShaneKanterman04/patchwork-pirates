@@ -19,6 +19,13 @@ export function updateProjectiles(world: WorldState): void {
   const survivors: ProjectileState[] = [];
 
   for (const projectile of world.projectiles) {
+    if (projectile.persistent === true) {
+      if (shouldKeepPersistentProjectile(world, projectile)) {
+        survivors.push(projectile);
+      }
+      continue;
+    }
+
     if (projectile.faction === "enemy") {
       updateEnemyLob(world, projectile, survivors);
       continue;
@@ -32,6 +39,28 @@ export function updateProjectiles(world: WorldState): void {
   }
 
   world.projectiles = survivors;
+}
+
+function shouldKeepPersistentProjectile(
+  world: WorldState,
+  projectile: ProjectileState
+): boolean {
+  const owner = world.players.find((player) => player.id === projectile.ownerId);
+  if (
+    owner === undefined ||
+    owner.downed ||
+    owner.out ||
+    owner.hp <= 0
+  ) {
+    return false;
+  }
+
+  const slot = orbitSlot(projectile.id, owner.id);
+  if (slot === null) {
+    return true;
+  }
+
+  return owner.weapons[slot]?.defId === projectile.type;
 }
 
 function updateEnemyLob(
@@ -324,4 +353,14 @@ function distance(a: Vec2, b: Vec2): number {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function orbitSlot(projectileId: string, ownerId: string): number | null {
+  const prefix = `orbit:${ownerId}:`;
+  if (!projectileId.startsWith(prefix)) {
+    return null;
+  }
+
+  const slot = Number(projectileId.slice(prefix.length));
+  return Number.isInteger(slot) ? slot : null;
 }

@@ -132,6 +132,37 @@ export function buyOffer(
   return true;
 }
 
+export function sellWeapon(
+  world: WorldState,
+  playerId: string,
+  index: number
+): boolean {
+  if (world.run.phase !== "build") {
+    return false;
+  }
+
+  const player = world.players.find((candidate) => candidate.id === playerId);
+  const weapon = player?.weapons[index];
+  if (
+    player === undefined ||
+    weapon === undefined ||
+    !Number.isInteger(index) ||
+    index < 0 ||
+    player.weapons.length <= 1
+  ) {
+    return false;
+  }
+
+  const def = world.content.weapons[weapon.defId];
+  if (def === undefined) {
+    return false;
+  }
+
+  player.weapons.splice(index, 1);
+  player.coins += Math.floor(def.shopPrice / 2);
+  return true;
+}
+
 export function rerollShop(world: WorldState, playerId: string): boolean {
   if (world.run.phase !== "build") {
     return false;

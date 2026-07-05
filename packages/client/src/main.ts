@@ -22,6 +22,7 @@ import {
   playerStatText,
   purchaseSnapshot,
   purchaseToastText,
+  sellRefund,
   weaponStackText,
   weaponStatLine
 } from "./shopReadability";
@@ -63,6 +64,9 @@ root.innerHTML = `
     .gear-panel { border: 1px solid #c9d3d2; background: #edf7f3; border-radius: 8px; padding: 8px; margin-bottom: 10px; display: grid; gap: 4px; font-size: 12px; color: #31444c; }
     .gear-panel strong { color: #162832; font-size: 14px; }
     .gear-line { overflow-wrap: anywhere; }
+    .gear-weapon { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .gear-weapon span { overflow-wrap: anywhere; }
+    .gear-weapon button { padding: 4px 7px; white-space: nowrap; }
     .offers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .offer, .module-btn { border: 1px solid #bbc5c8; background: #fffdf6; border-radius: 8px; padding: 8px; min-height: 116px; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; }
     .offer.sold { color: #6f7b83; background: #eef2ef; }
@@ -565,7 +569,7 @@ function renderShop(
   timer.setAttribute("data-shop-timer", "");
   head.append(el("span", undefined, "Build Shop"), timer);
   shop.append(head);
-  shop.append(renderGearPanel(player));
+  shop.append(renderGearPanel(player, send));
 
   const offers = el("div", "offers");
   const offerViews = playerShop?.offers ?? [];
@@ -620,15 +624,31 @@ function renderShop(
   shop.append(el("div", "placement", placementText(buildTarget, expansionTarget, salvage)));
 }
 
-function renderGearPanel(player: PlayerView | undefined): HTMLElement {
+function renderGearPanel(player: PlayerView | undefined, send: (message: ClientMessage) => void): HTMLElement {
   const panel = el("div", "gear-panel");
   panel.append(
     el("strong", undefined, "Your gear"),
     el("div", "gear-line", `Character: ${characterLabel(player?.characterId)}`),
-    el("div", "gear-line", `Weapons: ${weaponStackText(player?.weaponIds ?? [])}`),
+    el("div", "gear-line", weaponStackText(player?.weaponIds ?? [])),
     el("div", "gear-line", ownedItemText(player)),
     el("div", "gear-line", playerStatText(player))
   );
+
+  const weaponIds = player?.weaponIds ?? [];
+  const keepOneWeapon = weaponIds.length <= 1;
+  for (const [index, weaponId] of weaponIds.entries()) {
+    const row = el("div", "gear-weapon");
+    const refund = sellRefund(weaponId, WEAPONS);
+    const sellButton = button(
+      keepOneWeapon ? "Keep at least one weapon" : `Sell +${refund ?? 0}`,
+      () => send({ type: "sell_weapon", index })
+    );
+    sellButton.className = "secondary";
+    sellButton.disabled = keepOneWeapon || refund === undefined;
+    row.append(el("span", undefined, displayName(WEAPONS, weaponId) ?? weaponId), sellButton);
+    panel.append(row);
+  }
+
   return panel;
 }
 
@@ -858,15 +878,19 @@ function renderOffer(
     offer.kind === "weapon"
       ? player?.weaponIds.filter((id) => id === offer.defId).length ?? 0
       : 0;
+  const slotsFull = offer.kind === "weapon" && weaponCount >= 4;
   card.append(
     el("div", "offer-title", title ?? offer.defId),
     el("div", "offer-desc", description),
     el("div", "offer-meta", statLine),
     el("div", "offer-meta", `${offer.price} coins${owned > 0 ? ` · Owned x${owned} - stacks!` : ""}`)
   );
+  if (slotsFull) {
+    card.append(el("div", "offer-meta", "Sell a weapon in Your Gear to make room."));
+  }
 
   const actions = el("div", "card-actions");
-  const buyBtn = button("Buy", () => send({ type: "buy", index }));
+  const buyBtn = button(slotsFull ? "Slots full" : "Buy", () => send({ type: "buy", index }));
   buyBtn.disabled = !canAffordOffer(offer, coins, weaponCount);
   const lockBtn = button(player?.shop?.locked[index] ? "Locked" : "Lock", () => send({ type: "lock", index }));
   lockBtn.className = "secondary";

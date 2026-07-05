@@ -41,8 +41,30 @@ const COCONUT: WeaponDef = {
   pattern: { kind: "lob", projectileSpeed: 7, aoeRadius: 1.3 }
 };
 
+const ANCHOR: WeaponDef = {
+  id: "anchor",
+  name: "Anchor",
+  shopPrice: 12,
+  targeting: "nearest",
+  cooldownS: 0.5,
+  rangeTiles: 1.85,
+  damage: 10,
+  pattern: { kind: "orbit", orbitRadius: 1.3, orbitPeriodS: 2.2, hitRadius: 0.55 }
+};
+
+const BELL: WeaponDef = {
+  id: "bell",
+  name: "Bell",
+  shopPrice: 12,
+  targeting: "nearest",
+  cooldownS: 2.2,
+  rangeTiles: 6,
+  damage: 12,
+  pattern: { kind: "dive", projectileSpeed: 12, aoeRadius: 0.6 }
+};
+
 const CONTENT: ContentRegistry = {
-  weapons: { harpoon: HARPOON, coconut: COCONUT },
+  weapons: { harpoon: HARPOON, coconut: COCONUT, anchor: ANCHOR, bell: BELL },
   characters: {},
   items: {},
   enemies: {
@@ -158,6 +180,109 @@ describe("coconut lob", () => {
       type: "explosion",
       pos: { x: 3.5, y: 1.5 },
       radius: 1.3
+    });
+  });
+});
+
+describe("anchor orbit", () => {
+  it("persists while held, follows the wielder, pulses nearby enemies, and ignores distant enemies", () => {
+    const world = createWorld(1, CONTENT);
+    world.run.spawnTimer = Number.MAX_SAFE_INTEGER;
+    const player = addPlayer(world, "p1", ["anchor"]);
+    const near = addEnemy(world, "near", "light", {
+      x: player.pos.x + 1.3,
+      y: player.pos.y
+    });
+    const far = addEnemy(world, "far", "light", {
+      x: player.pos.x + 3,
+      y: player.pos.y
+    });
+
+    tick(world, new Map([["p1", IDLE_INPUT]]));
+
+    expect(world.projectiles).toHaveLength(1);
+    expect(world.projectiles[0]).toMatchObject({
+      id: "orbit:p1:0",
+      type: "anchor",
+      ownerId: "p1",
+      persistent: true
+    });
+    expect(world.projectiles[0]?.pos.x).toBeCloseTo(player.pos.x + 1.3);
+    expect(world.projectiles[0]?.pos.y).toBeCloseTo(player.pos.y);
+    expect(near.hp).toBe(40);
+    expect(far.hp).toBe(50);
+
+    player.pos = { x: 2.5, y: 2.5 };
+    tick(world, new Map([["p1", IDLE_INPUT]]));
+
+    expect(world.projectiles).toHaveLength(1);
+    expect(distance(world.projectiles[0]?.pos ?? player.pos, player.pos)).toBeCloseTo(
+      1.3
+    );
+  });
+
+  it("removes the anchor when the wielder is downed", () => {
+    const world = createWorld(1, CONTENT);
+    world.run.spawnTimer = Number.MAX_SAFE_INTEGER;
+    const player = addPlayer(world, "p1", ["anchor"]);
+
+    tick(world, new Map([["p1", IDLE_INPUT]]));
+    player.downed = true;
+    tick(world, new Map([["p1", IDLE_INPUT]]));
+
+    expect(world.projectiles).toEqual([]);
+  });
+});
+
+describe("seagull bell dive", () => {
+  it("dives from above the target and explodes at the target position", () => {
+    const world = createWorld(1, CONTENT);
+    world.run.spawnTimer = Number.MAX_SAFE_INTEGER;
+    const player = addPlayer(world, "p1", ["bell"]);
+    const target = addEnemy(world, "target", "light", {
+      x: player.pos.x + 2,
+      y: player.pos.y
+    });
+    const nearby = addEnemy(world, "nearby", "light", {
+      x: target.pos.x + 0.4,
+      y: target.pos.y
+    });
+    const outside = addEnemy(world, "outside", "light", {
+      x: target.pos.x + 1.5,
+      y: target.pos.y
+    });
+
+    tick(world, new Map([["p1", IDLE_INPUT]]));
+
+    expect(world.projectiles).toHaveLength(1);
+    expect(world.projectiles[0]).toMatchObject({
+      type: "bell",
+      pos: { x: target.pos.x, y: target.pos.y - 3.5 + 12 / TICK_RATE },
+      vel: { x: 0, y: 12 },
+      landPos: { ...target.pos },
+      aoeRadius: 0.6
+    });
+    expect(world.events).toContainEqual({
+      type: "weapon_fired",
+      wielderId: "p1",
+      weaponId: "bell",
+      origin: { x: target.pos.x, y: target.pos.y - 3.5 },
+      dir: { x: 0, y: 1 },
+      arcDegrees: 0,
+      range: 6
+    });
+
+    while (world.projectiles.length > 0) {
+      tick(world, new Map([["p1", IDLE_INPUT]]));
+    }
+
+    expect(target.hp).toBe(38);
+    expect(nearby.hp).toBe(38);
+    expect(outside.hp).toBe(50);
+    expect(world.events).toContainEqual({
+      type: "explosion",
+      pos: { x: 3.5, y: 1.5 },
+      radius: 0.6
     });
   });
 });

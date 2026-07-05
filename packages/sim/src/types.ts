@@ -81,7 +81,29 @@ export type WeaponPattern =
       slowFactor?: number;
       slowDurationS?: number;
     }
-  | { kind: "lob"; projectileSpeed: number; aoeRadius: number };
+  | { kind: "lob"; projectileSpeed: number; aoeRadius: number }
+  | {
+      kind: "orbit";
+      orbitRadius: number;
+      orbitPeriodS: number;
+      hitRadius: number;
+    }
+  | { kind: "dive"; projectileSpeed: number; aoeRadius: number }
+  | {
+      kind: "trail";
+      puddleRadius: number;
+      puddleTtlS: number;
+      slowFactor: number;
+      dps: number;
+      minMoveTiles: number;
+    }
+  | {
+      kind: "trap";
+      trapRadius: number;
+      trapDamage: number;
+      rootS: number;
+      maxActive: number;
+    };
 
 export interface WeaponDef {
   id: string;
@@ -237,6 +259,7 @@ export interface RunState {
 export interface WeaponInstance {
   defId: string;
   cooldownTicks: number;
+  lastDropPos?: Vec2;
 }
 
 export interface EnemyState {
@@ -300,6 +323,19 @@ export interface ProjectileState {
   pullDistance: number;
   slowFactor: number;
   slowDurationTicks: number;
+  persistent?: boolean;
+}
+
+export interface HazardState {
+  id: string;
+  kind: "puddle" | "trap";
+  ownerId: string;
+  pos: Vec2;
+  radius: number;
+  ttlTicks: number;
+  damage: number;
+  slowFactor: number;
+  slowDurationTicks: number;
 }
 
 export interface ModuleState {
@@ -325,6 +361,7 @@ export type SimEvent =
   | { type: "enemy_hit"; enemyId: string; damage: number; pos: Vec2 }
   | { type: "enemy_killed"; enemyId: string; pos: Vec2 }
   | { type: "explosion"; pos: Vec2; radius: number }
+  | { type: "trap_triggered"; x: number; y: number }
   | { type: "tile_built"; col: number; row: number }
   | { type: "tile_broken"; col: number; row: number }
   | { type: "tile_repaired"; col: number; row: number }
@@ -361,6 +398,7 @@ export interface WorldState {
   pickups: PickupState[];
   pings: PingState[];
   projectiles: ProjectileState[];
+  hazards: HazardState[];
   modules: ModuleState[];
   events: SimEvent[];
   coreDestroyed: boolean;

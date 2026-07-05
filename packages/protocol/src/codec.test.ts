@@ -64,6 +64,7 @@ const snapshot: Snapshot = {
   supplyCap: 20,
   modules: [{ id: "m1", defId: "cannon", col: 2, row: 1, hpRatio: 0.5 }],
   pings: [{ id: "ping1", kind: "danger", x: 4, y: 5 }],
+  hazards: [{ id: "h1", kind: "puddle", x: 1.25, y: 2.5, radius: 0.8 }],
   boss: { phase: "tentacles", hpRatio: 0.6 }
 };
 
@@ -102,7 +103,8 @@ describe("protocol codec", () => {
           range: 1.4
         },
         { type: "enemy_hit", enemyId: "e1", damage: 18, x: 4, y: 5 },
-        { type: "enemy_killed", enemyId: "e1", x: 4, y: 5 }
+        { type: "enemy_killed", enemyId: "e1", x: 4, y: 5 },
+        { type: "trap_triggered", x: 1, y: 2 }
       ]
     };
 
@@ -124,6 +126,7 @@ describe("protocol codec", () => {
   it("round-trips build phase client messages", () => {
     const messages: ClientMessage[] = [
       { type: "buy", index: 1 },
+      { type: "sell_weapon", index: 0 },
       { type: "reroll" },
       { type: "lock", index: 2 },
       { type: "ready", ready: true },
@@ -187,5 +190,14 @@ describe("protocol codec", () => {
     expect(() =>
       decodeClientMessage('{"type":"build_tile","col":1,"row":null}')
     ).toThrow("Invalid build_tile coordinates");
+  });
+
+  it("rejects invalid sell_weapon indexes", () => {
+    expect(() =>
+      decodeClientMessage('{"type":"sell_weapon","index":-1}')
+    ).toThrow("Invalid sell_weapon index");
+    expect(() =>
+      decodeClientMessage('{"type":"sell_weapon","index":1.5}')
+    ).toThrow("Invalid sell_weapon index");
   });
 });

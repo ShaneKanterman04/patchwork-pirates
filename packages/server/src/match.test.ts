@@ -242,6 +242,10 @@ describe("match", () => {
 
     match.world.run.phase = "build";
     player!.coins = 20;
+    player!.weapons = [
+      { defId: "cutlass", cooldownTicks: 0 },
+      { defId: "harpoon_gun", cooldownTicks: 0 }
+    ];
     player!.shop = {
       offers: [{ kind: "weapon", defId: "harpoon_gun", price: 7 }],
       locked: [false],
@@ -249,9 +253,14 @@ describe("match", () => {
     };
 
     handleClientMessage(match, playerId, { type: "buy", index: 0 });
+    handleClientMessage(match, playerId, { type: "sell_weapon", index: 0 });
     handleClientMessage(match, playerId, { type: "ready", ready: true });
 
-    expect(player!.coins).toBe(13);
+    expect(player!.coins).toBe(19);
+    expect(player!.weapons.map((weapon) => weapon.defId)).toEqual([
+      "harpoon_gun",
+      "harpoon_gun"
+    ]);
     expect(player!.shop.offers[0]).toEqual({ kind: "sold" });
     expect(match.world.run.readyPlayerIds).toContain(playerId);
   });
