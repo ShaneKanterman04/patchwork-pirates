@@ -10,6 +10,7 @@ import type {
   WireEvent
 } from "@patchwork/protocol";
 import { characterColor, characterName, pingColor } from "./coOpLogic";
+import { enemyBobOffset, isEnemyOnDeck } from "./enemyGrounding";
 import { particleBurst, popScale, shake } from "./feedback";
 import type { ParticleSpec } from "./feedback";
 import type { ConnectionStatus } from "./net";
@@ -37,6 +38,7 @@ const PICKUP_FLY_MS = 320;
 
 interface EntityNode {
   container: Container;
+  ground: Graphics;
   body: Graphics;
   facing?: Graphics;
   hpBack?: Graphics;
@@ -70,7 +72,7 @@ interface PopVfx {
   x: number;
   y: number;
   color: number;
-  kind: "hit" | "kill" | "explosion";
+  kind: "hit" | "kill" | "explosion" | "splash";
 }
 
 interface PingNode {
@@ -132,12 +134,14 @@ export class GameRenderer {
   private readonly particles: ParticleVfx[] = [];
   private readonly pickupFlies: PickupFlyVfx[] = [];
   private readonly enemyKinds = new Map<string, string>();
+  private readonly previousEnemyDeckState = new Map<string, boolean>();
   private readonly previousPlayerHp = new Map<string, number>();
   private previousPickups: PickupRecord[] = [];
   private shakeAgeMs = Number.POSITIVE_INFINITY;
   private shakeAmplitude = 0;
   private baseWorldX = 0;
   private baseWorldY = 0;
+  private renderClockMs = 0;
 
   private constructor(readonly app: Application) {
     app.stage.addChild(this.world);
@@ -206,12 +210,13 @@ export class GameRenderer {
     myPlayerId: string | undefined,
     deltaMs: number
   ): CollectedPickup[] {
+    this.renderClockMs += deltaMs;
     this.drawRaft(state.raft);
     this.updateTelegraphs(state.enemies);
     this.updateModules(state.modules);
     this.updateProjectiles(state.projectiles);
     this.updatePlayers(state.players, myPlayerId, deltaMs);
-    this.updateEnemies(state.enemies, deltaMs);
+    this.updateEnemies(state.enemies, state.raft, deltaMs);
     this.updatePickups(state.pickups);
     const collectedPickups = this.updatePickupCollection(state.pickups, state.players);
     this.updatePings(state.pings, deltaMs);
@@ -433,12 +438,22 @@ export class GameRenderer {
     }
   }
 
-  private updateEnemies(enemies: readonly EnemyView[], deltaMs: number): void {
+  private updateEnemies(
+    enemies: readonly EnemyView[],
+    raft: RaftView | undefined,
+    deltaMs: number
+  ): void {
     const seen = new Set<string>();
 
     for (const enemy of enemies) {
       seen.add(enemy.id);
       const node = getOrCreateEntity(this.enemies, this.world, enemy.id, false);
+      const onDeck = isEnemyOnDeck(raft, enemy.x, enemy.y);
+      const wasOnDeck = this.previousEnemyDeckState.get(enemy.id);
+      if (onDeck && wasOnDeck === false) {
+        this.addPop(enemy.x, enemy.y + enemy.radius * 0.2, 0xcdf8ff, 240, "splash");
+      }
+      this.previousEnemyDeckState.set(enemy.id, onDeck);
       node.flashMs = Math.max(0, node.flashMs - deltaMs);
       node.reactionMs = Math.max(0, node.reactionMs - deltaMs);
       this.enemyKinds.set(enemy.id, enemy.kind);
@@ -449,6 +464,10 @@ export class GameRenderer {
         enemy.y + node.reactionDy * nudge
       );
       node.container.scale.set(popScale(node.reactionMs, HIT_REACTION_MS, 0.16) * node.baseScale);
+      const bobY = onDeck ? enemyBobOffset(enemy.id, this.renderClockMs) : 0;
+      node.body.position.set(0, bobY);
+      node.flash?.position.set(0, bobY);
+      drawEnemyGround(node.ground.clear(), enemy, onDeck, this.renderClockMs);
       drawEnemy(node.body.clear(), enemy);
       drawHpBar(
         node,
@@ -464,6 +483,7 @@ export class GameRenderer {
     for (const id of this.enemyKinds.keys()) {
       if (!seen.has(id)) {
         this.enemyKinds.delete(id);
+        this.previousEnemyDeckState.delete(id);
       }
     }
   }
@@ -623,12 +643,26 @@ export class GameRenderer {
 
       const t = pop.ageMs / pop.durationMs;
       const radius =
-        pop.kind === "hit" ? 0.12 + t * 0.22 : pop.kind === "explosion" ? 0.32 + t * 0.9 : 0.2 + t * 0.48;
+        pop.kind === "hit"
+          ? 0.12 + t * 0.22
+          : pop.kind === "explosion"
+            ? 0.32 + t * 0.9
+            : pop.kind === "splash"
+              ? 0.16 + t * 0.36
+              : 0.2 + t * 0.48;
       pop.graphic.position.set(pop.x, pop.y);
       pop.graphic
         .clear()
         .circle(0, 0, radius)
-        .stroke({ color: pop.color, width: 0.05, alpha: 1 - t });
+        .stroke({ color: pop.color, width: pop.kind === "splash" ? 0.04 : 0.05, alpha: 1 - t });
+      if (pop.kind === "splash") {
+        pop.graphic
+          .moveTo(-radius * 0.62, 0.04)
+          .lineTo(-radius * 0.28, -0.08)
+          .moveTo(radius * 0.28, -0.08)
+          .lineTo(radius * 0.62, 0.04)
+          .stroke({ color: 0xffffff, width: 0.025, alpha: (1 - t) * 0.75, cap: "round" });
+      }
     }
   }
 
@@ -902,6 +936,34 @@ function drawEnemy(graphic: Graphics, enemy: EnemyView): void {
     .fill(0x102b3a);
 }
 
+function drawEnemyGround(
+  graphic: Graphics,
+  enemy: EnemyView,
+  onDeck: boolean,
+  timeMs: number
+): void {
+  const r = enemy.radius;
+
+  if (onDeck) {
+    graphic
+      .ellipse(0, Math.max(0.16, r * 0.42), Math.max(0.24, r * 0.95), Math.max(0.1, r * 0.28))
+      .fill({ color: 0x1b1712, alpha: 0.28 });
+    return;
+  }
+
+  const phase = (timeMs * 0.002 + (enemy.id.length % 7) * 0.19) % 1;
+  const rearX = -Math.max(0.18, r * 0.62);
+  const rearY = Math.max(0.1, r * 0.26);
+  const width = Math.max(0.28, r * (0.72 + phase * 0.3));
+  const alpha = 0.32 * (1 - phase * 0.45);
+
+  graphic
+    .arc(rearX, rearY, width, Math.PI * 1.08, Math.PI * 1.86)
+    .stroke({ color: 0xd9fbff, width: 0.035, alpha, cap: "round" })
+    .arc(rearX + r * 0.28, rearY + r * 0.16, width * 0.72, Math.PI * 1.12, Math.PI * 1.78)
+    .stroke({ color: 0xffffff, width: 0.025, alpha: alpha * 0.72, cap: "round" });
+}
+
 function drawModule(graphic: Graphics, module: ModuleView): void {
   const x = module.col + 0.5;
   const y = module.row + 0.5;
@@ -980,6 +1042,7 @@ function getOrCreateEntity(
 
   if (node === undefined) {
     const container = new Container();
+    const ground = new Graphics();
     const body = new Graphics();
     const flash = new Graphics();
     const hpBack = new Graphics();
@@ -999,7 +1062,7 @@ function getOrCreateEntity(
     const reviveRing = withFacing ? new Graphics() : undefined;
     const bleedRing = withFacing ? new Graphics() : undefined;
 
-    container.addChild(body, flash);
+    container.addChild(ground, body, flash);
     if (reviveRing !== undefined && bleedRing !== undefined) {
       container.addChild(bleedRing, reviveRing);
     }
@@ -1014,6 +1077,7 @@ function getOrCreateEntity(
     parent.addChild(container);
     node = {
       container,
+      ground,
       body,
       facing,
       hpBack,
