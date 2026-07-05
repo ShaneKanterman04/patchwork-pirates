@@ -48,10 +48,16 @@ Work branch `phase-0`. Legend: ✅ done & committed · 🔨 in progress · ⬜ t
 - **Phase 3 — MVP content & the boss** 🔨
   - ✅ 3.1 The Kraken boss: tentacle-siege phases + head damage-window + Chum between (sim+content)
   - ✅ 3.2 Kraken wire + client render + attack telegraphs (≥0.75s) (protocol+server+client)
-  - 🔨 3.3 headless balance harness: seeded bot runs, wave-reached/core-HP/DPS reports (new package)
-  - ⬜ 3.4 balance tuning pass from harness output (overseer; content numbers)
-  - note: character specials (Captain mark / Fisher priority) already shipped in 2.2
-- Phases 4–6 ⬜ not started
+  - ✅ 3.3 headless balance harness: seeded bot runs, wave-reached/core-HP/DPS reports (new package)
+  - ✅ 3.4 balance tuning pass from harness output (overseer; conservative easing — real balance is Shane's playtest)
+  - note: character specials (Captain mark / Fisher priority) shipped in 2.2; readability/telegraphs in 3.2; run stats in 1.7
+  - ⏸ exit gate — Shane 2-player Kraken playtest (team split; ~40–70% duo win rate). Boss/telegraphs/wire verified; feel is Shane's.
+- **Phase 4 — Playtest & family polish** 🔨 (engineering items; the family-playtest exit is Shane's)
+  - ✅ 4.1 feel/juice: hit flash + knockback + particles, subtle screen shake, coin/pickup juice, procedural sound (client)
+  - ⏸ 4.2 movement prediction + reconciliation — DEFERRED per TECH.md (playtest-gated: only if real-internet play feels floaty; MVP ships without it). Reserved `seq` field is in place.
+  - 🔨 4.3 onboarding: first-run contextual hints ("Hold E to repair!") (client)
+  - ⏸ exit gate — family pair completes a run unassisted + asks to play again (observational; Shane's)
+- Phases 5–6 ⬜ post-MVP (content breadth, meta & ship)
 
 ---
 

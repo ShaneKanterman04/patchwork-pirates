@@ -10,7 +10,11 @@ import type {
   WireEvent
 } from "@patchwork/protocol";
 import { characterColor, characterName, pingColor } from "./coOpLogic";
+import { particleBurst, popScale, shake } from "./feedback";
+import type { ParticleSpec } from "./feedback";
 import type { ConnectionStatus } from "./net";
+import { detectCollectedPickups } from "./pickupJuice";
+import type { CollectedPickup } from "./pickupJuice";
 import type { InterpolatedState } from "./interp";
 import type { ViewportTransform } from "./shopLogic";
 
@@ -26,6 +30,10 @@ const HIT_DURATION_MS = 140;
 const KILL_DURATION_MS = 260;
 const EXPLOSION_DURATION_MS = 360;
 const PING_LIFE_MS = 3_000;
+const HIT_FLASH_MS = 130;
+const HIT_REACTION_MS = 150;
+const PLAYER_HURT_FLASH_MS = 180;
+const PICKUP_FLY_MS = 320;
 
 interface EntityNode {
   container: Container;
@@ -36,6 +44,12 @@ interface EntityNode {
   label?: Text;
   reviveRing?: Graphics;
   bleedRing?: Graphics;
+  flash?: Graphics;
+  flashMs: number;
+  reactionMs: number;
+  reactionDx: number;
+  reactionDy: number;
+  baseScale: number;
 }
 
 interface SlashVfx {
@@ -62,6 +76,28 @@ interface PopVfx {
 interface PingNode {
   graphic: Graphics;
   ageMs: number;
+}
+
+interface ParticleVfx extends ParticleSpec {
+  ageMs: number;
+  graphic: Graphics;
+}
+
+interface PickupFlyVfx {
+  ageMs: number;
+  graphic: Graphics;
+  kind: string;
+  x: number;
+  y: number;
+  ownerX: number;
+  ownerY: number;
+}
+
+interface PickupRecord {
+  id: string;
+  kind: string;
+  x: number;
+  y: number;
 }
 
 export interface HudState {
@@ -93,6 +129,15 @@ export class GameRenderer {
   private readonly pings = new Map<string, PingNode>();
   private readonly slashes: SlashVfx[] = [];
   private readonly pops: PopVfx[] = [];
+  private readonly particles: ParticleVfx[] = [];
+  private readonly pickupFlies: PickupFlyVfx[] = [];
+  private readonly enemyKinds = new Map<string, string>();
+  private readonly previousPlayerHp = new Map<string, number>();
+  private previousPickups: PickupRecord[] = [];
+  private shakeAgeMs = Number.POSITIVE_INFINITY;
+  private shakeAmplitude = 0;
+  private baseWorldX = 0;
+  private baseWorldY = 0;
 
   private constructor(readonly app: Application) {
     app.stage.addChild(this.world);
@@ -136,26 +181,46 @@ export class GameRenderer {
           range: event.range
         });
       } else if (event.type === "enemy_hit") {
+        this.flashEnemy(event.enemyId, event.x, event.y);
         this.addPop(event.x, event.y, 0xffffff, HIT_DURATION_MS, "hit");
+        if (this.isBossEnemy(event.enemyId)) {
+          this.addShake(0.055);
+        }
       } else if (event.type === "enemy_killed") {
         this.addPop(event.x, event.y, 0x9be7ff, KILL_DURATION_MS, "kill");
+        this.addParticles("kill", event.x, event.y);
       } else if (event.type === "explosion") {
         this.addPop(event.x, event.y, 0xffb020, EXPLOSION_DURATION_MS, "explosion");
+        this.addParticles("explosion", event.x, event.y);
+        this.addShake(0.085);
+      } else if (event.type === "tile_broken") {
+        this.addShake(0.045);
+      } else if (event.type === "core_destroyed") {
+        this.addShake(0.11);
       }
     }
   }
 
-  update(state: InterpolatedState, myPlayerId: string | undefined, deltaMs: number): void {
+  update(
+    state: InterpolatedState,
+    myPlayerId: string | undefined,
+    deltaMs: number
+  ): CollectedPickup[] {
     this.drawRaft(state.raft);
     this.updateTelegraphs(state.enemies);
     this.updateModules(state.modules);
     this.updateProjectiles(state.projectiles);
-    this.updatePlayers(state.players, myPlayerId);
-    this.updateEnemies(state.enemies);
+    this.updatePlayers(state.players, myPlayerId, deltaMs);
+    this.updateEnemies(state.enemies, deltaMs);
     this.updatePickups(state.pickups);
+    const collectedPickups = this.updatePickupCollection(state.pickups, state.players);
     this.updatePings(state.pings, deltaMs);
     this.updateSlashes(deltaMs);
     this.updatePops(deltaMs);
+    this.updateParticles(deltaMs);
+    this.updatePickupFlies(deltaMs);
+    this.updateShake(deltaMs);
+    return collectedPickups;
   }
 
   hudState(
@@ -207,10 +272,9 @@ export class GameRenderer {
       Math.min(TILE_PX, window.innerWidth / VIEW_TILES, window.innerHeight / VIEW_TILES)
     );
     this.world.scale.set(fitTilePx);
-    this.world.position.set(
-      window.innerWidth / 2 - RAFT_CENTER.x * fitTilePx,
-      window.innerHeight / 2 - RAFT_CENTER.y * fitTilePx
-    );
+    this.baseWorldX = window.innerWidth / 2 - RAFT_CENTER.x * fitTilePx;
+    this.baseWorldY = window.innerHeight / 2 - RAFT_CENTER.y * fitTilePx;
+    this.world.position.set(this.baseWorldX, this.baseWorldY);
   };
 
   private drawRaft(raft?: RaftView): void {
@@ -261,7 +325,11 @@ export class GameRenderer {
     }
   }
 
-  private updatePlayers(players: readonly PlayerView[], myPlayerId: string | undefined): void {
+  private updatePlayers(
+    players: readonly PlayerView[],
+    myPlayerId: string | undefined,
+    deltaMs: number
+  ): void {
     const seen = new Set<string>();
 
     for (const player of players) {
@@ -272,8 +340,16 @@ export class GameRenderer {
 
       seen.add(player.id);
       const node = getOrCreateEntity(this.players, this.world, player.id, true);
+      node.flashMs = Math.max(0, node.flashMs - deltaMs);
+      node.reactionMs = Math.max(0, node.reactionMs - deltaMs);
       const isOwn = player.id === myPlayerId;
+      const previousHp = this.previousPlayerHp.get(player.id);
+      if (previousHp !== undefined && player.hp < previousHp) {
+        node.flashMs = PLAYER_HURT_FLASH_MS;
+      }
+      this.previousPlayerHp.set(player.id, player.hp);
       node.container.position.set(player.x, player.y);
+      node.container.scale.set(popScale(node.flashMs, PLAYER_HURT_FLASH_MS, 0.1) * node.baseScale);
       node.body.clear();
 
       if (player.downed) {
@@ -308,9 +384,15 @@ export class GameRenderer {
       drawHpBar(node, player.maxHp > 0 ? player.hp / player.maxHp : 0);
       drawPlayerLabel(node, `${isOwn ? "You" : characterName(player.characterId, CHARACTERS)}`);
       drawDownedRings(node, player);
+      drawEntityFlash(node, player.downed ? 0xffb0b0 : 0xff5555, PLAYER_RADIUS * 1.05);
     }
 
     removeMissing(this.players, seen);
+    for (const id of this.previousPlayerHp.keys()) {
+      if (!seen.has(id)) {
+        this.previousPlayerHp.delete(id);
+      }
+    }
   }
 
   private updatePings(pings: readonly { id: string; kind: string; x: number; y: number }[], deltaMs: number): void {
@@ -351,18 +433,33 @@ export class GameRenderer {
     }
   }
 
-  private updateEnemies(enemies: readonly EnemyView[]): void {
+  private updateEnemies(enemies: readonly EnemyView[], deltaMs: number): void {
     const seen = new Set<string>();
 
     for (const enemy of enemies) {
       seen.add(enemy.id);
       const node = getOrCreateEntity(this.enemies, this.world, enemy.id, false);
-      node.container.position.set(enemy.x, enemy.y);
+      node.flashMs = Math.max(0, node.flashMs - deltaMs);
+      node.reactionMs = Math.max(0, node.reactionMs - deltaMs);
+      this.enemyKinds.set(enemy.id, enemy.kind);
+      const reactionT = clamp01(1 - node.reactionMs / HIT_REACTION_MS);
+      const nudge = Math.sin(Math.PI * reactionT) * 0.1;
+      node.container.position.set(
+        enemy.x + node.reactionDx * nudge,
+        enemy.y + node.reactionDy * nudge
+      );
+      node.container.scale.set(popScale(node.reactionMs, HIT_REACTION_MS, 0.16) * node.baseScale);
       drawEnemy(node.body.clear(), enemy);
       drawHpBar(node, enemy.hpRatio);
+      drawEntityFlash(node, 0xffffff, Math.max(0.34, enemy.radius * 1.25));
     }
 
     removeMissing(this.enemies, seen);
+    for (const id of this.enemyKinds.keys()) {
+      if (!seen.has(id)) {
+        this.enemyKinds.delete(id);
+      }
+    }
   }
 
   private updateTelegraphs(enemies: readonly EnemyView[]): void {
@@ -529,6 +626,59 @@ export class GameRenderer {
     }
   }
 
+  private updateParticles(deltaMs: number): void {
+    for (let index = this.particles.length - 1; index >= 0; index -= 1) {
+      const particle = this.particles[index]!;
+      particle.ageMs += deltaMs;
+
+      if (particle.ageMs >= particle.lifeMs) {
+        particle.graphic.destroy();
+        this.particles.splice(index, 1);
+        continue;
+      }
+
+      const t = particle.ageMs / particle.lifeMs;
+      const x = particle.x + particle.vx * t;
+      const y = particle.y + particle.vy * t + t * t * 0.22;
+      drawParticle(particle.graphic, particle, x, y, 1 - t);
+    }
+  }
+
+  private updatePickupFlies(deltaMs: number): void {
+    for (let index = this.pickupFlies.length - 1; index >= 0; index -= 1) {
+      const fly = this.pickupFlies[index]!;
+      fly.ageMs += deltaMs;
+
+      if (fly.ageMs >= PICKUP_FLY_MS) {
+        fly.graphic.destroy();
+        this.pickupFlies.splice(index, 1);
+        continue;
+      }
+
+      const t = easeOutCubic(clamp01(fly.ageMs / PICKUP_FLY_MS));
+      const x = fly.x + (fly.ownerX - fly.x) * t;
+      const y = fly.y + (fly.ownerY - fly.y) * t - Math.sin(Math.PI * t) * 0.25;
+      fly.graphic.position.set(x, y);
+      fly.graphic
+        .clear()
+        .circle(0, 0, 0.12 + Math.sin(Math.PI * t) * 0.05)
+        .fill(fly.kind === "coin" ? 0xffcf33 : 0xf3f0a5)
+        .stroke({ color: 0xffffff, width: 0.03, alpha: 1 - t * 0.4 })
+        .moveTo(-0.22, 0)
+        .lineTo(0.22, 0)
+        .moveTo(0, -0.22)
+        .lineTo(0, 0.22)
+        .stroke({ color: 0xffffff, width: 0.025, alpha: 1 - t });
+    }
+  }
+
+  private updateShake(deltaMs: number): void {
+    this.shakeAgeMs += deltaMs;
+    const offset = shake(this.shakeAmplitude, this.shakeAgeMs);
+    const scale = this.world.scale.x;
+    this.world.position.set(this.baseWorldX + offset.dx * scale, this.baseWorldY + offset.dy * scale);
+  }
+
   private addPop(
     x: number,
     y: number,
@@ -539,6 +689,65 @@ export class GameRenderer {
     const graphic = new Graphics();
     this.world.addChild(graphic);
     this.pops.push({ ageMs: 0, durationMs, graphic, x, y, color, kind });
+  }
+
+  private addParticles(kind: "kill" | "explosion" | "pickup", x: number, y: number): void {
+    for (const spec of particleBurst(kind, x, y)) {
+      const graphic = new Graphics();
+      this.world.addChild(graphic);
+      this.particles.push({ ...spec, ageMs: 0, graphic });
+    }
+  }
+
+  private addPickupFly(pickup: CollectedPickup): void {
+    const graphic = new Graphics();
+    this.world.addChild(graphic);
+    this.pickupFlies.push({
+      ageMs: 0,
+      graphic,
+      kind: pickup.kind,
+      x: pickup.x,
+      y: pickup.y,
+      ownerX: pickup.ownerX,
+      ownerY: pickup.ownerY
+    });
+    this.addParticles("pickup", pickup.x, pickup.y);
+  }
+
+  private updatePickupCollection(
+    pickups: readonly PickupView[],
+    players: readonly PlayerView[]
+  ): CollectedPickup[] {
+    const collected = detectCollectedPickups(this.previousPickups, pickups, players);
+    for (const pickup of collected) {
+      this.addPickupFly(pickup);
+    }
+    this.previousPickups = pickups.map((pickup) => ({ ...pickup }));
+    return collected;
+  }
+
+  private flashEnemy(enemyId: string, x: number, y: number): void {
+    const node = this.enemies.get(enemyId);
+    if (node === undefined) {
+      return;
+    }
+
+    const dx = node.container.position.x - x;
+    const dy = node.container.position.y - y;
+    const mag = Math.hypot(dx, dy);
+    node.flashMs = HIT_FLASH_MS;
+    node.reactionMs = HIT_REACTION_MS;
+    node.reactionDx = mag > 0.001 ? dx / mag : 0.7;
+    node.reactionDy = mag > 0.001 ? dy / mag : -0.35;
+  }
+
+  private addShake(amplitude: number): void {
+    this.shakeAmplitude = Math.max(this.shakeAmplitude * 0.7, amplitude);
+    this.shakeAgeMs = 0;
+  }
+
+  private isBossEnemy(enemyId: string): boolean {
+    return this.enemyKinds.get(enemyId)?.startsWith("kraken_") ?? false;
   }
 }
 
@@ -742,6 +951,7 @@ function getOrCreateEntity(
   if (node === undefined) {
     const container = new Container();
     const body = new Graphics();
+    const flash = new Graphics();
     const hpBack = new Graphics();
     const hpFill = new Graphics();
     const facing = withFacing ? new Graphics() : undefined;
@@ -760,7 +970,7 @@ function getOrCreateEntity(
     const reviveRing = withFacing ? new Graphics() : undefined;
     const bleedRing = withFacing ? new Graphics() : undefined;
 
-    container.addChild(body);
+    container.addChild(body, flash);
     if (reviveRing !== undefined && bleedRing !== undefined) {
       container.addChild(bleedRing, reviveRing);
     }
@@ -773,7 +983,22 @@ function getOrCreateEntity(
       container.addChild(label);
     }
     parent.addChild(container);
-    node = { container, body, facing, hpBack, hpFill, label, reviveRing, bleedRing };
+    node = {
+      container,
+      body,
+      facing,
+      hpBack,
+      hpFill,
+      label,
+      reviveRing,
+      bleedRing,
+      flash,
+      flashMs: 0,
+      reactionMs: 0,
+      reactionDx: 0,
+      reactionDy: 0,
+      baseScale: 1
+    };
     map.set(id, node);
   }
 
@@ -829,6 +1054,56 @@ function drawHpBar(node: EntityNode, ratio: number): void {
     .fill(color);
 }
 
+function drawEntityFlash(node: EntityNode, color: number, radius: number): void {
+  node.flash?.clear();
+  if (node.flash === undefined || node.flashMs <= 0) {
+    return;
+  }
+
+  const alpha = clamp01(node.flashMs / Math.max(HIT_FLASH_MS, PLAYER_HURT_FLASH_MS)) * 0.58;
+  node.flash.circle(0, 0, radius).fill({ color, alpha });
+}
+
+function drawParticle(
+  graphic: Graphics,
+  particle: ParticleSpec,
+  x: number,
+  y: number,
+  alpha: number
+): void {
+  graphic.position.set(x, y);
+  graphic.clear();
+
+  if (particle.shape === "bone") {
+    graphic
+      .roundRect(-particle.radius * 1.8, -particle.radius * 0.45, particle.radius * 3.6, particle.radius * 0.9, particle.radius * 0.45)
+      .fill({ color: particle.color, alpha })
+      .circle(-particle.radius * 1.7, 0, particle.radius * 0.72)
+      .circle(particle.radius * 1.7, 0, particle.radius * 0.72)
+      .fill({ color: particle.color, alpha });
+    return;
+  }
+
+  if (particle.shape === "spark") {
+    graphic
+      .moveTo(-particle.radius * 1.8, 0)
+      .lineTo(particle.radius * 1.8, 0)
+      .moveTo(0, -particle.radius * 1.8)
+      .lineTo(0, particle.radius * 1.8)
+      .stroke({ color: particle.color, width: particle.radius * 0.7, alpha, cap: "round" });
+    return;
+  }
+
+  graphic
+    .circle(0, 0, particle.radius * (particle.shape === "coin" ? 1.25 : 1))
+    .fill({ color: particle.color, alpha: particle.shape === "bubble" ? alpha * 0.2 : alpha })
+    .stroke({
+      color: particle.shape === "bubble" ? particle.color : 0x8f6400,
+      width: particle.radius * 0.45,
+      alpha
+    });
+}
+
 function removeMissing(map: Map<string, EntityNode>, seen: ReadonlySet<string>): void {
   for (const [id, node] of map) {
     if (!seen.has(id)) {
@@ -881,6 +1156,10 @@ function blendColor(damaged: number, healthy: number, ratio: number): number {
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
+}
+
+function easeOutCubic(value: number): number {
+  return 1 - (1 - value) ** 3;
 }
 
 export function renderHud(root: HTMLElement, state: HudState): void {

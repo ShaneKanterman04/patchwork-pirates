@@ -1,5 +1,6 @@
 import { CHARACTERS, ITEMS, MODULES, WEAPONS } from "@patchwork/content";
 import type { ClientMessage, PlayerView, ShopOfferView, Snapshot } from "@patchwork/protocol";
+import { ProceduralAudio } from "./audio";
 import type { LobbyViewModel } from "./coOpLogic";
 import { characterName, lobbyViewModel, ownCanRevive, scoreboardRows } from "./coOpLogic";
 import { INTERP_DELAY_MS, interpolate } from "./interp";
@@ -27,6 +28,9 @@ root.innerHTML = `
     .hud[hidden] { display: none; }
     .hud-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
     .hud-row span, .hp, .boss-hud { background: rgba(16, 43, 58, .72); border: 1px solid rgba(255,255,255,.22); border-radius: 8px; padding: 6px 9px; }
+    .hud-pulse { animation: hudPulse 260ms ease-out; }
+    .sound-toggle { position: absolute; right: 16px; bottom: 16px; min-width: 88px; }
+    @keyframes hudPulse { 0% { transform: scale(1); } 35% { transform: scale(1.12); } 100% { transform: scale(1); } }
     .hp { width: 230px; }
     .hp-label { font-weight: 700; font-size: 13px; margin-bottom: 5px; }
     .hp-track { height: 10px; border-radius: 999px; background: #2a2730; overflow: hidden; }
@@ -105,6 +109,7 @@ root.innerHTML = `
       </div>
     </div>
     <div class="shop" data-shop hidden></div>
+    <button class="sound-toggle secondary" data-sound-toggle type="button">Sound on</button>
     <div class="lobby" data-lobby></div>
     <div class="scoreboard" data-scoreboard hidden></div>
     <div class="revive-hint" data-revive-hint hidden>Hold E to revive</div>
@@ -118,28 +123,42 @@ const lobbyEl = root.querySelector<HTMLElement>("[data-lobby]");
 const scoreboardEl = root.querySelector<HTMLElement>("[data-scoreboard]");
 const reviveHintEl = root.querySelector<HTMLElement>("[data-revive-hint]");
 const endScreenEl = root.querySelector<HTMLElement>("[data-end-screen]");
+const soundToggleEl = root.querySelector<HTMLButtonElement>("[data-sound-toggle]");
 
-if (shell === null || shopEl === null || lobbyEl === null || scoreboardEl === null || reviveHintEl === null || endScreenEl === null) {
+if (shell === null || shopEl === null || lobbyEl === null || scoreboardEl === null || reviveHintEl === null || endScreenEl === null || soundToggleEl === null) {
   throw new Error("Missing game shell");
 }
 
 const renderer = await GameRenderer.create(shell);
 const input = new InputTracker(window);
 input.attach();
+const audio = new ProceduralAudio();
+audio.bindUnlock(window);
 
 let stats: RunStats = createRunStats();
 let latestState: InterpolatedState | undefined;
 let selectedModuleId: string | undefined;
 let locallyReady = false;
 let lobbyRenderKey = "";
+let previousWavePhase: InterpolatedState["wave"]["phase"] | undefined;
+let previousOwnDowned = false;
+let previousBossPhase: NonNullable<InterpolatedState["boss"]>["phase"] | undefined;
 
 const connection = connect(
   resolveWsUrl(window.location, import.meta.env.VITE_WS_URL),
   (events) => {
     stats = applyEventsToStats(stats, events);
     renderer.pushEvents(events);
+    for (const event of events) {
+      audio.playEvent(event);
+    }
   }
 );
+
+soundToggleEl.addEventListener("click", () => {
+  audio.setMuted(!audio.isMuted);
+  soundToggleEl.textContent = audio.isMuted ? "Sound off" : "Sound on";
+});
 
 renderer.app.canvas.addEventListener("click", (event) => {
   if (latestState?.wave.phase !== "build" || selectedModuleId === undefined) {
@@ -167,7 +186,12 @@ renderer.app.ticker.add((ticker) => {
   latestState = state;
   stats = applySnapshotToStats(stats, connection.latestSnapshot, connection.myPlayerId);
 
-  renderer.update(state, connection.myPlayerId, ticker.deltaMS);
+  const collectedPickups = renderer.update(state, connection.myPlayerId, ticker.deltaMS);
+  for (const pickup of collectedPickups) {
+    audio.play("coin");
+    pulseHudValue(root, pickup.kind === "salvage" ? "[data-salvage]" : "[data-coins]");
+  }
+  playStateAudioCues(state, connection.myPlayerId);
   const lobbyModel = lobbyViewModel({
     lobbyCode: connection.lobby.code,
     lobbyPlayers: connection.lobby.players,
@@ -204,6 +228,40 @@ window.addEventListener("beforeunload", () => {
   connection.close();
   renderer.destroy();
 });
+
+function playStateAudioCues(
+  state: InterpolatedState,
+  myPlayerId: string | undefined
+): void {
+  if (previousWavePhase !== "combat" && state.wave.phase === "combat") {
+    audio.play("wave");
+  }
+  previousWavePhase = state.wave.phase;
+
+  const ownPlayer = state.players.find((player) => player.id === myPlayerId);
+  const ownDowned = ownPlayer?.downed ?? false;
+  if (!previousOwnDowned && ownDowned) {
+    audio.play("downed");
+  }
+  previousOwnDowned = ownDowned;
+
+  const bossPhase = state.boss?.phase;
+  if (previousBossPhase !== "head" && bossPhase === "head") {
+    audio.play("boss");
+  }
+  previousBossPhase = bossPhase;
+}
+
+function pulseHudValue(rootNode: HTMLElement, selector: string): void {
+  const node = rootNode.querySelector<HTMLElement>(selector);
+  if (node === null) {
+    return;
+  }
+
+  node.classList.remove("hud-pulse");
+  void node.offsetWidth;
+  node.classList.add("hud-pulse");
+}
 
 function renderShop(
   shop: HTMLElement,
