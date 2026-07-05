@@ -9,6 +9,7 @@ import {
   RAFT_WIDTH,
   TICK_RATE,
   addPlayer,
+  buildTile,
   createWorld,
   mulberry32,
   nextRandom,
@@ -75,6 +76,69 @@ describe("world tick", () => {
     expect(player.pos.y).toBeGreaterThanOrEqual(PLAYER_RADIUS);
     expect(player.pos.x).toBeLessThanOrEqual(RAFT_WIDTH - PLAYER_RADIUS);
     expect(player.pos.y).toBeLessThanOrEqual(RAFT_HEIGHT - PLAYER_RADIUS);
+  });
+
+  it("blocks movement onto bounding-box water after a tile is built", () => {
+    const world = createWorld(31);
+    world.run.phase = "build";
+    world.salvage = 5;
+    expect(buildTile(world, 5, 2)).toBe(true);
+
+    const player = addPlayer(world, "p1");
+    player.pos = { x: 4.5, y: 1.5 };
+    player.moveSpeed = TICK_RATE;
+
+    tick(
+      world,
+      new Map([
+        ["p1", { movement: { x: 1, y: 1 }, dash: false, interact: false }]
+      ])
+    );
+
+    expect(Math.floor(player.pos.x)).toBe(4);
+    expect(Math.floor(player.pos.y)).toBe(2);
+  });
+
+  it("allows movement onto a newly built raft tile", () => {
+    const world = createWorld(32);
+    world.run.phase = "build";
+    world.salvage = 5;
+    expect(buildTile(world, 5, 2)).toBe(true);
+
+    const player = addPlayer(world, "p1");
+    player.pos = { x: 4.5, y: 2.5 };
+    player.moveSpeed = TICK_RATE;
+
+    tick(
+      world,
+      new Map([
+        ["p1", { movement: { x: 1, y: 0 }, dash: false, interact: false }]
+      ])
+    );
+
+    expect(player.pos.x).toBe(5.5);
+    expect(player.pos.y).toBe(2.5);
+  });
+
+  it("lets players standing on invalid cells move back onto deck", () => {
+    const world = createWorld(33);
+    world.run.phase = "build";
+    world.salvage = 5;
+    expect(buildTile(world, 5, 2)).toBe(true);
+
+    const player = addPlayer(world, "p1");
+    player.pos = { x: 5.5, y: 1.5 };
+    player.moveSpeed = TICK_RATE;
+
+    tick(
+      world,
+      new Map([
+        ["p1", { movement: { x: -1, y: 0 }, dash: false, interact: false }]
+      ])
+    );
+
+    expect(player.pos.x).toBe(4.5);
+    expect(player.pos.y).toBe(1.5);
   });
 
   it("starts dash on rising edge, locks direction, and respects cooldown", () => {

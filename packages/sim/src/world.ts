@@ -22,7 +22,7 @@ import {
   normalizeOrZero
 } from "./player";
 import { updateProjectiles } from "./projectiles";
-import { createRaft, isHole } from "./raft";
+import { createRaft, isWalkable } from "./raft";
 import { createRunState, updateRunPostSim, updateRunPreSim } from "./run";
 import { updatePlayerWeapons } from "./weapons";
 import type {
@@ -272,7 +272,7 @@ function moveOnRaft(world: WorldState, player: PlayerState, nextPos: Vec2): Vec2
   const candidateXCol = Math.floor(candidateX.x);
   const candidateXRow = Math.floor(candidateX.y);
   const x =
-    isHole(world.raft, candidateXCol, candidateXRow) &&
+    !isWalkable(world.raft, candidateX.x, candidateX.y) &&
     (candidateXCol !== currentCol || candidateXRow !== currentRow)
       ? player.pos.x
       : candidateX.x;
@@ -284,7 +284,7 @@ function moveOnRaft(world: WorldState, player: PlayerState, nextPos: Vec2): Vec2
   const candidateYCol = Math.floor(candidateY.x);
   const candidateYRow = Math.floor(candidateY.y);
   const y =
-    isHole(world.raft, candidateYCol, candidateYRow) &&
+    !isWalkable(world.raft, candidateY.x, candidateY.y) &&
     (candidateYCol !== currentCol || candidateYRow !== currentRow)
       ? player.pos.y
       : candidateY.y;
