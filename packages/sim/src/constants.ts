@@ -15,6 +15,12 @@ export const DASH_COOLDOWN_S = 3.0;
 export const DASH_DURATION_TICKS = Math.round(DASH_DURATION_S * TICK_RATE);
 export const DASH_COOLDOWN_TICKS = Math.round(DASH_COOLDOWN_S * TICK_RATE);
 
-export const SPAWN_INTERVAL_S = 0.8;
+// Phase-0 placeholder spawn tuning (overseer-owned; replaced by the budget-based
+// wave system in Phase 1). PROVISIONAL — real feel-tuning happens once the
+// client exists and Shane plays it. Smoke finding: on a confined 5x5 raft the
+// one-shot cutlass clears its area as fast as chum arrive, so standing
+// population stays ~3-6 regardless of spawn rate; growing a bigger kitable pack
+// needs chum to survive >1 hit (a CONTENT number — deferred to the playtest).
+export const SPAWN_INTERVAL_S = 0.5;
 export const SPAWN_INTERVAL_TICKS = Math.round(SPAWN_INTERVAL_S * TICK_RATE);
 export const MAX_ENEMIES = 24;
