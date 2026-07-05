@@ -49,6 +49,39 @@ const BROKEN_TILE_HP_PER_SUPPLY = 2.5;
 const DEFEAT_TILE_STAGGER_MS = 110;
 const DEFEAT_TILE_SINK_MS = 650;
 const DEFEAT_UI_DELAY_MS = 220;
+const PROJECTILE_TRAIL_INTERVAL_MS = 55;
+
+interface ProjectileMotionConfig {
+  faceHeading?: boolean;
+  rotationOffset?: number;
+  wobble?: boolean;
+  spinMs?: number;
+  arcBob?: boolean;
+  noTrail?: boolean;
+  skipHeading?: boolean;
+  trailTint: number;
+}
+
+const PROJECTILE_MOTION: Record<string, ProjectileMotionConfig> = {
+  harpoon_gun: { faceHeading: true, rotationOffset: 0, trailTint: 0xbfe9ff },
+  harpoon_projectile: { faceHeading: true, rotationOffset: 0, trailTint: 0xbfe9ff },
+  seagull_bell: { faceHeading: true, rotationOffset: -Math.PI / 2, wobble: true, trailTint: 0xffffff },
+  coconut_launcher: { spinMs: 0.012, arcBob: true, trailTint: 0xd8f2a4 },
+  coconut_projectile: { spinMs: 0.012, arcBob: true, trailTint: 0xd8f2a4 },
+  cannon: { spinMs: 0.006, trailTint: 0x9aa7b0 },
+  cannon_projectile: { spinMs: 0.006, trailTint: 0x9aa7b0 },
+  anchor_flail: { spinMs: 0.0014, noTrail: true, skipHeading: true, trailTint: 0xffffff }
+} satisfies Record<string, ProjectileMotionConfig>;
+const DEFAULT_PROJECTILE_MOTION: ProjectileMotionConfig = {
+  faceHeading: true,
+  rotationOffset: 0,
+  trailTint: 0xfff2a0
+};
+const ENEMY_PROJECTILE_MOTION: ProjectileMotionConfig = {
+  faceHeading: true,
+  rotationOffset: 0,
+  trailTint: 0x9fe37d
+};
 
 interface EntityNode {
   container: Container;
@@ -117,9 +150,18 @@ interface PingNode {
   ageMs: number;
 }
 
-interface ParticleVfx extends ParticleSpec {
+interface ParticleVfx extends Omit<ParticleSpec, "shape"> {
+  shape: ParticleSpec["shape"] | "trailPuff";
   ageMs: number;
   sprite: Sprite;
+}
+
+interface ProjectileMotionState {
+  lastX: number;
+  lastY: number;
+  headingRad: number;
+  ageMs: number;
+  trailAccumMs: number;
 }
 
 interface PickupFlyVfx {
@@ -153,6 +195,7 @@ type VfxTextureKey =
   | "popRing"
   | "splashRing"
   | "repairRing"
+  | "trailPuff"
   | "particleBubble"
   | "particleCoin"
   | "particleBone"
@@ -215,6 +258,7 @@ export class GameRenderer {
   private readonly projectiles = new Map<string, Graphics>();
   private readonly projectileFallbackKeys = new Map<string, string>();
   private readonly projectileSprites = new Map<string, Sprite>();
+  private readonly projectileMotion = new Map<string, ProjectileMotionState>();
   private readonly players = new Map<string, EntityNode>();
   private readonly enemies = new Map<string, EntityNode>();
   private readonly pickups = new Map<string, Graphics>();
@@ -396,6 +440,7 @@ export class GameRenderer {
           continue;
         }
 
+        this.addPop(event.ox + event.dx * 0.45, event.oy + event.dy * 0.45, 0xfff2c9, 120, "hit");
         const graphic = new Graphics();
         this.world.addChild(graphic);
         this.slashes.push({
@@ -450,7 +495,7 @@ export class GameRenderer {
     this.updateTelegraphs(state.enemies);
     this.updateHazards(state.hazards);
     this.updateModules(state.modules);
-    this.updateProjectiles(state.projectiles);
+    this.updateProjectiles(state.projectiles, deltaMs);
     this.updatePlayers(state.players, myPlayerId, deltaMs);
     this.updateEnemies(state.enemies, state.raft, deltaMs);
     this.updatePickups(state.pickups);
@@ -1113,11 +1158,12 @@ export class GameRenderer {
     return true;
   }
 
-  private updateProjectiles(projectiles: readonly ProjView[]): void {
+  private updateProjectiles(projectiles: readonly ProjView[], deltaMs: number): void {
     const seen = new Set<string>();
 
     for (const projectile of projectiles) {
       seen.add(projectile.id);
+      const motion = this.updateProjectileMotion(projectile, deltaMs);
       let graphic = this.projectiles.get(projectile.id);
 
       if (graphic === undefined) {
@@ -1134,11 +1180,13 @@ export class GameRenderer {
         projectile.y,
         0.34
       );
+      const sprite = this.projectileSprites.get(projectile.id);
+      if (spriteApplied && sprite !== undefined) {
+        this.applyProjectileMotion(projectile, motion, sprite, sprite.scale.x);
+      }
       graphic.visible = !spriteApplied;
       if (!spriteApplied) {
         graphic.position.set(projectile.x, projectile.y);
-        graphic.rotation =
-          projectile.kind === "anchor_flail" ? this.renderClockMs * 0.0014 : 0;
         const fallbackKey =
           projectile.kind === "anchor_flail" || projectile.kind === "seagull_bell"
             ? projectile.kind
@@ -1147,7 +1195,9 @@ export class GameRenderer {
           drawProjectileFallback(graphic, projectile.kind, projectile.faction);
           this.projectileFallbackKeys.set(projectile.id, fallbackKey);
         }
+        this.applyProjectileMotion(projectile, motion, graphic, 1);
       }
+      this.maybeAddProjectileTrail(projectile, motion);
     }
 
     for (const [id, graphic] of this.projectiles) {
@@ -1155,9 +1205,106 @@ export class GameRenderer {
         graphic.destroy();
         this.projectiles.delete(id);
         this.projectileFallbackKeys.delete(id);
+        this.projectileMotion.delete(id);
       }
     }
     removeMissingSprites(this.projectileSprites, seen);
+  }
+
+  private updateProjectileMotion(
+    projectile: ProjView,
+    deltaMs: number
+  ): ProjectileMotionState {
+    let motion = this.projectileMotion.get(projectile.id);
+    if (motion === undefined) {
+      motion = {
+        lastX: projectile.x,
+        lastY: projectile.y,
+        headingRad: 0,
+        ageMs: 0,
+        trailAccumMs: 0
+      };
+      this.projectileMotion.set(projectile.id, motion);
+    } else if (!this.projectileMotionConfig(projectile).skipHeading) {
+      const dx = projectile.x - motion.lastX;
+      const dy = projectile.y - motion.lastY;
+      if (dx * dx + dy * dy > 0.0001) {
+        motion.headingRad = Math.atan2(dy, dx);
+      }
+    }
+
+    motion.lastX = projectile.x;
+    motion.lastY = projectile.y;
+    motion.ageMs += deltaMs;
+    motion.trailAccumMs += deltaMs;
+    return motion;
+  }
+
+  private applyProjectileMotion(
+    projectile: ProjView,
+    motion: ProjectileMotionState,
+    node: Container,
+    baseScale: number
+  ): void {
+    const config = this.projectileMotionConfig(projectile);
+    let rotation = config.spinMs === undefined ? 0 : motion.ageMs * config.spinMs;
+
+    if (config.faceHeading) {
+      rotation = motion.headingRad + (config.rotationOffset ?? 0);
+    }
+    if (config.wobble) {
+      rotation += Math.sin(motion.ageMs * 0.02) * 0.08;
+    }
+
+    const arcScale =
+      config.arcBob === true
+        ? 1 + Math.sin(Math.min(1, motion.ageMs / 900) * Math.PI) * 0.35
+        : 1;
+    node.rotation = rotation;
+    node.scale.set(baseScale * arcScale);
+  }
+
+  private maybeAddProjectileTrail(projectile: ProjView, motion: ProjectileMotionState): void {
+    const config = this.projectileMotionConfig(projectile);
+    if (config.noTrail || this.qualitySettings.particleMultiplier === 0) {
+      motion.trailAccumMs = 0;
+      return;
+    }
+
+    const intervalMs =
+      this.qualitySettings.particleMultiplier <= 0.5
+        ? PROJECTILE_TRAIL_INTERVAL_MS * 2
+        : PROJECTILE_TRAIL_INTERVAL_MS;
+    if (motion.trailAccumMs < intervalMs) {
+      return;
+    }
+
+    motion.trailAccumMs -= intervalMs;
+    const sprite = this.acquireVfxSprite("trailPuff");
+    sprite.tint = config.trailTint;
+    sprite.scale.set(0.07);
+    this.particles.push({
+      x: projectile.x,
+      y: projectile.y,
+      vx: 0,
+      vy: 0,
+      radius: 0.07,
+      lifeMs: 260,
+      color: config.trailTint,
+      shape: "trailPuff",
+      ageMs: 0,
+      sprite
+    });
+  }
+
+  private projectileMotionConfig(projectile: ProjView): ProjectileMotionConfig {
+    if (projectile.kind === "anchor_flail") {
+      return PROJECTILE_MOTION.anchor_flail!;
+    }
+    if (projectile.faction === "enemy") {
+      return ENEMY_PROJECTILE_MOTION;
+    }
+    return PROJECTILE_MOTION[projectile.kind] ?? DEFAULT_PROJECTILE_MOTION;
   }
 
   private updatePickups(pickups: readonly PickupView[]): void {
@@ -2367,7 +2514,10 @@ function drawEntityFlash(node: EntityNode, color: number, radius: number): void 
   node.flash.alpha = alpha;
 }
 
-function particleTextureKey(shape: ParticleSpec["shape"]): VfxTextureKey {
+function particleTextureKey(shape: ParticleVfx["shape"]): VfxTextureKey {
+  if (shape === "trailPuff") {
+    return "trailPuff";
+  }
   if (shape === "bone") {
     return "particleBone";
   }
@@ -2402,6 +2552,14 @@ function drawVfxTextureGraphic(graphic: Graphics, key: VfxTextureKey): void {
       .moveTo(0, -0.6)
       .lineTo(0, 0.6)
       .stroke({ color: 0xffffff, width: 0.1, alpha: 0.9, cap: "round" });
+    return;
+  }
+  if (key === "trailPuff") {
+    graphic
+      .circle(0, 0, 1)
+      .fill({ color: 0xffffff, alpha: 0.34 })
+      .circle(0.18, -0.12, 0.68)
+      .fill({ color: 0xffffff, alpha: 0.22 });
     return;
   }
   if (key === "particleBone") {
