@@ -103,11 +103,51 @@
         "h": 82
       }
     },
+    "captain/attack_0": {
+      "assetId": "captain",
+      "frame": "attack_0",
+      "source": "../../../../../art/sprites/normalized/captain/attack_0.png",
+      "x": 640,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "medium",
+      "contentBounds": {
+        "x": 23,
+        "y": 23,
+        "w": 82,
+        "h": 82
+      }
+    },
+    "captain/attack_1": {
+      "assetId": "captain",
+      "frame": "attack_1",
+      "source": "../../../../../art/sprites/normalized/captain/attack_1.png",
+      "x": 768,
+      "y": 0,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "medium",
+      "contentBounds": {
+        "x": 23,
+        "y": 23,
+        "w": 82,
+        "h": 82
+      }
+    },
     "fisher/idle": {
       "assetId": "fisher",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/fisher/idle.png",
-      "x": 640,
+      "x": 896,
       "y": 0,
       "w": 128,
       "h": 128,
@@ -203,11 +243,51 @@
         "h": 82
       }
     },
+    "fisher/attack_0": {
+      "assetId": "fisher",
+      "frame": "attack_0",
+      "source": "../../../../../art/sprites/normalized/fisher/attack_0.png",
+      "x": 512,
+      "y": 128,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "medium",
+      "contentBounds": {
+        "x": 23,
+        "y": 23,
+        "w": 82,
+        "h": 82
+      }
+    },
+    "fisher/attack_1": {
+      "assetId": "fisher",
+      "frame": "attack_1",
+      "source": "../../../../../art/sprites/normalized/fisher/attack_1.png",
+      "x": 640,
+      "y": 128,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "medium",
+      "contentBounds": {
+        "x": 23,
+        "y": 23,
+        "w": 82,
+        "h": 82
+      }
+    },
     "chum/idle": {
       "assetId": "chum",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/chum/idle.png",
-      "x": 512,
+      "x": 768,
       "y": 128,
       "w": 128,
       "h": 128,
@@ -227,7 +307,7 @@
       "assetId": "chum",
       "frame": "move_0",
       "source": "../../../../../art/sprites/normalized/chum/move_0.png",
-      "x": 640,
+      "x": 896,
       "y": 128,
       "w": 128,
       "h": 128,
@@ -303,11 +383,51 @@
         "h": 50
       }
     },
+    "chum/attack_0": {
+      "assetId": "chum",
+      "frame": "attack_0",
+      "source": "../../../../../art/sprites/normalized/chum/attack_0.png",
+      "x": 384,
+      "y": 256,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 37,
+        "w": 64,
+        "h": 53
+      }
+    },
+    "chum/attack_1": {
+      "assetId": "chum",
+      "frame": "attack_1",
+      "source": "../../../../../art/sprites/normalized/chum/attack_1.png",
+      "x": 512,
+      "y": 256,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 37,
+        "w": 64,
+        "h": 53
+      }
+    },
     "spitter_crab/idle": {
       "assetId": "spitter_crab",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/spitter_crab/idle.png",
-      "x": 384,
+      "x": 640,
       "y": 256,
       "w": 128,
       "h": 128,
@@ -327,7 +447,7 @@
       "assetId": "spitter_crab",
       "frame": "move_0",
       "source": "../../../../../art/sprites/normalized/spitter_crab/move_0.png",
-      "x": 512,
+      "x": 768,
       "y": 256,
       "w": 128,
       "h": 128,
@@ -347,7 +467,7 @@
       "assetId": "spitter_crab",
       "frame": "move_1",
       "source": "../../../../../art/sprites/normalized/spitter_crab/move_1.png",
-      "x": 640,
+      "x": 896,
       "y": 256,
       "w": 128,
       "h": 128,
@@ -403,11 +523,51 @@
         "h": 42
       }
     },
+    "spitter_crab/attack_0": {
+      "assetId": "spitter_crab",
+      "frame": "attack_0",
+      "source": "../../../../../art/sprites/normalized/spitter_crab/attack_0.png",
+      "x": 256,
+      "y": 384,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 41,
+        "w": 64,
+        "h": 45
+      }
+    },
+    "spitter_crab/attack_1": {
+      "assetId": "spitter_crab",
+      "frame": "attack_1",
+      "source": "../../../../../art/sprites/normalized/spitter_crab/attack_1.png",
+      "x": 384,
+      "y": 384,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 41,
+        "w": 64,
+        "h": 45
+      }
+    },
     "plank_biter/idle": {
       "assetId": "plank_biter",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/plank_biter/idle.png",
-      "x": 256,
+      "x": 512,
       "y": 384,
       "w": 128,
       "h": 128,
@@ -423,11 +583,51 @@
         "h": 52
       }
     },
+    "plank_biter/attack_0": {
+      "assetId": "plank_biter",
+      "frame": "attack_0",
+      "source": "../../../../../art/sprites/normalized/plank_biter/attack_0.png",
+      "x": 640,
+      "y": 384,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 33,
+        "w": 64,
+        "h": 61
+      }
+    },
+    "plank_biter/attack_1": {
+      "assetId": "plank_biter",
+      "frame": "attack_1",
+      "source": "../../../../../art/sprites/normalized/plank_biter/attack_1.png",
+      "x": 768,
+      "y": 384,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 33,
+        "w": 64,
+        "h": 61
+      }
+    },
     "brute_turtle/idle": {
       "assetId": "brute_turtle",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/brute_turtle/idle.png",
-      "x": 384,
+      "x": 896,
       "y": 384,
       "w": 128,
       "h": 128,
@@ -443,12 +643,52 @@
         "h": 94
       }
     },
+    "brute_turtle/attack_0": {
+      "assetId": "brute_turtle",
+      "frame": "attack_0",
+      "source": "../../../../../art/sprites/normalized/brute_turtle/attack_0.png",
+      "x": 0,
+      "y": 512,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "large",
+      "contentBounds": {
+        "x": 10,
+        "y": 21,
+        "w": 108,
+        "h": 85
+      }
+    },
+    "brute_turtle/attack_1": {
+      "assetId": "brute_turtle",
+      "frame": "attack_1",
+      "source": "../../../../../art/sprites/normalized/brute_turtle/attack_1.png",
+      "x": 128,
+      "y": 512,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "large",
+      "contentBounds": {
+        "x": 10,
+        "y": 21,
+        "w": 108,
+        "h": 85
+      }
+    },
     "kraken_tentacle/idle": {
       "assetId": "kraken_tentacle",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/kraken_tentacle/idle.png",
-      "x": 512,
-      "y": 384,
+      "x": 256,
+      "y": 512,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -463,12 +703,132 @@
         "h": 116
       }
     },
+    "kraken_tentacle/move_0": {
+      "assetId": "kraken_tentacle",
+      "frame": "move_0",
+      "source": "../../../../../art/sprites/normalized/kraken_tentacle/move_0.png",
+      "x": 384,
+      "y": 512,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "boss",
+      "contentBounds": {
+        "x": 23,
+        "y": 6,
+        "w": 81,
+        "h": 116
+      }
+    },
+    "kraken_tentacle/move_1": {
+      "assetId": "kraken_tentacle",
+      "frame": "move_1",
+      "source": "../../../../../art/sprites/normalized/kraken_tentacle/move_1.png",
+      "x": 512,
+      "y": 512,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "boss",
+      "contentBounds": {
+        "x": 23,
+        "y": 6,
+        "w": 81,
+        "h": 116
+      }
+    },
+    "kraken_tentacle/move_2": {
+      "assetId": "kraken_tentacle",
+      "frame": "move_2",
+      "source": "../../../../../art/sprites/normalized/kraken_tentacle/move_2.png",
+      "x": 640,
+      "y": 512,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "boss",
+      "contentBounds": {
+        "x": 23,
+        "y": 6,
+        "w": 81,
+        "h": 116
+      }
+    },
+    "kraken_tentacle/move_3": {
+      "assetId": "kraken_tentacle",
+      "frame": "move_3",
+      "source": "../../../../../art/sprites/normalized/kraken_tentacle/move_3.png",
+      "x": 768,
+      "y": 512,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "boss",
+      "contentBounds": {
+        "x": 23,
+        "y": 6,
+        "w": 81,
+        "h": 116
+      }
+    },
+    "kraken_tentacle/attack_0": {
+      "assetId": "kraken_tentacle",
+      "frame": "attack_0",
+      "source": "../../../../../art/sprites/normalized/kraken_tentacle/attack_0.png",
+      "x": 896,
+      "y": 512,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "boss",
+      "contentBounds": {
+        "x": 8,
+        "y": 6,
+        "w": 112,
+        "h": 116
+      }
+    },
+    "kraken_tentacle/attack_1": {
+      "assetId": "kraken_tentacle",
+      "frame": "attack_1",
+      "source": "../../../../../art/sprites/normalized/kraken_tentacle/attack_1.png",
+      "x": 0,
+      "y": 640,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "boss",
+      "contentBounds": {
+        "x": 8,
+        "y": 6,
+        "w": 112,
+        "h": 116
+      }
+    },
     "kraken_head/idle": {
       "assetId": "kraken_head",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/kraken_head/idle.png",
-      "x": 640,
-      "y": 384,
+      "x": 128,
+      "y": 640,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -483,12 +843,92 @@
         "h": 107
       }
     },
+    "kraken_head/move_0": {
+      "assetId": "kraken_head",
+      "frame": "move_0",
+      "source": "../../../../../art/sprites/normalized/kraken_head/move_0.png",
+      "x": 256,
+      "y": 640,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "boss",
+      "contentBounds": {
+        "x": 6,
+        "y": 9,
+        "w": 116,
+        "h": 110
+      }
+    },
+    "kraken_head/move_1": {
+      "assetId": "kraken_head",
+      "frame": "move_1",
+      "source": "../../../../../art/sprites/normalized/kraken_head/move_1.png",
+      "x": 384,
+      "y": 640,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "boss",
+      "contentBounds": {
+        "x": 6,
+        "y": 9,
+        "w": 116,
+        "h": 110
+      }
+    },
+    "kraken_head/move_2": {
+      "assetId": "kraken_head",
+      "frame": "move_2",
+      "source": "../../../../../art/sprites/normalized/kraken_head/move_2.png",
+      "x": 512,
+      "y": 640,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "boss",
+      "contentBounds": {
+        "x": 6,
+        "y": 9,
+        "w": 116,
+        "h": 110
+      }
+    },
+    "kraken_head/move_3": {
+      "assetId": "kraken_head",
+      "frame": "move_3",
+      "source": "../../../../../art/sprites/normalized/kraken_head/move_3.png",
+      "x": 640,
+      "y": 640,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "boss",
+      "contentBounds": {
+        "x": 6,
+        "y": 9,
+        "w": 116,
+        "h": 110
+      }
+    },
     "cannon/idle": {
       "assetId": "cannon",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/cannon/idle.png",
-      "x": 0,
-      "y": 512,
+      "x": 768,
+      "y": 640,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -507,8 +947,8 @@
       "assetId": "repair_station",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/repair_station/idle.png",
-      "x": 128,
-      "y": 512,
+      "x": 896,
+      "y": 640,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -527,8 +967,8 @@
       "assetId": "coin",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/coin/idle.png",
-      "x": 256,
-      "y": 512,
+      "x": 0,
+      "y": 768,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -547,8 +987,8 @@
       "assetId": "salvage",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/salvage/idle.png",
-      "x": 384,
-      "y": 512,
+      "x": 128,
+      "y": 768,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -567,8 +1007,8 @@
       "assetId": "harpoon_projectile",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/harpoon_projectile/idle.png",
-      "x": 512,
-      "y": 512,
+      "x": 256,
+      "y": 768,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -587,8 +1027,8 @@
       "assetId": "coconut_projectile",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/coconut_projectile/idle.png",
-      "x": 640,
-      "y": 512,
+      "x": 384,
+      "y": 768,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -607,8 +1047,8 @@
       "assetId": "cannon_projectile",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/cannon_projectile/idle.png",
-      "x": 0,
-      "y": 640,
+      "x": 512,
+      "y": 768,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -627,8 +1067,8 @@
       "assetId": "enemy_glob",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/enemy_glob/idle.png",
-      "x": 128,
-      "y": 640,
+      "x": 640,
+      "y": 768,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -641,6 +1081,126 @@
         "y": 54,
         "w": 32,
         "h": 20
+      }
+    },
+    "anchor_flail/idle": {
+      "assetId": "anchor_flail",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/anchor_flail/idle.png",
+      "x": 768,
+      "y": 768,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 41,
+        "w": 64,
+        "h": 45
+      }
+    },
+    "seagull_bell/idle": {
+      "assetId": "seagull_bell",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/seagull_bell/idle.png",
+      "x": 896,
+      "y": 768,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 36,
+        "y": 32,
+        "w": 56,
+        "h": 64
+      }
+    },
+    "seagull_bell/idle_1": {
+      "assetId": "seagull_bell",
+      "frame": "idle_1",
+      "source": "../../../../../art/sprites/normalized/seagull_bell/idle_1.png",
+      "x": 0,
+      "y": 896,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 36,
+        "y": 32,
+        "w": 56,
+        "h": 64
+      }
+    },
+    "puddle/idle": {
+      "assetId": "puddle",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/puddle/idle.png",
+      "x": 128,
+      "y": 896,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 40,
+        "w": 64,
+        "h": 47
+      }
+    },
+    "puddle/idle_1": {
+      "assetId": "puddle",
+      "frame": "idle_1",
+      "source": "../../../../../art/sprites/normalized/puddle/idle_1.png",
+      "x": 256,
+      "y": 896,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 40,
+        "w": 64,
+        "h": 47
+      }
+    },
+    "trap/idle": {
+      "assetId": "trap",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/trap/idle.png",
+      "x": 384,
+      "y": 896,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 34,
+        "y": 32,
+        "w": 60,
+        "h": 64
       }
     }
   },
@@ -663,6 +1223,22 @@
         "h": 82
       }
     },
+    "captain/attack": {
+      "assetId": "captain",
+      "name": "attack",
+      "frames": [
+        "captain/attack_0",
+        "captain/attack_1"
+      ],
+      "fps": 6,
+      "loop": false,
+      "sharedBounds": {
+        "x": 23,
+        "y": 23,
+        "w": 82,
+        "h": 82
+      }
+    },
     "fisher/walk": {
       "assetId": "fisher",
       "name": "walk",
@@ -678,6 +1254,22 @@
         "x": 37,
         "y": 23,
         "w": 54,
+        "h": 82
+      }
+    },
+    "fisher/attack": {
+      "assetId": "fisher",
+      "name": "attack",
+      "frames": [
+        "fisher/attack_0",
+        "fisher/attack_1"
+      ],
+      "fps": 6,
+      "loop": false,
+      "sharedBounds": {
+        "x": 23,
+        "y": 23,
+        "w": 82,
         "h": 82
       }
     },
@@ -699,6 +1291,22 @@
         "h": 50
       }
     },
+    "chum/attack": {
+      "assetId": "chum",
+      "name": "attack",
+      "frames": [
+        "chum/attack_0",
+        "chum/attack_1"
+      ],
+      "fps": 6,
+      "loop": false,
+      "sharedBounds": {
+        "x": 32,
+        "y": 37,
+        "w": 64,
+        "h": 53
+      }
+    },
     "spitter_crab/move": {
       "assetId": "spitter_crab",
       "name": "move",
@@ -715,6 +1323,138 @@
         "y": 43,
         "w": 64,
         "h": 42
+      }
+    },
+    "spitter_crab/attack": {
+      "assetId": "spitter_crab",
+      "name": "attack",
+      "frames": [
+        "spitter_crab/attack_0",
+        "spitter_crab/attack_1"
+      ],
+      "fps": 6,
+      "loop": false,
+      "sharedBounds": {
+        "x": 32,
+        "y": 41,
+        "w": 64,
+        "h": 45
+      }
+    },
+    "plank_biter/attack": {
+      "assetId": "plank_biter",
+      "name": "attack",
+      "frames": [
+        "plank_biter/attack_0",
+        "plank_biter/attack_1"
+      ],
+      "fps": 6,
+      "loop": false,
+      "sharedBounds": {
+        "x": 32,
+        "y": 33,
+        "w": 64,
+        "h": 61
+      }
+    },
+    "brute_turtle/attack": {
+      "assetId": "brute_turtle",
+      "name": "attack",
+      "frames": [
+        "brute_turtle/attack_0",
+        "brute_turtle/attack_1"
+      ],
+      "fps": 6,
+      "loop": false,
+      "sharedBounds": {
+        "x": 10,
+        "y": 21,
+        "w": 108,
+        "h": 85
+      }
+    },
+    "kraken_tentacle/move": {
+      "assetId": "kraken_tentacle",
+      "name": "move",
+      "frames": [
+        "kraken_tentacle/move_0",
+        "kraken_tentacle/move_1",
+        "kraken_tentacle/move_2",
+        "kraken_tentacle/move_3"
+      ],
+      "fps": 8,
+      "loop": true,
+      "sharedBounds": {
+        "x": 23,
+        "y": 6,
+        "w": 81,
+        "h": 116
+      }
+    },
+    "kraken_tentacle/attack": {
+      "assetId": "kraken_tentacle",
+      "name": "attack",
+      "frames": [
+        "kraken_tentacle/attack_0",
+        "kraken_tentacle/attack_1"
+      ],
+      "fps": 6,
+      "loop": false,
+      "sharedBounds": {
+        "x": 8,
+        "y": 6,
+        "w": 112,
+        "h": 116
+      }
+    },
+    "kraken_head/move": {
+      "assetId": "kraken_head",
+      "name": "move",
+      "frames": [
+        "kraken_head/move_0",
+        "kraken_head/move_1",
+        "kraken_head/move_2",
+        "kraken_head/move_3"
+      ],
+      "fps": 8,
+      "loop": true,
+      "sharedBounds": {
+        "x": 6,
+        "y": 9,
+        "w": 116,
+        "h": 110
+      }
+    },
+    "seagull_bell/idle": {
+      "assetId": "seagull_bell",
+      "name": "idle",
+      "frames": [
+        "seagull_bell/idle",
+        "seagull_bell/idle_1"
+      ],
+      "fps": 6,
+      "loop": true,
+      "sharedBounds": {
+        "x": 36,
+        "y": 32,
+        "w": 56,
+        "h": 64
+      }
+    },
+    "puddle/idle": {
+      "assetId": "puddle",
+      "name": "idle",
+      "frames": [
+        "puddle/idle",
+        "puddle/idle_1"
+      ],
+      "fps": 2,
+      "loop": true,
+      "sharedBounds": {
+        "x": 32,
+        "y": 40,
+        "w": 64,
+        "h": 47
       }
     }
   }
