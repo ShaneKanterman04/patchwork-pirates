@@ -48,11 +48,13 @@ interface ConnectionState {
 export function startServer(port = readPort(), seed = Date.now() >>> 0): ServerHandle {
   const matches = new Map<string, MatchEntry>();
   const connections = new Map<string, ConnectionState>();
+  // No host → binds all interfaces (LAN-reachable). Keeping address() synchronous
+  // for the tests that read the ephemeral port.
   const wss = new WebSocketServer({ port });
   let connNumber = 1;
   let nextSeed = seed >>> 0;
 
-  console.log(`patchwork server listening on ws://localhost:${port}`);
+  console.log(`patchwork server listening on port ${port} (all interfaces — reachable on the LAN)`);
   console.log(`base match seed ${seed}`);
 
   wss.on("connection", (socket) => {

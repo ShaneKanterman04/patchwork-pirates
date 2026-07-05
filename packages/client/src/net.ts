@@ -8,7 +8,7 @@ import type { BufferedSnapshot } from "./interp";
 
 export type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
-const DEFAULT_WS_URL = "ws://localhost:8080";
+const DEFAULT_WS_PORT = 8080;
 const MAX_SNAPSHOTS = 12;
 const RECONNECT_DELAY_MS = 1_000;
 const REJOIN_CODE_KEY = "patchwork.rejoin.code";
@@ -62,7 +62,15 @@ export function resolveWsUrl(
     return `${scheme}://${location.hostname}:${port}`;
   }
 
-  return envUrl ?? DEFAULT_WS_URL;
+  if (envUrl !== undefined && envUrl.length > 0) {
+    return envUrl;
+  }
+
+  // Default to the SAME host the page was served from (so opening the dashboard
+  // from another device on the LAN connects back to this server, not the
+  // viewer's own localhost). Override with VITE_WS_URL or ?ws=/?port=.
+  const scheme = location.protocol === "https:" ? "wss" : "ws";
+  return `${scheme}://${location.hostname}:${DEFAULT_WS_PORT}`;
 }
 
 export function connect(
