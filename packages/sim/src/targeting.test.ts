@@ -12,6 +12,7 @@ import type {
 const NEAREST: WeaponDef = {
   id: "nearest",
   name: "Nearest",
+  shopPrice: 12,
   targeting: "nearest",
   cooldownS: 1,
   rangeTiles: 5,
@@ -33,6 +34,7 @@ const DENSEST_CLUSTER: WeaponDef = {
 
 const CONTENT: ContentRegistry = {
   weapons: {},
+  items: {},
   enemies: {
     chum: {
       id: "chum",

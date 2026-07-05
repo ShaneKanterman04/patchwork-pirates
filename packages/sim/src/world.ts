@@ -52,6 +52,7 @@ export function nextRandom(world: WorldState): number {
 
 const EMPTY_CONTENT: ContentRegistry = {
   weapons: {},
+  items: {},
   enemies: {},
   modules: {},
   waves: []
@@ -67,6 +68,7 @@ export function createWorld(
     players: [],
     raft: createRaft(),
     content,
+    salvage: 0,
     enemies: [],
     pickups: [],
     projectiles: [],
@@ -129,10 +131,54 @@ export function tick(
   updateEnemies(world);
   updateProjectiles(world);
   resolveEnemyDeaths(world);
+  collectPickups(world);
   updateRunPostSim(world);
 
   world.tick += 1;
   return world;
+}
+
+export function collectPickups(world: WorldState): void {
+  const remaining: WorldState["pickups"] = [];
+
+  for (const pickup of world.pickups) {
+    let selected: PlayerState | null = null;
+    let selectedDistanceSquared = Number.POSITIVE_INFINITY;
+
+    for (const player of world.players) {
+      const dx = pickup.pos.x - player.pos.x;
+      const dy = pickup.pos.y - player.pos.y;
+      const distanceSquared = dx * dx + dy * dy;
+      const radiusSquared = player.pickupRadius * player.pickupRadius;
+
+      if (distanceSquared > radiusSquared) {
+        continue;
+      }
+
+      if (
+        distanceSquared < selectedDistanceSquared ||
+        (distanceSquared === selectedDistanceSquared &&
+          selected !== null &&
+          player.id < selected.id)
+      ) {
+        selected = player;
+        selectedDistanceSquared = distanceSquared;
+      }
+    }
+
+    if (selected === null) {
+      remaining.push(pickup);
+      continue;
+    }
+
+    if (pickup.kind === "coin") {
+      selected.coins += pickup.value;
+    } else {
+      world.salvage += pickup.value;
+    }
+  }
+
+  world.pickups = remaining;
 }
 
 function moveOnRaft(world: WorldState, player: PlayerState, nextPos: Vec2): Vec2 {

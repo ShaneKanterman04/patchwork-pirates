@@ -23,6 +23,7 @@ const CANNON: ModuleDef = {
   id: "cannon",
   name: "Cannon",
   maxHp: 60,
+  salvageCost: 12,
   behavior: {
     kind: "cannon",
     cooldownS: 1,
@@ -36,6 +37,7 @@ const REPAIR_STATION: ModuleDef = {
   id: "repair_station",
   name: "Repair Station",
   maxHp: 60,
+  salvageCost: 10,
   behavior: {
     kind: "repair_station",
     radiusTiles: 1.8,
@@ -58,6 +60,7 @@ const CHUM: EnemyDef = {
 
 const CONTENT: ContentRegistry = {
   weapons: {},
+  items: {},
   enemies: { chum: CHUM },
   modules: {
     cannon: CANNON,

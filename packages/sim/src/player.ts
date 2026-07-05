@@ -1,4 +1,5 @@
 import {
+  BASE_PICKUP_RADIUS,
   PLAYER_MAX_HP,
   PLAYER_MOVE_SPEED,
   PLAYER_RADIUS,
@@ -26,6 +27,16 @@ export function addPlayer(
     maxHp: PLAYER_MAX_HP,
     moveSpeed: PLAYER_MOVE_SPEED,
     repairSpeed: 1.0,
+    coins: 0,
+    damageMult: 1,
+    attackSpeedMult: 1,
+    pickupRadius: BASE_PICKUP_RADIUS,
+    items: [],
+    shop: {
+      offers: [],
+      locked: [],
+      rerollCost: 0
+    },
     weapons: startingWeaponIds.map((defId) => ({ defId, cooldownTicks: 0 })),
     dashCooldown: 0,
     dashTicks: 0,

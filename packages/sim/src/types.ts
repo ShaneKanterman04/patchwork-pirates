@@ -19,11 +19,28 @@ export interface PlayerState {
   maxHp: number;
   moveSpeed: number;
   repairSpeed: number;
+  coins: number;
+  damageMult: number;
+  attackSpeedMult: number;
+  pickupRadius: number;
+  items: string[];
+  shop: PlayerShop;
   weapons: WeaponInstance[];
   dashCooldown: number;
   dashTicks: number;
   dashDir: Vec2;
   prevDash: boolean;
+}
+
+export type ShopOffer =
+  | { kind: "weapon"; defId: string; price: number }
+  | { kind: "item"; defId: string; price: number }
+  | { kind: "sold" };
+
+export interface PlayerShop {
+  offers: ShopOffer[];
+  locked: boolean[];
+  rerollCost: number;
 }
 
 export type TargetingMode =
@@ -52,6 +69,7 @@ export type WeaponPattern =
 export interface WeaponDef {
   id: string;
   name: string;
+  shopPrice: number;
   targeting: TargetingMode;
   cooldownS: number;
   rangeTiles: number;
@@ -68,10 +86,25 @@ export interface EnemyDef {
   contactCooldownS: number;
   radius: number;
   coinValue: number;
+  salvageValue?: number;
   heavy?: boolean;
   basePriority?: number;
   elite?: boolean;
   behavior: EnemyBehavior;
+}
+
+export interface ItemDef {
+  id: string;
+  name: string;
+  basePrice: number;
+  modifiers: {
+    maxHp?: number;
+    damageMult?: number;
+    attackSpeedMult?: number;
+    moveSpeed?: number;
+    pickupRadius?: number;
+    repairSpeed?: number;
+  };
 }
 
 export type ModuleBehavior =
@@ -93,6 +126,7 @@ export interface ModuleDef {
   id: string;
   name: string;
   maxHp: number;
+  salvageCost: number;
   behavior: ModuleBehavior;
 }
 
@@ -118,6 +152,7 @@ export type EnemyBehavior =
 
 export interface ContentRegistry {
   weapons: Record<string, WeaponDef>;
+  items: Record<string, ItemDef>;
   enemies: Record<string, EnemyDef>;
   modules: Record<string, ModuleDef>;
   waves: WaveDef[];
@@ -169,7 +204,7 @@ export interface EnemyState {
 
 export interface PickupState {
   id: string;
-  kind: "coin";
+  kind: "coin" | "salvage";
   pos: Vec2;
   value: number;
 }
@@ -242,6 +277,7 @@ export interface WorldState {
   players: PlayerState[];
   raft: RaftState;
   content: ContentRegistry;
+  salvage: number;
   enemies: EnemyState[];
   pickups: PickupState[];
   projectiles: ProjectileState[];

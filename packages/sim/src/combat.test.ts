@@ -20,6 +20,7 @@ import type {
 const CUTLASS: WeaponDef = {
   id: "cutlass",
   name: "Cutlass",
+  shopPrice: 12,
   targeting: "nearest",
   cooldownS: 0.7,
   rangeTiles: 1.4,
@@ -29,6 +30,7 @@ const CUTLASS: WeaponDef = {
 
 const TEST_CONTENT: ContentRegistry = {
   weapons: { cutlass: CUTLASS },
+  items: {},
   enemies: {
     chum: {
       id: "chum",
@@ -163,7 +165,7 @@ describe("cutlass", () => {
 });
 
 describe("death to coin", () => {
-  it("removes dead enemies, drops one coin, and emits enemy_killed", () => {
+  it("removes dead enemies, collects the dropped coin, and emits enemy_killed", () => {
     const world = createWorld(1, TEST_CONTENT);
     world.run.spawnTimer = Number.MAX_SAFE_INTEGER;
     const player = addPlayer(world, "p1", ["cutlass"]);
@@ -172,14 +174,8 @@ describe("death to coin", () => {
     tick(world, new Map([["p1", IDLE_INPUT]]));
 
     expect(world.enemies).toEqual([]);
-    expect(world.pickups).toEqual([
-      {
-        id: "e1",
-        kind: "coin",
-        pos: { x: 2.5 - 2.6 / TICK_RATE, y: 1.5 },
-        value: 1
-      }
-    ]);
+    expect(world.pickups).toEqual([]);
+    expect(player.coins).toBe(1);
     expect(world.events).toContainEqual({
       type: "enemy_killed",
       enemyId: "e1",

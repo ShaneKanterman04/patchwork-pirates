@@ -14,6 +14,7 @@ import type {
 const HARPOON: WeaponDef = {
   id: "harpoon",
   name: "Harpoon",
+  shopPrice: 12,
   targeting: "nearest",
   cooldownS: 1.1,
   rangeTiles: 5,
@@ -32,6 +33,7 @@ const HARPOON: WeaponDef = {
 const COCONUT: WeaponDef = {
   id: "coconut",
   name: "Coconut",
+  shopPrice: 12,
   targeting: "densest_cluster",
   cooldownS: 1.6,
   rangeTiles: 5,
@@ -41,6 +43,7 @@ const COCONUT: WeaponDef = {
 
 const CONTENT: ContentRegistry = {
   weapons: { harpoon: HARPOON, coconut: COCONUT },
+  items: {},
   enemies: {
     light: enemyDef("light", false),
     heavy: enemyDef("heavy", true)

@@ -75,22 +75,23 @@ function fireMeleeArc(
   });
 
   const minDot = Math.cos((arcDegrees / 2) * (Math.PI / 180));
+  const damage = scaledDamage(def, wielder);
 
   for (const enemy of world.enemies) {
     if (!isEnemyInMeleeArc(enemy, wielder, slashDir, def.rangeTiles, minDot)) {
       continue;
     }
 
-    enemy.hp -= def.damage;
+    enemy.hp -= damage;
     world.events.push({
       type: "enemy_hit",
       enemyId: enemy.id,
-      damage: def.damage,
+      damage,
       pos: { ...enemy.pos }
     });
   }
 
-  weapon.cooldownTicks = Math.round(def.cooldownS * TICK_RATE);
+  weapon.cooldownTicks = scaledCooldownTicks(def, wielder);
 }
 
 function fireProjectile(
@@ -113,7 +114,7 @@ function fireProjectile(
     faction: "player",
     pos: { ...wielder.pos },
     vel: { x: direction.x * speed, y: direction.y * speed },
-    damage: def.damage,
+    damage: scaledDamage(def, wielder),
     tileDamage: 0,
     ttl: projectileTtl(def.rangeTiles, speed),
     ownerId: wielder.id,
@@ -137,7 +138,7 @@ function fireProjectile(
     range: def.rangeTiles
   });
 
-  weapon.cooldownTicks = Math.round(def.cooldownS * TICK_RATE);
+  weapon.cooldownTicks = scaledCooldownTicks(def, wielder);
 }
 
 function fireLob(
@@ -161,7 +162,7 @@ function fireLob(
     faction: "player",
     pos: { ...wielder.pos },
     vel: { x: direction.x * speed, y: direction.y * speed },
-    damage: def.damage,
+    damage: scaledDamage(def, wielder),
     tileDamage: 0,
     ttl: projectileTtl(distance(wielder.pos, landPos), speed),
     ownerId: wielder.id,
@@ -185,7 +186,18 @@ function fireLob(
     range: def.rangeTiles
   });
 
-  weapon.cooldownTicks = Math.round(def.cooldownS * TICK_RATE);
+  weapon.cooldownTicks = scaledCooldownTicks(def, wielder);
+}
+
+function scaledDamage(def: WeaponDef, wielder: PlayerState): number {
+  return def.damage * wielder.damageMult;
+}
+
+function scaledCooldownTicks(def: WeaponDef, wielder: PlayerState): number {
+  return Math.max(
+    1,
+    Math.round((def.cooldownS * TICK_RATE) / wielder.attackSpeedMult)
+  );
 }
 
 function isEnemyInMeleeArc(

@@ -1,6 +1,7 @@
 import type {
   ContentRegistry,
   EnemyDef,
+  ItemDef,
   ModuleDef,
   WaveDef,
   WeaponDef,
@@ -12,6 +13,7 @@ export type ContentWorldState = WorldState;
 export const CUTLASS = {
   id: "cutlass",
   name: "Cutlass",
+  shopPrice: 12,
   targeting: "nearest",
   cooldownS: 0.7,
   rangeTiles: 1.4,
@@ -22,6 +24,7 @@ export const CUTLASS = {
 export const HARPOON_GUN = {
   id: "harpoon_gun",
   name: "Harpoon Gun",
+  shopPrice: 16,
   targeting: "attacking_raft",
   cooldownS: 1.1,
   rangeTiles: 4.5,
@@ -40,6 +43,7 @@ export const HARPOON_GUN = {
 export const COCONUT_LAUNCHER = {
   id: "coconut_launcher",
   name: "Coconut Launcher",
+  shopPrice: 20,
   targeting: "densest_cluster",
   cooldownS: 1.6,
   rangeTiles: 5,
@@ -56,6 +60,7 @@ export const CHUM = {
   contactCooldownS: 0.6,
   radius: 0.3,
   coinValue: 1,
+  salvageValue: 0,
   heavy: false,
   basePriority: 0,
   elite: false,
@@ -71,6 +76,7 @@ export const SPITTER_CRAB = {
   contactCooldownS: 2.2,
   radius: 0.35,
   coinValue: 2,
+  salvageValue: 2,
   heavy: false,
   basePriority: 5,
   elite: false,
@@ -94,6 +100,7 @@ export const PLANK_BITER = {
   contactCooldownS: 1.0,
   radius: 0.35,
   coinValue: 2,
+  salvageValue: 2,
   heavy: false,
   basePriority: 10,
   elite: false,
@@ -113,6 +120,7 @@ export const BRUTE_TURTLE = {
   contactCooldownS: 1.2,
   radius: 0.6,
   coinValue: 6,
+  salvageValue: 5,
   heavy: true,
   basePriority: 15,
   elite: true,
@@ -129,6 +137,7 @@ export const CANNON = {
   id: "cannon",
   name: "Cannon",
   maxHp: 60,
+  salvageCost: 12,
   behavior: {
     kind: "cannon",
     cooldownS: 1.0,
@@ -142,6 +151,7 @@ export const REPAIR_STATION = {
   id: "repair_station",
   name: "Repair Station",
   maxHp: 60,
+  salvageCost: 10,
   behavior: {
     kind: "repair_station",
     radiusTiles: 1.8,
@@ -155,6 +165,57 @@ export const WEAPONS = {
   harpoon_gun: HARPOON_GUN,
   coconut_launcher: COCONUT_LAUNCHER
 } as const satisfies Record<string, WeaponDef>;
+
+export const PLATED_HULL = {
+  id: "plated_hull",
+  name: "Plated Hull",
+  basePrice: 14,
+  modifiers: { maxHp: 20 }
+} as const satisfies ItemDef;
+
+export const SHARP_CUTLASS = {
+  id: "sharp_cutlass",
+  name: "Sharp Cutlass",
+  basePrice: 12,
+  modifiers: { damageMult: 0.12 }
+} as const satisfies ItemDef;
+
+export const POWDER_KEG = {
+  id: "powder_keg",
+  name: "Powder Keg",
+  basePrice: 12,
+  modifiers: { attackSpeedMult: 0.12 }
+} as const satisfies ItemDef;
+
+export const SWIFT_BOOTS = {
+  id: "swift_boots",
+  name: "Swift Boots",
+  basePrice: 10,
+  modifiers: { moveSpeed: 0.5 }
+} as const satisfies ItemDef;
+
+export const MAGNET = {
+  id: "magnet",
+  name: "Magnet",
+  basePrice: 10,
+  modifiers: { pickupRadius: 0.5 }
+} as const satisfies ItemDef;
+
+export const TAR_BUCKET = {
+  id: "tar_bucket",
+  name: "Tar Bucket",
+  basePrice: 10,
+  modifiers: { repairSpeed: 0.4 }
+} as const satisfies ItemDef;
+
+export const ITEMS = {
+  plated_hull: PLATED_HULL,
+  sharp_cutlass: SHARP_CUTLASS,
+  powder_keg: POWDER_KEG,
+  swift_boots: SWIFT_BOOTS,
+  magnet: MAGNET,
+  tar_bucket: TAR_BUCKET
+} as const satisfies Record<string, ItemDef>;
 
 export const ENEMIES = {
   chum: CHUM,
@@ -249,6 +310,7 @@ export const WAVES = [
 
 export const CONTENT = {
   weapons: WEAPONS,
+  items: ITEMS,
   enemies: ENEMIES,
   modules: MODULES,
   waves: WAVES

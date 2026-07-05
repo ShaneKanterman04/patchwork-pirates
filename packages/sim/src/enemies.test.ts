@@ -24,6 +24,7 @@ import type {
 const HARPOON: WeaponDef = {
   id: "harpoon",
   name: "Harpoon",
+  shopPrice: 12,
   targeting: "attacking_raft",
   cooldownS: 1.1,
   rangeTiles: 5,
@@ -102,6 +103,7 @@ const BRUTE = enemyDef({
 
 const CONTENT: ContentRegistry = {
   weapons: { harpoon: HARPOON },
+  items: {},
   enemies: {
     chum: CHUM,
     spitter: SPITTER,

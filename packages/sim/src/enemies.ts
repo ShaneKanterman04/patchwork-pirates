@@ -174,6 +174,7 @@ export function resolveEnemyDeaths(world: WorldState): void {
 
     const def = world.content.enemies[enemy.type];
     const value = def?.coinValue ?? 0;
+    const salvageValue = def?.salvageValue ?? 0;
 
     world.events.push({
       type: "enemy_killed",
@@ -186,6 +187,14 @@ export function resolveEnemyDeaths(world: WorldState): void {
       pos: { ...enemy.pos },
       value
     });
+    if (salvageValue > 0) {
+      world.pickups.push({
+        id: nextEntityId(world),
+        kind: "salvage",
+        pos: { ...enemy.pos },
+        value: salvageValue
+      });
+    }
   }
 
   world.enemies = survivors;

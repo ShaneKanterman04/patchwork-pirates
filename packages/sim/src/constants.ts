@@ -11,6 +11,7 @@ export const PLAYER_RADIUS = 0.4;
 export const PLAYER_REPAIR_RATE = 40;
 export const HOLE_REBUILD_RATE = 20;
 export const INTERACT_RANGE = 1.2;
+export const BASE_PICKUP_RADIUS = 1.2;
 
 export const DASH_SPEED_MULT = 3;
 export const DASH_DURATION_S = 0.2;
@@ -28,6 +29,10 @@ export const SPAWN_INTERVAL_S = 0.5;
 export const SPAWN_INTERVAL_TICKS = Math.round(SPAWN_INTERVAL_S * TICK_RATE);
 export const MAX_ENEMIES = 24;
 export const BUILD_DURATION_S = 45;
+export const WAVE_CLEAR_SALVAGE = 8;
+export const PRICE_WAVE_SCALE = 0.15;
+export const BASE_REROLL_COST = 5;
+export const REROLL_COST_STEP = 3;
 
 export const CLUSTER_RADIUS = 1.3;
 export const DISTANCE_PENALTY = 1.0;
