@@ -7,6 +7,7 @@ import {
   PLAYER_REPAIR_RATE,
   TICK_RATE
 } from "./constants";
+import { hasDownedPlayerInReviveRange, updateDowned } from "./downed";
 import { resolveEnemyDeaths, updateEnemies } from "./enemies";
 import { updateModules } from "./modules";
 import {
@@ -95,6 +96,12 @@ export function tick(
 
   for (const player of world.players) {
     const input = inputs.get(player.id) ?? ZERO_INPUT;
+    if (player.downed || player.out || player.hp <= 0) {
+      player.dashTicks = 0;
+      player.prevDash = input.dash;
+      continue;
+    }
+
     const movement = clampMovement(input.movement);
     const movementDirection = normalizeOrZero(movement);
     const movementMagnitudeSquared =
@@ -120,7 +127,9 @@ export function tick(
     });
 
     player.pos = nextPos;
-    repairNearestTile(world, player, input);
+    if (!hasDownedPlayerInReviveRange(world, player)) {
+      repairNearestTile(world, player, input);
+    }
     player.dashTicks = Math.max(0, player.dashTicks - 1);
     player.dashCooldown = Math.max(0, player.dashCooldown - 1);
     player.prevDash = input.dash;
@@ -131,6 +140,7 @@ export function tick(
   updateEnemies(world);
   updateProjectiles(world);
   resolveEnemyDeaths(world);
+  updateDowned(world, inputs);
   collectPickups(world);
   updateRunPostSim(world);
 

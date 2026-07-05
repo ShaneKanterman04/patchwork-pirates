@@ -17,6 +17,11 @@ export interface PlayerState {
   facing: Vec2;
   hp: number;
   maxHp: number;
+  downed: boolean;
+  out: boolean;
+  bleedOutTicks: number;
+  reviveProgressTicks: number;
+  prevHp: number;
   moveSpeed: number;
   repairSpeed: number;
   coins: number;

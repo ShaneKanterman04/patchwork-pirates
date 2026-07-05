@@ -10,6 +10,7 @@ import {
   TICK_RATE,
   WAVE_CLEAR_SALVAGE
 } from "./constants";
+import { returnDownedAndOutPlayers } from "./downed";
 import { createEnemy } from "./enemies";
 import { placeModule } from "./modules";
 import { nextRandom } from "./world";
@@ -188,10 +189,11 @@ export function updateRunPostSim(world: WorldState): void {
     return;
   }
 
-  const allPlayersDown =
-    world.players.length > 0 && world.players.every((player) => player.hp <= 0);
+  const allPlayersDownOrOut =
+    world.players.length > 0 &&
+    world.players.every((player) => player.downed || player.out);
 
-  if (world.coreDestroyed || allPlayersDown) {
+  if (world.coreDestroyed || allPlayersDownOrOut) {
     world.run.phase = "defeat";
   }
 }
@@ -209,6 +211,7 @@ function updateCombatPhase(world: WorldState): void {
     (projectile) => projectile.faction !== "enemy"
   );
   world.salvage += WAVE_CLEAR_SALVAGE;
+  returnDownedAndOutPlayers(world);
 
   if (world.run.wave >= MAX_WAVES) {
     world.run.phase = "victory";

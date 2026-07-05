@@ -1,6 +1,7 @@
 export * from "./constants";
 export { addPlayer } from "./player";
 export { damageTile, isHole, isWalkable, tileAt } from "./raft";
+export { updateDowned } from "./downed";
 export { createEnemy, updateEnemies, resolveEnemyDeaths } from "./enemies";
 export { placeModule, updateModules } from "./modules";
 export {

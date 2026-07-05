@@ -11,6 +11,10 @@ import type {
 
 export function updatePlayerWeapons(world: WorldState): void {
   for (const player of world.players) {
+    if (player.downed || player.out || player.hp <= 0) {
+      continue;
+    }
+
     for (const weapon of player.weapons) {
       const def = world.content.weapons[weapon.defId];
 

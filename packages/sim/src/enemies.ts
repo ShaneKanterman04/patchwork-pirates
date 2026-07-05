@@ -326,6 +326,10 @@ function applyKnockbackAura(
   const step = behavior.knockbackStrength / TICK_RATE;
 
   for (const player of world.players) {
+    if (player.out) {
+      continue;
+    }
+
     const offset = {
       x: player.pos.x - enemy.pos.x,
       y: player.pos.y - enemy.pos.y
@@ -411,6 +415,10 @@ function nearestPlayer(players: PlayerState[], pos: Vec2): PlayerState | null {
   let selectedDistance = Infinity;
 
   for (const player of players) {
+    if (player.out) {
+      continue;
+    }
+
     const distanceToPlayer = distance(pos, player.pos);
 
     if (distanceToPlayer < selectedDistance) {

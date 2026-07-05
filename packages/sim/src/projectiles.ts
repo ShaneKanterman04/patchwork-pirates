@@ -228,6 +228,10 @@ function explodeEnemyLob(
   pos: Vec2
 ): void {
   for (const player of world.players) {
+    if (player.out) {
+      continue;
+    }
+
     if (!isPlayerInAoe(player, projectile, pos)) {
       continue;
     }
