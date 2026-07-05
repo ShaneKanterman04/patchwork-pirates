@@ -124,6 +124,36 @@ describe("protocol codec", () => {
     }
   });
 
+  it("round-trips lobby client messages", () => {
+    const messages: ClientMessage[] = [
+      { type: "create" },
+      { type: "join", code: "ABCD" },
+      { type: "select", characterId: "captain" },
+      { type: "lobby_ready", ready: true }
+    ];
+
+    for (const msg of messages) {
+      expect(decodeClientMessage(encodeClientMessage(msg))).toEqual(msg);
+    }
+  });
+
+  it("round-trips lobby server messages", () => {
+    const messages: ServerMessage[] = [
+      { type: "lobby_joined", code: "ABCD", playerId: "p1" },
+      { type: "lobby_error", message: "Lobby not found." },
+      {
+        type: "lobby_state",
+        code: "ABCD",
+        players: [{ id: "p1", characterId: "captain", ready: true }],
+        canStart: true
+      }
+    ];
+
+    for (const msg of messages) {
+      expect(decodeServerMessage(encodeServerMessage(msg))).toEqual(msg);
+    }
+  });
+
   it("throws on unknown server message type", () => {
     expect(() => decodeServerMessage('{"type":"wat"}')).toThrow(
       "Unknown server message type"

@@ -13,6 +13,7 @@ import {
 import { returnDownedAndOutPlayers } from "./downed";
 import { createEnemy } from "./enemies";
 import { placeModule } from "./modules";
+import { applyCharacterProfile } from "./player";
 import { nextRandom } from "./world";
 import type {
   EnemyDef,
@@ -31,17 +32,44 @@ import type {
 const MAX_WAVES = 8;
 const EDGE_SURGE_CHANCE = 0.15;
 
-export function createRunState(world: Pick<WorldState, "content" | "players">): RunState {
-  const waveDef = currentWaveDef({ content: world.content, run: { wave: 1 } });
-
+export function createRunState(): RunState {
   return {
-    phase: "combat",
+    phase: "lobby",
     wave: 1,
-    phaseTicksLeft: waveDef === undefined ? 0 : secondsToTicks(waveDef.durationS),
-    budgetRemaining: waveDef === undefined ? 0 : scaledBudget(waveDef, world),
-    spawnTimer: waveDef === undefined ? 0 : SPAWN_INTERVAL_TICKS,
+    phaseTicksLeft: 0,
+    budgetRemaining: 0,
+    spawnTimer: 0,
     readyPlayerIds: []
   };
+}
+
+export function startRun(world: WorldState): void {
+  if (world.run.phase !== "lobby") {
+    return;
+  }
+
+  loadWave(world, 1);
+}
+
+export function setCharacter(
+  world: WorldState,
+  playerId: string,
+  characterId: string
+): boolean {
+  if (world.run.phase !== "lobby") {
+    return false;
+  }
+
+  const player = world.players.find((candidate) => candidate.id === playerId);
+  const character = world.content.characters[characterId];
+  if (player === undefined || character === undefined) {
+    return false;
+  }
+
+  // Reset to PLAYER_* baselines inside applyCharacterProfile before applying
+  // the selected stat profile, so repeated lobby selections do not stack.
+  applyCharacterProfile(player, character);
+  return true;
 }
 
 export function setPlayerReady(

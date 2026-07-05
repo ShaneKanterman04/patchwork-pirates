@@ -8,6 +8,7 @@ import {
   TICK_RATE,
   addPlayer,
   createWorld,
+  startRun,
   tick
 } from "./index";
 import type {
@@ -166,6 +167,7 @@ describe("downed state", () => {
     const world = createWorld(5, WAVE_CONTENT);
     const downed = addPlayer(world, "downed");
     const out = addPlayer(world, "out");
+    startRun(world);
     downed.downed = true;
     downed.hp = 0;
     downed.bleedOutTicks = 100;
@@ -204,6 +206,7 @@ describe("downed defeat", () => {
     const world = createWorld(7, TEST_CONTENT);
     const p1 = addPlayer(world, "p1");
     const p2 = addPlayer(world, "p2");
+    world.run.phase = "combat";
     p1.hp = 0;
 
     tick(world, new Map([["p2", IDLE_INPUT]]));

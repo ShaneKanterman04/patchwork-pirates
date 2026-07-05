@@ -8,7 +8,9 @@ import {
   addPlayer,
   createEnemy,
   createWorld,
+  setCharacter,
   setPlayerReady,
+  startRun,
   tick
 } from "./index";
 import type {
@@ -16,6 +18,7 @@ import type {
   EnemyDef,
   PlayerInput,
   WaveDef,
+  WeaponDef,
   WorldState
 } from "./index";
 
@@ -56,6 +59,7 @@ describe("run phase machine", () => {
   it("starts in combat wave 1, enters safe build, and readies into next combat", () => {
     const world = createWorld(1, TEST_CONTENT);
     addPlayer(world, "p1");
+    startRun(world);
     world.enemies.push(createEnemy(world, CHUM, { x: -1, y: 1 }));
     world.projectiles.push(enemyProjectile());
     world.run.phaseTicksLeft = 1;
@@ -107,6 +111,7 @@ describe("budget spawner", () => {
   it("spends the wave budget on enemies drawn from the wave table", () => {
     const world = createWorld(2, TEST_CONTENT);
     addPlayer(world, "p1");
+    startRun(world);
 
     for (let i = 0; i < SPAWN_INTERVAL_TICKS * 3; i += 1) {
       tick(world, new Map([["p1", IDLE_INPUT]]));
@@ -145,6 +150,7 @@ describe("budget spawner", () => {
       waves: []
     });
     addPlayer(world, "p1");
+    world.run.phase = "combat";
     world.run.phaseTicksLeft = 1;
 
     tick(world, new Map([["p1", IDLE_INPUT]]));
@@ -163,6 +169,7 @@ describe("run lifecycle", () => {
   it("defeats the run when the core is destroyed", () => {
     const world = createWorld(5, TEST_CONTENT);
     addPlayer(world, "p1");
+    startRun(world);
     world.coreDestroyed = true;
 
     tick(world, new Map([["p1", IDLE_INPUT]]));
@@ -173,6 +180,7 @@ describe("run lifecycle", () => {
   it("defeats the run when the sole player is down", () => {
     const world = createWorld(6, TEST_CONTENT);
     const player = addPlayer(world, "p1");
+    startRun(world);
     player.hp = 0;
 
     tick(world, new Map([["p1", IDLE_INPUT]]));
@@ -196,6 +204,93 @@ describe("run lifecycle", () => {
 
     expect(player.pos).toEqual(startPos);
     expect(world.run).toEqual(startRun);
+    expect(world.enemies).toEqual([]);
+    expect(world.tick).toBe(1);
+  });
+
+  it("starts fresh worlds in lobby and startRun enters combat wave 1", () => {
+    const world = createWorld(8, TEST_CONTENT);
+    addPlayer(world, "p1");
+
+    expect(world.run).toMatchObject({
+      phase: "lobby",
+      wave: 1,
+      phaseTicksLeft: 0,
+      budgetRemaining: 0,
+      spawnTimer: 0
+    });
+
+    startRun(world);
+
+    expect(world.run).toMatchObject({
+      phase: "combat",
+      wave: 1,
+      phaseTicksLeft: ONE_COST_WAVE.durationS * TICK_RATE,
+      budgetRemaining: ONE_COST_WAVE.budget,
+      spawnTimer: 0,
+      readyPlayerIds: []
+    });
+  });
+
+  it("swaps lobby characters without stacking stats or weapons", () => {
+    const world = createWorld(9, {
+      ...TEST_CONTENT,
+      weapons: {
+        cutlass: weaponDef("cutlass"),
+        harpoon_gun: weaponDef("harpoon_gun")
+      },
+      characters: {
+        captain: {
+          id: "captain",
+          name: "Captain",
+          startingWeaponId: "cutlass",
+          statProfile: { maxHp: 10, damageMult: 0.2 },
+          passive: "attack_speed_aura",
+          special: "mark_dangerous"
+        },
+        fisher: {
+          id: "fisher",
+          name: "Fisher",
+          startingWeaponId: "harpoon_gun",
+          statProfile: { pickupRadius: 0.6 },
+          passive: "none",
+          special: "harpoon_raft_priority"
+        }
+      }
+    });
+    const player = addPlayer(world, "p1", ["cutlass"]);
+
+    expect(setCharacter(world, "p1", "captain")).toBe(true);
+    expect(player.weapons.map((weapon) => weapon.defId)).toEqual(["cutlass"]);
+    expect(player.maxHp).toBe(110);
+    expect(player.damageMult).toBe(1.2);
+
+    expect(setCharacter(world, "p1", "fisher")).toBe(true);
+    expect(player.weapons.map((weapon) => weapon.defId)).toEqual(["harpoon_gun"]);
+    expect(player.maxHp).toBe(100);
+    expect(player.damageMult).toBe(1);
+    expect(player.pickupRadius).toBeCloseTo(1.8);
+
+    expect(setCharacter(world, "p1", "fisher")).toBe(true);
+    expect(player.pickupRadius).toBeCloseTo(1.8);
+  });
+
+  it("lobby phase ticks are inert for run worlds", () => {
+    const world = createWorld(10, TEST_CONTENT);
+    const player = addPlayer(world, "p1");
+    const startPos = { ...player.pos };
+    world.run.phaseTicksLeft = 99;
+
+    tick(
+      world,
+      new Map([
+        ["p1", { movement: { x: 1, y: 0 }, dash: true, interact: true }]
+      ])
+    );
+
+    expect(player.pos).toEqual(startPos);
+    expect(world.run.phase).toBe("lobby");
+    expect(world.run.phaseTicksLeft).toBe(99);
     expect(world.enemies).toEqual([]);
     expect(world.tick).toBe(1);
   });
@@ -234,5 +329,18 @@ function enemyProjectile(): WorldState["projectiles"][number] {
     pullDistance: 0,
     slowFactor: 1,
     slowDurationTicks: 0
+  };
+}
+
+function weaponDef(id: string): WeaponDef {
+  return {
+    id,
+    name: id,
+    shopPrice: 1,
+    targeting: "nearest",
+    cooldownS: 1,
+    rangeTiles: 1,
+    damage: 1,
+    pattern: { kind: "melee_arc", arcDegrees: 90 }
   };
 }

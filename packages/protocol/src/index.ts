@@ -89,7 +89,7 @@ export interface PingView {
 
 export interface WavePhaseView {
   number: number;
-  phase: "combat" | "build" | "victory" | "defeat";
+  phase: "lobby" | "combat" | "build" | "victory" | "defeat";
   timeLeft: number;
 }
 
@@ -133,9 +133,22 @@ export type ServerMessage =
       snapshot: Snapshot;
     }
   | { type: "snapshot"; snapshot: Snapshot }
-  | { type: "events"; tick: number; events: WireEvent[] };
+  | { type: "events"; tick: number; events: WireEvent[] }
+  | { type: "lobby_joined"; code: string; playerId: string }
+  | { type: "lobby_error"; message: string }
+  | { type: "lobby_state"; code: string; players: LobbyPlayer[]; canStart: boolean };
+
+export interface LobbyPlayer {
+  id: string;
+  characterId: string | null;
+  ready: boolean;
+}
 
 export type ClientMessage =
+  | { type: "create" }
+  | { type: "join"; code: string }
+  | { type: "select"; characterId: string }
+  | { type: "lobby_ready"; ready: boolean }
   | {
       type: "player_input";
       seq: number;
@@ -160,7 +173,10 @@ export function decodeServerMessage(raw: string): ServerMessage {
   if (
     msg.type !== "welcome" &&
     msg.type !== "snapshot" &&
-    msg.type !== "events"
+    msg.type !== "events" &&
+    msg.type !== "lobby_joined" &&
+    msg.type !== "lobby_error" &&
+    msg.type !== "lobby_state"
   ) {
     throw new Error(`Unknown server message type: ${String(msg.type)}`);
   }
@@ -177,6 +193,10 @@ export function decodeClientMessage(raw: string): ClientMessage {
 
   if (
     msg.type !== "player_input" &&
+    msg.type !== "create" &&
+    msg.type !== "join" &&
+    msg.type !== "select" &&
+    msg.type !== "lobby_ready" &&
     msg.type !== "buy" &&
     msg.type !== "reroll" &&
     msg.type !== "lock" &&

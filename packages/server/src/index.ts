@@ -1,65 +1,85 @@
+import { pathToFileURL } from "node:url";
 import {
   PROTOCOL_VERSION,
   decodeClientMessage,
   encodeServerMessage
 } from "@patchwork/protocol";
-import type { ServerMessage } from "@patchwork/protocol";
+import type { ClientMessage, ServerMessage } from "@patchwork/protocol";
 import { WebSocket, WebSocketServer } from "ws";
 import type { RawData } from "ws";
 import {
+  addConnectionToLobby,
+  buildLobbyPlayers,
   buildSnapshot,
-  createMatch,
+  canStartLobby,
+  createMatchEntry,
   handleClientMessage,
-  matchAddPlayer,
-  matchRemovePlayer,
+  removeConnectionFromLobby,
+  selectLobbyCharacter,
+  setLobbyReady,
   simEventsToWire,
   stepMatch
 } from "./match";
+import type { MatchEntry } from "./match";
 
 const TICK_RATE = 30;
 const TICK_MS = 1000 / TICK_RATE;
 const MAX_CATCH_UP_STEPS = 5;
 const SNAPSHOT_INTERVAL_TICKS = 2;
+const MAX_LOBBY_PLAYERS = 4;
+const CODE_LENGTH = 4;
+const CODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 export interface ServerHandle {
   close: () => void;
-  match: ReturnType<typeof createMatch>;
+  matches: Map<string, MatchEntry>;
   wss: WebSocketServer;
 }
 
+interface ConnectionState {
+  id: string;
+  socket: WebSocket;
+  code: string | null;
+  playerId: string | null;
+}
+
 export function startServer(port = readPort(), seed = Date.now() >>> 0): ServerHandle {
-  const match = createMatch(seed);
+  const matches = new Map<string, MatchEntry>();
+  const connections = new Map<string, ConnectionState>();
   const wss = new WebSocketServer({ port });
   let connNumber = 1;
+  let nextSeed = seed >>> 0;
 
   console.log(`patchwork server listening on ws://localhost:${port}`);
-  console.log(`match seed ${seed}`);
+  console.log(`base match seed ${seed}`);
 
   wss.on("connection", (socket) => {
-    const connId = `c${connNumber}`;
+    const conn: ConnectionState = {
+      id: `c${connNumber}`,
+      socket,
+      code: null,
+      playerId: null
+    };
     connNumber += 1;
-    const playerId = matchAddPlayer(match, connId);
-
-    send(socket, {
-      type: "welcome",
-      playerId,
-      protocolVersion: PROTOCOL_VERSION,
-      snapshot: buildSnapshot(match)
-    });
+    connections.set(conn.id, conn);
 
     socket.on("message", (raw) => {
       try {
         const msg = decodeClientMessage(rawDataToString(raw));
-        handleClientMessage(match, playerId, msg);
+        routeClientMessage(matches, connections, conn, msg, nextSeed);
+        if (msg.type === "create") {
+          nextSeed = (nextSeed + 1) >>> 0;
+        }
       } catch (error) {
         console.warn(
-          `dropping invalid client message from ${playerId}: ${String(error)}`
+          `dropping invalid client message from ${conn.id}: ${String(error)}`
         );
+        send(socket, { type: "lobby_error", message: "Invalid message." });
       }
     });
 
     socket.on("close", () => {
-      matchRemovePlayer(match, playerId);
+      removeConnection(matches, connections, conn);
     });
   });
 
@@ -73,18 +93,23 @@ export function startServer(port = readPort(), seed = Date.now() >>> 0): ServerH
 
     let steps = 0;
     while (accumulatorMs >= TICK_MS && steps < MAX_CATCH_UP_STEPS) {
-      const events = stepMatch(match);
+      for (const entry of matches.values()) {
+        const events = stepMatch(entry.match);
 
-      if (events.length > 0) {
-        broadcast(wss, {
-          type: "events",
-          tick: match.world.tick,
-          events: simEventsToWire(events)
-        });
-      }
+        if (events.length > 0) {
+          broadcastToMatch(connections, entry, {
+            type: "events",
+            tick: entry.match.world.tick,
+            events: simEventsToWire(events)
+          });
+        }
 
-      if (match.world.tick % SNAPSHOT_INTERVAL_TICKS === 0) {
-        broadcast(wss, { type: "snapshot", snapshot: buildSnapshot(match) });
+        if (entry.match.world.tick % SNAPSHOT_INTERVAL_TICKS === 0) {
+          broadcastToMatch(connections, entry, {
+            type: "snapshot",
+            snapshot: buildSnapshot(entry.match)
+          });
+        }
       }
 
       accumulatorMs -= TICK_MS;
@@ -101,19 +126,253 @@ export function startServer(port = readPort(), seed = Date.now() >>> 0): ServerH
       clearInterval(interval);
       wss.close();
     },
-    match,
+    matches,
     wss
   };
 }
 
-function broadcast(wss: WebSocketServer, msg: ServerMessage): void {
-  const encoded = encodeServerMessage(msg);
+function routeClientMessage(
+  matches: Map<string, MatchEntry>,
+  connections: Map<string, ConnectionState>,
+  conn: ConnectionState,
+  msg: ClientMessage,
+  seed: number
+): void {
+  switch (msg.type) {
+    case "create":
+      createLobby(matches, connections, conn, seed);
+      return;
+    case "join":
+      joinLobby(matches, connections, conn, msg.code);
+      return;
+    case "select":
+      handleSelect(matches, connections, conn, msg.characterId);
+      return;
+    case "lobby_ready":
+      handleLobbyReady(matches, connections, conn, msg.ready);
+      return;
+    default:
+      routeRunMessage(matches, conn, msg);
+  }
+}
 
-  for (const client of wss.clients) {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(encoded);
+function createLobby(
+  matches: Map<string, MatchEntry>,
+  connections: Map<string, ConnectionState>,
+  conn: ConnectionState,
+  seed: number
+): void {
+  leaveCurrentLobby(matches, connections, conn);
+  const code = generateLobbyCode(matches);
+  const entry = createMatchEntry(code, seed);
+  matches.set(code, entry);
+  const playerId = addConnectionToLobby(entry, conn.id);
+  conn.code = code;
+  conn.playerId = playerId;
+
+  send(conn.socket, { type: "lobby_joined", code, playerId });
+  send(conn.socket, {
+    type: "welcome",
+    playerId,
+    protocolVersion: PROTOCOL_VERSION,
+    snapshot: buildSnapshot(entry.match)
+  });
+  broadcastLobbyStateForEntry(connections, entry);
+}
+
+function joinLobby(
+  matches: Map<string, MatchEntry>,
+  connections: Map<string, ConnectionState>,
+  conn: ConnectionState,
+  requestedCode: string
+): void {
+  const code = normalizeCode(requestedCode);
+  const entry = matches.get(code);
+
+  if (entry === undefined) {
+    send(conn.socket, { type: "lobby_error", message: "Lobby not found." });
+    return;
+  }
+
+  if (entry.lobby.started) {
+    send(conn.socket, { type: "lobby_error", message: "Run already started." });
+    return;
+  }
+
+  if (entry.match.world.players.length >= MAX_LOBBY_PLAYERS) {
+    send(conn.socket, { type: "lobby_error", message: "Lobby is full." });
+    return;
+  }
+
+  leaveCurrentLobby(matches, connections, conn);
+  const playerId = addConnectionToLobby(entry, conn.id);
+  conn.code = code;
+  conn.playerId = playerId;
+
+  send(conn.socket, { type: "lobby_joined", code, playerId });
+  send(conn.socket, {
+    type: "welcome",
+    playerId,
+    protocolVersion: PROTOCOL_VERSION,
+    snapshot: buildSnapshot(entry.match)
+  });
+  broadcastLobbyStateForEntry(connections, entry);
+}
+
+function handleSelect(
+  matches: Map<string, MatchEntry>,
+  connections: Map<string, ConnectionState>,
+  conn: ConnectionState,
+  characterId: string
+): void {
+  const routed = routeLobbyMessage(matches, conn);
+  if (routed === null) {
+    return;
+  }
+
+  if (!selectLobbyCharacter(routed.entry, routed.playerId, characterId)) {
+    send(conn.socket, {
+      type: "lobby_error",
+      message: "Character is not available in this lobby."
+    });
+    return;
+  }
+
+  broadcastLobbyStateForEntry(connections, routed.entry);
+}
+
+function handleLobbyReady(
+  matches: Map<string, MatchEntry>,
+  connections: Map<string, ConnectionState>,
+  conn: ConnectionState,
+  ready: boolean
+): void {
+  const routed = routeLobbyMessage(matches, conn);
+  if (routed === null) {
+    return;
+  }
+
+  setLobbyReady(routed.entry, routed.playerId, ready);
+  broadcastLobbyStateForEntry(connections, routed.entry);
+}
+
+function routeRunMessage(
+  matches: Map<string, MatchEntry>,
+  conn: ConnectionState,
+  msg: ClientMessage
+): void {
+  const routed = routeLobbyMessage(matches, conn);
+  if (routed === null) {
+    return;
+  }
+
+  handleClientMessage(routed.entry.match, routed.playerId, msg);
+}
+
+function routeLobbyMessage(
+  matches: Map<string, MatchEntry>,
+  conn: ConnectionState
+): { entry: MatchEntry; playerId: string } | null {
+  if (conn.code === null || conn.playerId === null) {
+    send(conn.socket, {
+      type: "lobby_error",
+      message: "Create or join a lobby first."
+    });
+    return null;
+  }
+
+  const entry = matches.get(conn.code);
+  if (entry === undefined) {
+    conn.code = null;
+    conn.playerId = null;
+    send(conn.socket, { type: "lobby_error", message: "Lobby no longer exists." });
+    return null;
+  }
+
+  return { entry, playerId: conn.playerId };
+}
+
+function removeConnection(
+  matches: Map<string, MatchEntry>,
+  connections: Map<string, ConnectionState>,
+  conn: ConnectionState
+): void {
+  leaveCurrentLobby(matches, connections, conn);
+  connections.delete(conn.id);
+}
+
+function leaveCurrentLobby(
+  matches: Map<string, MatchEntry>,
+  connections: Map<string, ConnectionState>,
+  conn: ConnectionState
+): void {
+  if (conn.code === null) {
+    return;
+  }
+
+  const entry = matches.get(conn.code);
+  if (entry !== undefined) {
+    removeConnectionFromLobby(entry, conn.id);
+    if (entry.conns.size === 0) {
+      matches.delete(entry.code);
+    } else {
+      broadcastLobbyStateForEntry(connections, entry);
     }
   }
+
+  conn.code = null;
+  conn.playerId = null;
+}
+
+function broadcastLobbyStateForEntry(
+  connections: Map<string, ConnectionState>,
+  entry: MatchEntry
+): void {
+  const msg: ServerMessage = {
+    type: "lobby_state",
+    code: entry.code,
+    players: buildLobbyPlayers(entry),
+    canStart: canStartLobby(entry)
+  };
+
+  for (const connId of entry.conns.keys()) {
+    const conn = connections.get(connId);
+    if (conn !== undefined) {
+      send(conn.socket, msg);
+    }
+  }
+}
+
+function broadcastToMatch(
+  connections: Map<string, ConnectionState>,
+  entry: MatchEntry,
+  msg: ServerMessage
+): void {
+  for (const connId of entry.conns.keys()) {
+    const conn = connections.get(connId);
+    if (conn !== undefined) {
+      send(conn.socket, msg);
+    }
+  }
+}
+
+function generateLobbyCode(matches: Map<string, MatchEntry>): string {
+  for (let attempts = 0; attempts < 1000; attempts += 1) {
+    let code = "";
+    for (let i = 0; i < CODE_LENGTH; i += 1) {
+      code += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
+    }
+
+    if (!matches.has(code)) {
+      return code;
+    }
+  }
+
+  throw new Error("Unable to generate a unique lobby code");
+}
+
+function normalizeCode(code: string): string {
+  return code.trim().toUpperCase();
 }
 
 function send(socket: WebSocket, msg: ServerMessage): void {
@@ -154,4 +413,6 @@ function rawDataToString(raw: RawData): string {
   return Buffer.concat(raw).toString("utf8");
 }
 
-startServer();
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  startServer();
+}

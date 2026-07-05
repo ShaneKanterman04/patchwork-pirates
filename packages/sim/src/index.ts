@@ -9,7 +9,9 @@ export {
   buyOffer,
   purchaseModule,
   rerollShop,
+  setCharacter,
   setPlayerReady,
+  startRun,
   toggleLock,
   updateRunPostSim,
   updateRunPreSim

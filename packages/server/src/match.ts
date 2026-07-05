@@ -9,7 +9,9 @@ import {
   createWorld,
   purchaseModule,
   rerollShop,
+  setCharacter,
   setPlayerReady,
+  startRun,
   tick,
   toggleLock
 } from "@patchwork/sim";
@@ -22,6 +24,7 @@ import type {
 } from "@patchwork/sim";
 import type {
   ClientMessage,
+  LobbyPlayer,
   ShopOfferView,
   ShopView,
   Snapshot,
@@ -32,6 +35,17 @@ export interface Match {
   world: WorldState;
   latestInputs: Map<PlayerId, PlayerInput>;
   nextPlayerNumber: number;
+}
+
+export interface MatchEntry {
+  code: string;
+  match: Match;
+  lobby: {
+    selections: Map<PlayerId, string>;
+    ready: Set<PlayerId>;
+    started: boolean;
+  };
+  conns: Map<string, PlayerId>;
 }
 
 export type PlayerInputMessage = ClientMessage & { type: "player_input" };
@@ -49,7 +63,7 @@ export function matchAddPlayer(match: Match, connId: string): string {
 
   const playerId = `p${match.nextPlayerNumber}`;
   match.nextPlayerNumber += 1;
-  addPlayer(match.world, playerId, ["cutlass"]);
+  addPlayer(match.world, playerId);
   return playerId;
 }
 
@@ -58,6 +72,114 @@ export function matchRemovePlayer(match: Match, playerId: string): void {
     (player) => player.id !== playerId
   );
   match.latestInputs.delete(playerId);
+}
+
+export function createMatchEntry(code: string, seed: number): MatchEntry {
+  return {
+    code,
+    match: createMatch(seed),
+    lobby: {
+      selections: new Map(),
+      ready: new Set(),
+      started: false
+    },
+    conns: new Map()
+  };
+}
+
+export function addConnectionToLobby(entry: MatchEntry, connId: string): string {
+  const playerId = matchAddPlayer(entry.match, connId);
+  entry.conns.set(connId, playerId);
+  return playerId;
+}
+
+export function removeConnectionFromLobby(
+  entry: MatchEntry,
+  connId: string
+): void {
+  const playerId = entry.conns.get(connId);
+  if (playerId === undefined) {
+    return;
+  }
+
+  entry.conns.delete(connId);
+  entry.lobby.selections.delete(playerId);
+  entry.lobby.ready.delete(playerId);
+  matchRemovePlayer(entry.match, playerId);
+}
+
+export function selectLobbyCharacter(
+  entry: MatchEntry,
+  playerId: string,
+  characterId: string
+): boolean {
+  if (entry.lobby.started) {
+    return false;
+  }
+
+  const selected = setCharacter(entry.match.world, playerId, characterId);
+  if (!selected) {
+    return false;
+  }
+
+  entry.lobby.selections.set(playerId, characterId);
+  entry.lobby.ready.delete(playerId);
+  return true;
+}
+
+export function setLobbyReady(
+  entry: MatchEntry,
+  playerId: string,
+  ready: boolean
+): void {
+  if (entry.lobby.started || !entryHasPlayer(entry, playerId)) {
+    return;
+  }
+
+  if (ready) {
+    entry.lobby.ready.add(playerId);
+  } else {
+    entry.lobby.ready.delete(playerId);
+  }
+
+  maybeStartLobby(entry);
+}
+
+export function buildLobbyPlayers(entry: MatchEntry): LobbyPlayer[] {
+  return entry.match.world.players.map((player) => ({
+    id: player.id,
+    characterId: entry.lobby.selections.get(player.id) ?? player.characterId,
+    ready: entry.lobby.ready.has(player.id)
+  }));
+}
+
+export function canStartLobby(entry: MatchEntry): boolean {
+  return lobbyReadyToStart(entry);
+}
+
+function entryHasPlayer(entry: MatchEntry, playerId: string): boolean {
+  return entry.match.world.players.some((player) => player.id === playerId);
+}
+
+function maybeStartLobby(entry: MatchEntry): void {
+  if (!lobbyReadyToStart(entry)) {
+    return;
+  }
+
+  startRun(entry.match.world);
+  entry.lobby.started = true;
+}
+
+function lobbyReadyToStart(entry: MatchEntry): boolean {
+  return (
+    !entry.lobby.started &&
+    entry.match.world.players.length > 0 &&
+    entry.match.world.players.every(
+      (player) =>
+        entry.lobby.ready.has(player.id) &&
+        entry.lobby.selections.has(player.id)
+    )
+  );
 }
 
 export function setInput(

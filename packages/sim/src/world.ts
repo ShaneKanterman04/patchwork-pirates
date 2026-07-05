@@ -84,7 +84,7 @@ export function createWorld(
     events: [],
     coreDestroyed: false,
     nextEntityId: 1,
-    run: createRunState({ content, players: [] })
+    run: createRunState()
   };
 }
 
@@ -94,7 +94,20 @@ export function tick(
 ): WorldState {
   world.events = [];
 
-  if (world.run.phase === "victory" || world.run.phase === "defeat") {
+  if (world.run.phase === "lobby" && world.run.budgetRemaining > 0) {
+    world.run.phase = "combat";
+    if (world.run.phaseTicksLeft <= 0) {
+      world.run.phaseTicksLeft = Number.MAX_SAFE_INTEGER;
+    }
+  }
+
+  if (
+    (world.run.phase === "lobby" &&
+      world.content.waves.length > 0 &&
+      world.run.budgetRemaining <= 0) ||
+    world.run.phase === "victory" ||
+    world.run.phase === "defeat"
+  ) {
     world.tick += 1;
     return world;
   }

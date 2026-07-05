@@ -1,30 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { DOWNED_BLEED_OUT_S, REVIVE_S, TICK_RATE } from "@patchwork/sim";
+import { DOWNED_BLEED_OUT_S, REVIVE_S, TICK_RATE, startRun } from "@patchwork/sim";
 import {
+  addConnectionToLobby,
   buildSnapshot,
+  canStartLobby,
+  createMatchEntry,
   createMatch,
+  buildLobbyPlayers,
   handleClientMessage,
   matchAddPlayer,
   matchRemovePlayer,
+  selectLobbyCharacter,
+  setLobbyReady,
   setInput,
   stepMatch
 } from "./match";
 
 describe("match", () => {
-  it("adds players with a cutlass", () => {
+  it("adds lobby players without a weapon until character select", () => {
     const match = createMatch(123);
     const playerId = matchAddPlayer(match, "c1");
 
     expect(playerId).toBe("p1");
     expect(match.world.players).toHaveLength(1);
-    expect(match.world.players[0]?.weapons.map((weapon) => weapon.defId)).toEqual([
-      "cutlass"
-    ]);
+    expect(match.world.players[0]?.weapons).toEqual([]);
   });
 
   it("moves a player from latest input and reflects that in snapshots", () => {
     const match = createMatch(123);
     const playerId = matchAddPlayer(match, "c1");
+    startRun(match.world);
     const beforeX = buildSnapshot(match).players[0]?.x;
 
     setInput(match, playerId, {
@@ -44,12 +49,13 @@ describe("match", () => {
 
     expect(player).toBeDefined();
     expect(player?.x).toBeGreaterThan(beforeX ?? 0);
-    expect(player?.weaponIds).toEqual(["cutlass"]);
+    expect(player?.weaponIds).toEqual([]);
   });
 
   it("lists enemy views once the spawner has produced one", () => {
     const match = createMatch(1);
     matchAddPlayer(match, "c1");
+    startRun(match.world);
 
     for (let i = 0; i < 15; i += 1) {
       stepMatch(match);
@@ -218,5 +224,76 @@ describe("match", () => {
       kind: "group",
       playerId
     });
+  });
+
+  it("create-style lobby entry gets a code and first player", () => {
+    const entry = createMatchEntry("ABCD", 123);
+    const playerId = addConnectionToLobby(entry, "c1");
+
+    expect(entry.code).toBe("ABCD");
+    expect(playerId).toBe("p1");
+    expect(entry.conns.get("c1")).toBe("p1");
+    expect(buildLobbyPlayers(entry)).toEqual([
+      { id: "p1", characterId: null, ready: false }
+    ]);
+  });
+
+  it("join-style lobby add creates a second player", () => {
+    const entry = createMatchEntry("ABCD", 123);
+    addConnectionToLobby(entry, "c1");
+    const secondPlayerId = addConnectionToLobby(entry, "c2");
+
+    expect(secondPlayerId).toBe("p2");
+    expect(entry.match.world.players.map((player) => player.id)).toEqual([
+      "p1",
+      "p2"
+    ]);
+  });
+
+  it("bad lobby code lookup produces no entry", () => {
+    const matches = new Map([["ABCD", createMatchEntry("ABCD", 123)]]);
+
+    expect(matches.get("WXYZ")).toBeUndefined();
+  });
+
+  it("all ready and selected starts the run", () => {
+    const entry = createMatchEntry("ABCD", 123);
+    const p1 = addConnectionToLobby(entry, "c1");
+    const p2 = addConnectionToLobby(entry, "c2");
+
+    expect(selectLobbyCharacter(entry, p1, "captain")).toBe(true);
+    expect(selectLobbyCharacter(entry, p2, "fisher")).toBe(true);
+    setLobbyReady(entry, p1, true);
+    expect(entry.match.world.run.phase).toBe("lobby");
+    expect(canStartLobby(entry)).toBe(false);
+
+    setLobbyReady(entry, p2, true);
+
+    expect(entry.lobby.started).toBe(true);
+    expect(entry.match.world.run.phase).toBe("combat");
+    expect(entry.match.world.players.map((player) => player.characterId)).toEqual([
+      "captain",
+      "fisher"
+    ]);
+  });
+
+  it("keeps two lobbies isolated", () => {
+    const first = createMatchEntry("AAAA", 1);
+    const second = createMatchEntry("BBBB", 2);
+    const firstPlayer = addConnectionToLobby(first, "c1");
+    const secondPlayer = addConnectionToLobby(second, "c2");
+
+    selectLobbyCharacter(first, firstPlayer, "captain");
+    selectLobbyCharacter(second, secondPlayer, "fisher");
+    setLobbyReady(first, firstPlayer, true);
+
+    expect(first.match.world.run.phase).toBe("combat");
+    expect(second.match.world.run.phase).toBe("lobby");
+    expect(first.match.world.players).toHaveLength(1);
+    expect(second.match.world.players).toHaveLength(1);
+    expect(first.match.world.players[0]?.id).toBe("p1");
+    expect(second.match.world.players[0]?.id).toBe("p1");
+    expect(first.match.world.enemies).toEqual([]);
+    expect(second.match.world.enemies).toEqual([]);
   });
 });

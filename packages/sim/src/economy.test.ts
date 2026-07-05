@@ -13,6 +13,7 @@ import {
   purchaseModule,
   rerollShop,
   resolveEnemyDeaths,
+  startRun,
   tick,
   toggleLock
 } from "./index";
@@ -146,6 +147,7 @@ describe("weapon stat scaling", () => {
   it("scales damage and cooldown from the wielder's stats", () => {
     const world = createWorld(1, CONTENT);
     const player = addPlayer(world, "p1", ["cutlass"]);
+    startRun(world);
     player.damageMult = 2;
     player.attackSpeedMult = 2;
     const enemy = createEnemy(world, CHUM, {
@@ -169,6 +171,7 @@ describe("shop transactions", () => {
   it("generates four wave-scaled offers when combat enters build", () => {
     const world = createWorld(1, CONTENT);
     addPlayer(world, "p1");
+    startRun(world);
     world.run.wave = 3;
     world.run.phaseTicksLeft = 1;
 

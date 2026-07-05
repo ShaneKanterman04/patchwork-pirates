@@ -6,7 +6,13 @@ import {
   RAFT_HEIGHT,
   RAFT_WIDTH
 } from "./constants";
-import type { PlayerId, PlayerState, Vec2, WorldState } from "./types";
+import type {
+  CharacterDef,
+  PlayerId,
+  PlayerState,
+  Vec2,
+  WorldState
+} from "./types";
 
 export const DEFAULT_PLAYER_POS: Vec2 = { x: 1.5, y: 1.5 };
 
@@ -27,9 +33,9 @@ export function addPlayer(
 
   const player: PlayerState = {
     id,
-    characterId: character?.id ?? null,
-    passive: character?.passive ?? "none",
-    special: character?.special ?? "none",
+    characterId: null,
+    passive: "none",
+    special: "none",
     specialCooldownTicks: 0,
     auraAttackSpeedMult: 1,
     pos: clampToRaft(DEFAULT_PLAYER_POS),
@@ -69,20 +75,46 @@ export function addPlayer(
   };
 
   if (character !== undefined) {
-    const statProfile = character.statProfile;
-    const maxHpDelta = statProfile.maxHp ?? 0;
-    player.maxHp += maxHpDelta;
-    player.hp += maxHpDelta;
-    player.prevHp += maxHpDelta;
-    player.moveSpeed += statProfile.moveSpeed ?? 0;
-    player.pickupRadius += statProfile.pickupRadius ?? 0;
-    player.repairSpeed += statProfile.repairSpeed ?? 0;
-    player.damageMult += statProfile.damageMult ?? 0;
-    player.attackSpeedMult += statProfile.attackSpeedMult ?? 0;
+    applyCharacterProfile(player, character);
   }
 
   world.players.push(player);
   return player;
+}
+
+export function applyCharacterProfile(
+  player: PlayerState,
+  character: CharacterDef
+): void {
+  player.characterId = character.id;
+  player.passive = character.passive;
+  player.special = character.special;
+  player.specialCooldownTicks = 0;
+  player.auraAttackSpeedMult = 1;
+  player.weapons = [{ defId: character.startingWeaponId, cooldownTicks: 0 }];
+
+  resetBaseStats(player);
+  const statProfile = character.statProfile;
+  const maxHpDelta = statProfile.maxHp ?? 0;
+  player.maxHp += maxHpDelta;
+  player.hp = player.maxHp;
+  player.prevHp = player.maxHp;
+  player.moveSpeed += statProfile.moveSpeed ?? 0;
+  player.pickupRadius += statProfile.pickupRadius ?? 0;
+  player.repairSpeed += statProfile.repairSpeed ?? 0;
+  player.damageMult += statProfile.damageMult ?? 0;
+  player.attackSpeedMult += statProfile.attackSpeedMult ?? 0;
+}
+
+function resetBaseStats(player: PlayerState): void {
+  player.maxHp = PLAYER_MAX_HP;
+  player.hp = PLAYER_MAX_HP;
+  player.prevHp = PLAYER_MAX_HP;
+  player.moveSpeed = PLAYER_MOVE_SPEED;
+  player.repairSpeed = 1.0;
+  player.damageMult = 1;
+  player.attackSpeedMult = 1;
+  player.pickupRadius = BASE_PICKUP_RADIUS;
 }
 
 export function clampToRaft(pos: Vec2): Vec2 {

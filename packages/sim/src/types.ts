@@ -211,7 +211,7 @@ export interface WaveDef {
   table: WaveSpawnEntry[];
 }
 
-export type RunPhase = "combat" | "build" | "victory" | "defeat";
+export type RunPhase = "lobby" | "combat" | "build" | "victory" | "defeat";
 
 export interface RunState {
   phase: RunPhase;
