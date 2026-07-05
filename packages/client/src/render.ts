@@ -1,4 +1,5 @@
-import { Application, Container, Graphics } from "pixi.js";
+import { Application, Container, Graphics, Text } from "pixi.js";
+import { CHARACTERS } from "@patchwork/content";
 import type {
   EnemyView,
   ModuleView,
@@ -8,6 +9,7 @@ import type {
   RaftView,
   WireEvent
 } from "@patchwork/protocol";
+import { characterColor, characterName, pingColor } from "./coOpLogic";
 import type { ConnectionStatus } from "./net";
 import type { InterpolatedState } from "./interp";
 import type { ViewportTransform } from "./shopLogic";
@@ -23,6 +25,7 @@ const SLASH_DURATION_MS = 180;
 const HIT_DURATION_MS = 140;
 const KILL_DURATION_MS = 260;
 const EXPLOSION_DURATION_MS = 360;
+const PING_LIFE_MS = 3_000;
 
 interface EntityNode {
   container: Container;
@@ -30,6 +33,9 @@ interface EntityNode {
   facing?: Graphics;
   hpBack?: Graphics;
   hpFill?: Graphics;
+  label?: Text;
+  reviveRing?: Graphics;
+  bleedRing?: Graphics;
 }
 
 interface SlashVfx {
@@ -53,6 +59,11 @@ interface PopVfx {
   kind: "hit" | "kill" | "explosion";
 }
 
+interface PingNode {
+  graphic: Graphics;
+  ageMs: number;
+}
+
 export interface HudState {
   status: ConnectionStatus;
   waveText: string;
@@ -71,6 +82,7 @@ export class GameRenderer {
   private readonly players = new Map<string, EntityNode>();
   private readonly enemies = new Map<string, EntityNode>();
   private readonly pickups = new Map<string, Graphics>();
+  private readonly pings = new Map<string, PingNode>();
   private readonly slashes: SlashVfx[] = [];
   private readonly pops: PopVfx[] = [];
 
@@ -132,6 +144,7 @@ export class GameRenderer {
     this.updatePlayers(state.players, myPlayerId);
     this.updateEnemies(state.enemies);
     this.updatePickups(state.pickups);
+    this.updatePings(state.pings, deltaMs);
     this.updateSlashes(deltaMs);
     this.updatePops(deltaMs);
   }
@@ -232,32 +245,90 @@ export class GameRenderer {
     const seen = new Set<string>();
 
     for (const player of players) {
+      const isOut = player.out ?? false;
+      if (isOut) {
+        continue;
+      }
+
       seen.add(player.id);
       const node = getOrCreateEntity(this.players, this.world, player.id, true);
       const isOwn = player.id === myPlayerId;
       node.container.position.set(player.x, player.y);
-      node.body
-        .clear()
-        .circle(0, 0, PLAYER_RADIUS)
-        .fill(player.downed ? 0x6d7480 : isOwn ? 0x2f80ed : 0x20b486)
-        .stroke({ color: isOwn ? 0xffffff : 0x12362c, width: isOwn ? 0.075 : 0.045 });
+      node.body.clear();
+
+      if (player.downed) {
+        node.body
+          .ellipse(0, 0.08, PLAYER_RADIUS * 1.2, PLAYER_RADIUS * 0.56)
+          .fill(0x6d7480)
+          .stroke({ color: 0xd8dde3, width: 0.045, alpha: 0.7 })
+          .circle(-0.22, -0.02, 0.12)
+          .fill(0x8a929c);
+      } else {
+        node.body
+          .circle(0, 0, PLAYER_RADIUS)
+          .fill(isOwn ? 0x2f80ed : characterColor(player.characterId))
+          .stroke({ color: isOwn ? 0xffffff : 0x12362c, width: isOwn ? 0.075 : 0.045 });
+      }
 
       const facing = node.facing;
       if (facing !== undefined) {
         const magnitude = Math.hypot(player.facingX, player.facingY);
         const fx = magnitude > 0 ? player.facingX / magnitude : 1;
         const fy = magnitude > 0 ? player.facingY / magnitude : 0;
-        facing.clear().moveTo(0, 0).lineTo(fx * 0.58, fy * 0.58).stroke({
-          color: 0xffffff,
-          width: 0.07,
-          cap: "round"
-        });
+        facing.clear();
+        if (!player.downed) {
+          facing.moveTo(0, 0).lineTo(fx * 0.58, fy * 0.58).stroke({
+            color: 0xffffff,
+            width: 0.07,
+            cap: "round"
+          });
+        }
       }
 
-      drawHpBar(node, player.hp / player.maxHp);
+      drawHpBar(node, player.maxHp > 0 ? player.hp / player.maxHp : 0);
+      drawPlayerLabel(node, `${isOwn ? "You" : characterName(player.characterId, CHARACTERS)}`);
+      drawDownedRings(node, player);
     }
 
     removeMissing(this.players, seen);
+  }
+
+  private updatePings(pings: readonly { id: string; kind: string; x: number; y: number }[], deltaMs: number): void {
+    const seen = new Set<string>();
+
+    for (const ping of pings) {
+      seen.add(ping.id);
+      let node = this.pings.get(ping.id);
+
+      if (node === undefined) {
+        node = { graphic: new Graphics(), ageMs: 0 };
+        this.pings.set(ping.id, node);
+        this.world.addChild(node.graphic);
+      } else {
+        node.ageMs += deltaMs;
+      }
+
+      const t = clamp01(node.ageMs / PING_LIFE_MS);
+      const alpha = 1 - t;
+      const radius = 0.28 + t * 0.28;
+      node.graphic.position.set(ping.x, ping.y);
+      node.graphic
+        .clear()
+        .circle(0, 0, radius)
+        .stroke({ color: pingColor(ping.kind), width: 0.075, alpha })
+        .moveTo(-0.16, 0)
+        .lineTo(0.16, 0)
+        .moveTo(0, -0.16)
+        .lineTo(0, 0.16)
+        .stroke({ color: pingColor(ping.kind), width: 0.045, alpha });
+    }
+
+    for (const [id, node] of this.pings) {
+      if (!seen.has(id) || node.ageMs >= PING_LIFE_MS) {
+        node.graphic.destroy();
+        this.pings.delete(id);
+      }
+    }
   }
 
   private updateEnemies(enemies: readonly EnemyView[]): void {
@@ -528,18 +599,78 @@ function getOrCreateEntity(
     const hpBack = new Graphics();
     const hpFill = new Graphics();
     const facing = withFacing ? new Graphics() : undefined;
+    const label = withFacing
+      ? new Text({
+          text: "",
+          style: {
+            fill: 0xffffff,
+            fontFamily: "Inter, Arial, sans-serif",
+            fontSize: 0.18,
+            fontWeight: "700",
+            stroke: { color: 0x102b3a, width: 0.035 }
+          }
+        })
+      : undefined;
+    const reviveRing = withFacing ? new Graphics() : undefined;
+    const bleedRing = withFacing ? new Graphics() : undefined;
 
     container.addChild(body);
+    if (reviveRing !== undefined && bleedRing !== undefined) {
+      container.addChild(bleedRing, reviveRing);
+    }
     if (facing !== undefined) {
       container.addChild(facing);
     }
     container.addChild(hpBack, hpFill);
+    if (label !== undefined) {
+      label.anchor.set(0.5, 0.5);
+      container.addChild(label);
+    }
     parent.addChild(container);
-    node = { container, body, facing, hpBack, hpFill };
+    node = { container, body, facing, hpBack, hpFill, label, reviveRing, bleedRing };
     map.set(id, node);
   }
 
   return node;
+}
+
+function drawPlayerLabel(node: EntityNode, text: string): void {
+  if (node.label === undefined) {
+    return;
+  }
+
+  node.label.text = text;
+  node.label.position.set(0, -0.92);
+}
+
+function drawDownedRings(node: EntityNode, player: PlayerView): void {
+  node.reviveRing?.clear();
+  node.bleedRing?.clear();
+
+  if (!player.downed) {
+    return;
+  }
+
+  const reviveRatio = clamp01(player.reviveProgressRatio ?? 0);
+  const bleedRatio = clamp01(player.bleedOutRatio ?? 0);
+  drawProgressArc(node.reviveRing, 0.58, reviveRatio, 0x8fffd2, 0.08);
+  drawProgressArc(node.bleedRing, 0.7, bleedRatio, 0xff6a6a, 0.06);
+}
+
+function drawProgressArc(
+  graphic: Graphics | undefined,
+  radius: number,
+  ratio: number,
+  color: number,
+  width: number
+): void {
+  if (graphic === undefined || ratio <= 0) {
+    return;
+  }
+
+  const start = -Math.PI / 2;
+  const end = start + Math.PI * 2 * ratio;
+  graphic.arc(0, 0, radius, start, end).stroke({ color, width, cap: "round" });
 }
 
 function drawHpBar(node: EntityNode, ratio: number): void {

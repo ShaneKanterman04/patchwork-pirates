@@ -6,12 +6,15 @@ const UP_KEYS = new Set(["KeyW", "ArrowUp"]);
 const DOWN_KEYS = new Set(["KeyS", "ArrowDown"]);
 const DASH_KEYS = new Set(["Space", "ShiftLeft", "ShiftRight"]);
 const INTERACT_KEYS = new Set(["KeyE"]);
+const PING_KEYS = new Set(["KeyQ"]);
+const SCOREBOARD_KEYS = new Set(["Tab"]);
 const PREVENT_DEFAULT_KEYS = new Set([
   "ArrowLeft",
   "ArrowRight",
   "ArrowUp",
   "ArrowDown",
-  "Space"
+  "Space",
+  "Tab"
 ]);
 
 export function keysToInput(held: ReadonlySet<string>, seq: number): ClientMessage {
@@ -31,11 +34,15 @@ export function keysToInput(held: ReadonlySet<string>, seq: number): ClientMessa
 export class InputTracker {
   private readonly held = new Set<string>();
   private seq = 0;
+  private pendingPing = false;
 
   constructor(private readonly target: Window) {}
 
   attach(): () => void {
     const onKeyDown = (event: KeyboardEvent): void => {
+      if (!this.held.has(event.code) && PING_KEYS.has(event.code)) {
+        this.pendingPing = true;
+      }
       this.held.add(event.code);
       preventPageScroll(event);
     };
@@ -60,8 +67,19 @@ export class InputTracker {
     return keysToInput(this.held, this.seq);
   }
 
+  consumePingPressed(): boolean {
+    const pressed = this.pendingPing;
+    this.pendingPing = false;
+    return pressed;
+  }
+
+  isScoreboardHeld(): boolean {
+    return hasAny(this.held, SCOREBOARD_KEYS);
+  }
+
   private readonly clear = (): void => {
     this.held.clear();
+    this.pendingPing = false;
   };
 }
 

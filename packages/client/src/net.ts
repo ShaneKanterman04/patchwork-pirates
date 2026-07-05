@@ -3,7 +3,7 @@ import {
   decodeServerMessage,
   encodeClientMessage
 } from "@patchwork/protocol";
-import type { ClientMessage, Snapshot, WireEvent } from "@patchwork/protocol";
+import type { ClientMessage, LobbyPlayer, Snapshot, WireEvent } from "@patchwork/protocol";
 import type { BufferedSnapshot } from "./interp";
 
 export type ConnectionStatus = "connecting" | "connected" | "disconnected";
@@ -11,13 +11,36 @@ export type ConnectionStatus = "connecting" | "connected" | "disconnected";
 const DEFAULT_WS_URL = "ws://localhost:8080";
 const MAX_SNAPSHOTS = 12;
 const RECONNECT_DELAY_MS = 1_000;
+const REJOIN_CODE_KEY = "patchwork.rejoin.code";
+const REJOIN_PLAYER_KEY = "patchwork.rejoin.playerId";
+
+export interface LobbyState {
+  code: string | undefined;
+  players: LobbyPlayer[];
+  canStart: boolean;
+  error: string | undefined;
+}
+
+export interface RejoinState {
+  code: string;
+  playerId: string;
+  available: boolean;
+}
 
 export interface Connection {
   readonly snapshots: readonly BufferedSnapshot[];
   readonly status: ConnectionStatus;
   readonly myPlayerId: string | undefined;
   readonly latestSnapshot: Snapshot | undefined;
+  readonly lobby: LobbyState;
+  readonly rejoin: RejoinState | undefined;
   sendInput: (input: ClientMessage) => void;
+  createLobby: () => void;
+  joinLobby: (code: string) => void;
+  selectCharacter: (characterId: string) => void;
+  setLobbyReady: (ready: boolean) => void;
+  sendPing: () => void;
+  rejoinStored: () => void;
   close: () => void;
 }
 
@@ -53,8 +76,16 @@ export function connect(
   let status: ConnectionStatus = "connecting";
   let myPlayerId: string | undefined;
   let latestSnapshot: Snapshot | undefined;
+  let lobby: LobbyState = { code: undefined, players: [], canStart: false, error: undefined };
+  let rejoin = readRejoinState(false);
   let closedByClient = false;
   let reconnectTimer: number | undefined;
+
+  const send = (input: ClientMessage): void => {
+    if (socket?.readyState === WebSocket.OPEN) {
+      socket.send(encodeClientMessage(input));
+    }
+  };
 
   const openSocket = (): void => {
     status = "connecting";
@@ -73,6 +104,10 @@ export function connect(
         if (msg.type === "welcome") {
           myPlayerId = msg.playerId;
           latestSnapshot = msg.snapshot;
+          if (lobby.code !== undefined) {
+            persistRejoin(lobby.code, msg.playerId);
+            rejoin = readRejoinState(false);
+          }
           snapshots.splice(0, snapshots.length, {
             recvTimeMs: nowMs(),
             snapshot: msg.snapshot
@@ -91,8 +126,22 @@ export function connect(
           if (snapshots.length > MAX_SNAPSHOTS) {
             snapshots.splice(0, snapshots.length - MAX_SNAPSHOTS);
           }
-        } else {
+        } else if (msg.type === "events") {
           onEvents(msg.events);
+        } else if (msg.type === "lobby_joined") {
+          myPlayerId = msg.playerId;
+          lobby = { ...lobby, code: msg.code, error: undefined };
+          persistRejoin(msg.code, msg.playerId);
+          rejoin = readRejoinState(false);
+        } else if (msg.type === "lobby_error") {
+          lobby = { ...lobby, error: msg.message };
+        } else {
+          lobby = {
+            code: msg.code,
+            players: msg.players,
+            canStart: msg.canStart,
+            error: undefined
+          };
         }
 
         onStatusChange();
@@ -103,6 +152,7 @@ export function connect(
 
     socket.addEventListener("close", () => {
       status = "disconnected";
+      rejoin = readRejoinState(true);
       onStatusChange();
 
       if (!closedByClient) {
@@ -131,9 +181,34 @@ export function connect(
     get latestSnapshot() {
       return latestSnapshot;
     },
+    get lobby() {
+      return lobby;
+    },
+    get rejoin() {
+      return rejoin;
+    },
     sendInput(input: ClientMessage): void {
-      if (socket?.readyState === WebSocket.OPEN) {
-        socket.send(encodeClientMessage(input));
+      send(input);
+    },
+    createLobby(): void {
+      send({ type: "create" });
+    },
+    joinLobby(code: string): void {
+      send({ type: "join", code: code.trim().toUpperCase() });
+    },
+    selectCharacter(characterId: string): void {
+      send({ type: "select", characterId });
+    },
+    setLobbyReady(ready: boolean): void {
+      send({ type: "lobby_ready", ready });
+    },
+    sendPing(): void {
+      send({ type: "ping" });
+    },
+    rejoinStored(): void {
+      const stored = readRejoinState(false);
+      if (stored !== undefined) {
+        send({ type: "rejoin", code: stored.code, playerId: stored.playerId });
       }
     },
     close(): void {
@@ -146,4 +221,28 @@ export function connect(
       socket?.close();
     }
   };
+}
+
+function persistRejoin(code: string, playerId: string): void {
+  try {
+    window.sessionStorage.setItem(REJOIN_CODE_KEY, code);
+    window.sessionStorage.setItem(REJOIN_PLAYER_KEY, playerId);
+  } catch {
+    // Private browsing or embedded contexts may reject sessionStorage.
+  }
+}
+
+function readRejoinState(available: boolean): RejoinState | undefined {
+  try {
+    const code = window.sessionStorage.getItem(REJOIN_CODE_KEY);
+    const playerId = window.sessionStorage.getItem(REJOIN_PLAYER_KEY);
+
+    if (code === null || playerId === null) {
+      return undefined;
+    }
+
+    return { code, playerId, available };
+  } catch {
+    return undefined;
+  }
 }

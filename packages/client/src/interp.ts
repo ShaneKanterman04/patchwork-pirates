@@ -2,6 +2,7 @@ import type {
   EnemyView,
   ModuleView,
   PickupView,
+  PingView,
   PlayerView,
   ProjView,
   RaftView,
@@ -21,6 +22,7 @@ export interface InterpolatedState {
   enemies: EnemyView[];
   projectiles: ProjView[];
   pickups: PickupView[];
+  pings: PingView[];
   wave: WavePhaseView;
   raft?: RaftView;
   salvage?: number;
@@ -37,7 +39,8 @@ export function interpolate(
       enemies: [],
       projectiles: [],
       pickups: [],
-      wave: { number: 1, phase: "combat", timeLeft: 0 },
+      pings: [],
+      wave: { number: 1, phase: "lobby", timeLeft: 0 },
       modules: []
     };
   }
@@ -74,6 +77,7 @@ export function interpolate(
           alpha
         ),
         pickups: interpolateById(older.snapshot.pickups, newer.snapshot.pickups, alpha),
+        pings: newer.snapshot.pings?.map((ping) => ({ ...ping })) ?? [],
         wave: newer.snapshot.wave,
         raft: newer.snapshot.raft,
         salvage: newer.snapshot.salvage,
@@ -91,6 +95,7 @@ function snapshotToState(snapshot: Snapshot): InterpolatedState {
     enemies: snapshot.enemies.map((enemy) => ({ ...enemy })),
     projectiles: snapshot.projectiles.map((projectile) => ({ ...projectile })),
     pickups: snapshot.pickups.map((pickup) => ({ ...pickup })),
+    pings: snapshot.pings?.map((ping) => ({ ...ping })) ?? [],
     wave: snapshot.wave,
     raft: snapshot.raft,
     salvage: snapshot.salvage,
