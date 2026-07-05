@@ -55,7 +55,7 @@ Work branch `phase-0`. Legend: ✅ done & committed · 🔨 in progress · ⬜ t
 - **Phase 4 — Playtest & family polish** 🔨 (engineering items; the family-playtest exit is Shane's)
   - ✅ 4.1 feel/juice: hit flash + knockback + particles, subtle screen shake, coin/pickup juice, procedural sound (client)
   - ⏸ 4.2 movement prediction + reconciliation — DEFERRED per TECH.md (playtest-gated: only if real-internet play feels floaty; MVP ships without it). Reserved `seq` field is in place.
-  - 🔨 4.3 onboarding: first-run contextual hints ("Hold E to repair!") (client)
+  - ✅ 4.3 onboarding: first-run contextual hints ("Hold E to repair!") (client)
   - ⏸ exit gate — family pair completes a run unassisted + asks to play again (observational; Shane's)
 - Phases 5–6 ⬜ post-MVP (content breadth, meta & ship)
 

@@ -3,6 +3,8 @@ import type { ClientMessage, PlayerView, ShopOfferView, Snapshot } from "@patchw
 import { ProceduralAudio } from "./audio";
 import type { LobbyViewModel } from "./coOpLogic";
 import { characterName, lobbyViewModel, ownCanRevive, scoreboardRows } from "./coOpLogic";
+import { HINT_COPY, nextHint, readSeenHints, resetSeenHints, writeSeenHints } from "./hints";
+import type { HintId, HintView } from "./hints";
 import { INTERP_DELAY_MS, interpolate } from "./interp";
 import type { InterpolatedState } from "./interp";
 import { InputTracker } from "./input";
@@ -42,7 +44,7 @@ root.innerHTML = `
     .boss-phase { font-size: 13px; font-weight: 800; text-align: right; }
     .boss-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #ff4f5e, #f7b955); }
     .shop { position: absolute; right: 16px; top: 16px; width: min(360px, calc(100vw - 32px)); color: #17202a; background: rgba(246, 248, 241, .94); border: 1px solid rgba(38, 54, 68, .25); border-radius: 8px; box-shadow: 0 12px 34px rgba(25, 39, 52, .28); padding: 12px; }
-    .shop[hidden], .end-screen[hidden], .lobby[hidden], .scoreboard[hidden], .revive-hint[hidden] { display: none; }
+    .shop[hidden], .end-screen[hidden], .lobby[hidden], .scoreboard[hidden], .revive-hint[hidden], .hint-toast[hidden] { display: none; }
     .shop-head, .shop-actions, .modules { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .shop-head { justify-content: space-between; margin-bottom: 10px; font-weight: 800; }
     .offers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -86,6 +88,7 @@ root.innerHTML = `
     .score-name strong { display: block; }
     .score-name span { color: #65767d; font-size: 12px; }
     .revive-hint { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); color: #fff; background: rgba(16,43,58,.84); border: 1px solid rgba(255,255,255,.28); border-radius: 8px; padding: 9px 12px; font-weight: 900; text-shadow: 0 1px 2px rgba(0,0,0,.4); pointer-events: none; }
+    .hint-toast { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); width: min(520px, calc(100vw - 32px)); color: #fffdf6; background: rgba(18, 48, 61, .9); border: 1px solid rgba(255,255,255,.3); border-radius: 8px; box-shadow: 0 8px 24px rgba(8, 22, 31, .26); padding: 10px 14px; font-weight: 900; text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,.34); pointer-events: none; }
   </style>
   <div class="game-shell">
     <div class="hud" aria-live="polite">
@@ -112,6 +115,7 @@ root.innerHTML = `
     <button class="sound-toggle secondary" data-sound-toggle type="button">Sound on</button>
     <div class="lobby" data-lobby></div>
     <div class="scoreboard" data-scoreboard hidden></div>
+    <div class="hint-toast" data-hint-toast aria-live="polite" hidden></div>
     <div class="revive-hint" data-revive-hint hidden>Hold E to revive</div>
     <div class="end-screen" data-end-screen hidden></div>
   </div>
@@ -121,14 +125,16 @@ const shell = root.querySelector<HTMLElement>(".game-shell");
 const shopEl = root.querySelector<HTMLElement>("[data-shop]");
 const lobbyEl = root.querySelector<HTMLElement>("[data-lobby]");
 const scoreboardEl = root.querySelector<HTMLElement>("[data-scoreboard]");
+const hintToastEl = root.querySelector<HTMLElement>("[data-hint-toast]");
 const reviveHintEl = root.querySelector<HTMLElement>("[data-revive-hint]");
 const endScreenEl = root.querySelector<HTMLElement>("[data-end-screen]");
 const soundToggleEl = root.querySelector<HTMLButtonElement>("[data-sound-toggle]");
 
-if (shell === null || shopEl === null || lobbyEl === null || scoreboardEl === null || reviveHintEl === null || endScreenEl === null || soundToggleEl === null) {
+if (shell === null || shopEl === null || lobbyEl === null || scoreboardEl === null || hintToastEl === null || reviveHintEl === null || endScreenEl === null || soundToggleEl === null) {
   throw new Error("Missing game shell");
 }
 
+const hintToast = hintToastEl;
 const renderer = await GameRenderer.create(shell);
 const input = new InputTracker(window);
 input.attach();
@@ -143,6 +149,16 @@ let lobbyRenderKey = "";
 let previousWavePhase: InterpolatedState["wave"]["phase"] | undefined;
 let previousOwnDowned = false;
 let previousBossPhase: NonNullable<InterpolatedState["boss"]>["phase"] | undefined;
+let combatStartedAtMs: number | undefined;
+let previousOwnCoins: number | undefined;
+
+if (new URLSearchParams(window.location.search).has("resethints")) {
+  resetSeenHints();
+}
+
+const seenHints = readSeenHints();
+const hintQueue: HintId[] = [];
+let activeHint: { id: HintId; dismissAtMs: number } | undefined;
 
 const connection = connect(
   resolveWsUrl(window.location, import.meta.env.VITE_WS_URL),
@@ -181,7 +197,8 @@ renderer.app.canvas.addEventListener("click", (event) => {
 });
 
 renderer.app.ticker.add((ticker) => {
-  const renderTimeMs = performance.now() - INTERP_DELAY_MS;
+  const nowMs = performance.now();
+  const renderTimeMs = nowMs - INTERP_DELAY_MS;
   const state = interpolate(connection.snapshots, renderTimeMs);
   latestState = state;
   stats = applySnapshotToStats(stats, connection.latestSnapshot, connection.myPlayerId);
@@ -212,11 +229,14 @@ renderer.app.ticker.add((ticker) => {
     if (input.consumePingPressed()) {
       connection.sendPing();
     }
-    connection.sendInput(input.nextInput());
+    const frameInput = input.nextInput();
+    dismissHintForInput(frameInput);
+    connection.sendInput(frameInput);
   } else {
     input.consumePingPressed();
   }
 
+  updateHints(state, connection.myPlayerId, nowMs);
   renderHud(root, renderer.hudState(state, connection.myPlayerId, connection.status));
   renderShop(shopEl, state, connection.latestSnapshot, connection.myPlayerId, connection.sendInput);
   renderScoreboard(scoreboardEl, state.players, connection.myPlayerId, input.isScoreboardHeld() && lobbyModel.activeRun);
@@ -228,6 +248,111 @@ window.addEventListener("beforeunload", () => {
   connection.close();
   renderer.destroy();
 });
+
+function updateHints(
+  state: InterpolatedState,
+  myPlayerId: string | undefined,
+  nowMs: number
+): void {
+  const view = hintViewFromState(state, myPlayerId, nowMs);
+  const id = nextHint(seenHints, view);
+  if (id !== null) {
+    enqueueHint(id);
+  }
+
+  previousOwnCoins = state.players.find((player) => player.id === myPlayerId)?.coins;
+  renderHintToast(nowMs);
+}
+
+function hintViewFromState(
+  state: InterpolatedState,
+  myPlayerId: string | undefined,
+  nowMs: number
+): HintView {
+  if (state.wave.phase === "combat") {
+    combatStartedAtMs ??= nowMs;
+  } else {
+    combatStartedAtMs = undefined;
+  }
+
+  const ownPlayer = state.players.find((player) => player.id === myPlayerId);
+  const ownCoinsValue = ownPlayer?.coins;
+  const combatAgeMs =
+    state.wave.phase === "combat" && combatStartedAtMs !== undefined ? nowMs - combatStartedAtMs : 0;
+
+  return {
+    inCombat: state.wave.phase === "combat",
+    combatAgeMs,
+    nearDamagedTile:
+      ownPlayer !== undefined && isDamagedRaftTileNearPlayer(state.raft, ownPlayer.x, ownPlayer.y),
+    coinsIncreased:
+      previousOwnCoins !== undefined &&
+      ownCoinsValue !== undefined &&
+      ownCoinsValue > previousOwnCoins,
+    inBuildPhase: state.wave.phase === "build",
+    teammateDowned:
+      state.players.length > 1 &&
+      state.players.some((player) => player.id !== myPlayerId && player.downed && !(player.out ?? false)),
+    bossPresent: state.boss !== null && state.boss !== undefined
+  };
+}
+
+function enqueueHint(id: HintId): void {
+  if (seenHints.has(id)) {
+    return;
+  }
+
+  seenHints.add(id);
+  writeSeenHints(seenHints);
+  hintQueue.push(id);
+}
+
+function renderHintToast(nowMs: number): void {
+  if (activeHint !== undefined && nowMs >= activeHint.dismissAtMs) {
+    activeHint = undefined;
+  }
+
+  if (activeHint === undefined) {
+    const next = hintQueue.shift();
+    if (next !== undefined) {
+      activeHint = { id: next, dismissAtMs: nowMs + 6_000 };
+    }
+  }
+
+  hintToast.hidden = activeHint === undefined;
+  hintToast.textContent = activeHint === undefined ? "" : HINT_COPY[activeHint.id];
+}
+
+function dismissHintForInput(message: ClientMessage): void {
+  if (activeHint === undefined || message.type !== "player_input") {
+    return;
+  }
+
+  if (
+    (activeHint.id === "move" &&
+      (message.movement.x !== 0 || message.movement.y !== 0)) ||
+    (activeHint.id === "dash" && message.dash) ||
+    ((activeHint.id === "repair" || activeHint.id === "revive") && message.interact)
+  ) {
+    activeHint = undefined;
+  }
+}
+
+function isDamagedRaftTileNearPlayer(
+  raft: InterpolatedState["raft"],
+  playerX: number,
+  playerY: number
+): boolean {
+  const tiles = raft?.tiles ?? [];
+
+  return tiles.some((tile) => {
+    if (!tile.broken && tile.hpRatio >= 1) {
+      return false;
+    }
+
+    return Math.hypot(tile.col + 0.5 - playerX, tile.row + 0.5 - playerY) <= 1.45;
+  });
+}
 
 function playStateAudioCues(
   state: InterpolatedState,
