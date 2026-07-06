@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { LobbyPlayer, PlayerView, Snapshot } from "@patchwork/protocol";
 import {
   characterName,
+  currentScreen,
   lobbyStatusText,
   lobbyViewModel,
   ownCanRevive,
@@ -48,6 +49,17 @@ describe("co-op client logic", () => {
     expect(lobbyStatusText([lobbyPlayer("p1", "captain", true)], true)).toBe(
       "Starting run..."
     );
+  });
+
+  it("maps session state to the active screen", () => {
+    expect(screen(undefined, undefined, false)).toBe("menu");
+    expect(screen("ABCD", undefined, false)).toBe("lobbyRoom");
+    expect(screen("ABCD", "lobby", false)).toBe("lobbyRoom");
+    expect(screen("ABCD", "combat", false)).toBe("game");
+    expect(screen("ABCD", "build", false)).toBe("game");
+    expect(screen("ABCD", "victory", false)).toBe("end");
+    expect(screen("ABCD", "defeat", false)).toBe("game");
+    expect(screen("ABCD", "defeat", true)).toBe("end");
   });
 
   it("derives scoreboard rows with guarded optional co-op fields", () => {
@@ -121,6 +133,14 @@ function snapshot(phase: Snapshot["wave"]["phase"]): Snapshot {
     pickups: [],
     wave: { number: 1, phase, timeLeft: 0 }
   };
+}
+
+function screen(
+  lobbyCode: string | undefined,
+  wavePhase: Snapshot["wave"]["phase"] | undefined,
+  defeatRevealDone: boolean
+): ReturnType<typeof currentScreen> {
+  return currentScreen({ lobbyCode, wavePhase, defeatRevealDone });
 }
 
 function player(overrides: Partial<PlayerView>): PlayerView {

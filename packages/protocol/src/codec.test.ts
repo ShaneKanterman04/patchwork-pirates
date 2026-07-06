@@ -133,7 +133,9 @@ describe("protocol codec", () => {
       { type: "ready", ready: true },
       { type: "place_module", defId: "cannon", col: 1, row: 2 },
       { type: "build_tile", col: -1, row: 2 },
-      { type: "ping" }
+      { type: "ping" },
+      { type: "leave" },
+      { type: "rematch" }
     ];
 
     for (const msg of messages) {
@@ -164,7 +166,8 @@ describe("protocol codec", () => {
         code: "ABCD",
         players: [{ id: "p1", characterId: "captain", ready: true }],
         canStart: true
-      }
+      },
+      { type: "left" }
     ];
 
     for (const msg of messages) {

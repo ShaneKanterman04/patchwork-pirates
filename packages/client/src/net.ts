@@ -41,6 +41,7 @@ export interface Connection {
   setLobbyReady: (ready: boolean) => void;
   sendPing: () => void;
   rejoinStored: () => void;
+  clearSession: () => void;
   close: () => void;
 }
 
@@ -95,6 +96,13 @@ export function connect(
     }
   };
 
+  const clearSession = (): void => {
+    snapshots.splice(0, snapshots.length);
+    latestSnapshot = undefined;
+    myPlayerId = undefined;
+    lobby = { code: undefined, players: [], canStart: false, error: undefined };
+  };
+
   const openSocket = (): void => {
     status = "connecting";
     onStatusChange();
@@ -143,6 +151,8 @@ export function connect(
           rejoin = readRejoinState(false);
         } else if (msg.type === "lobby_error") {
           lobby = { ...lobby, error: msg.message };
+        } else if (isLeftMessage(msg)) {
+          clearSession();
         } else {
           lobby = {
             code: msg.code,
@@ -219,6 +229,10 @@ export function connect(
         send({ type: "rejoin", code: stored.code, playerId: stored.playerId });
       }
     },
+    clearSession(): void {
+      clearSession();
+      onStatusChange();
+    },
     close(): void {
       closedByClient = true;
 
@@ -229,6 +243,10 @@ export function connect(
       socket?.close();
     }
   };
+}
+
+function isLeftMessage(message: { type: string }): message is { type: "left" } {
+  return message.type === "left";
 }
 
 function persistRejoin(code: string, playerId: string): void {

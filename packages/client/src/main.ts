@@ -1,8 +1,8 @@
 import { CHARACTERS, ITEMS, MODULES, TILE_BUILD_SALVAGE_COST, WEAPONS } from "@patchwork/content";
 import type { ClientMessage, PlayerView, ShopOfferView, Snapshot } from "@patchwork/protocol";
 import { ProceduralAudio } from "./audio";
-import type { LobbyViewModel } from "./coOpLogic";
-import { characterName, lobbyViewModel, ownCanRevive, scoreboardRows } from "./coOpLogic";
+import type { LobbyViewModel, Screen } from "./coOpLogic";
+import { characterName, currentScreen, lobbyViewModel, ownCanRevive, scoreboardRows } from "./coOpLogic";
 import { HINT_COPY, nextHint, readSeenHints, resetSeenHints, writeSeenHints } from "./hints";
 import type { HintId, HintView } from "./hints";
 import { INTERP_DELAY_MS, interpolate } from "./interp";
@@ -97,8 +97,10 @@ root.innerHTML = `
     .stat strong { display: block; font-size: 24px; }
     .stat span { color: #53636b; font-size: 13px; }
     .lobby { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(17, 38, 48, .78); color: #15242d; padding: 24px; }
+    .lobby.menu { background-color: #112630; background-image: url("/assets/ui/menu-water.png"); background-size: cover; background-position: center; }
     .lobby-panel { width: min(560px, calc(100vw - 48px)); background: #f7f8f1; border-radius: 8px; padding: 20px; box-shadow: 0 16px 48px rgba(0,0,0,.34); }
     .lobby-panel h1 { margin: 0 0 6px; font-size: 30px; line-height: 1.05; }
+    .title-image { display: block; width: min(420px, 100%); height: auto; margin: 0 0 12px; }
     .lobby-code { display: inline-block; margin: 10px 0; padding: 8px 12px; border: 2px dashed #38515b; border-radius: 8px; font-size: 26px; font-weight: 900; letter-spacing: 3px; background: #fffdf6; }
     .lobby-actions, .character-select, .roster { display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch; }
     .lobby-actions input { min-width: 120px; flex: 1; border: 1px solid #aeb9bd; border-radius: 7px; padding: 8px 10px; font-size: 15px; text-transform: uppercase; }
@@ -191,7 +193,9 @@ let lastShopKeyCheckMs = 0;
 let scoreboardRenderKey = "";
 let lastScoreboardKeyCheckMs = 0;
 let scoreboardRenderVisible = false;
+let endRenderKey = "";
 let previousWavePhase: InterpolatedState["wave"]["phase"] | undefined;
+let previousScreen: Screen | undefined;
 let previousOwnDowned = false;
 let previousBossPhase: NonNullable<InterpolatedState["boss"]>["phase"] | undefined;
 let combatStartedAtMs: number | undefined;
@@ -259,15 +263,27 @@ renderer.app.ticker.add((ticker) => {
     myPlayerId: connection.myPlayerId,
     snapshot: connection.latestSnapshot
   });
+  const screen = currentScreen({
+    lobbyCode: connection.lobby.code,
+    wavePhase: connection.latestSnapshot?.wave.phase,
+    defeatRevealDone: renderer.defeatSinkComplete()
+  });
+  if (
+    (previousScreen === "game" || previousScreen === "end") &&
+    (screen === "menu" || screen === "lobbyRoom")
+  ) {
+    resetRunState();
+  }
+  previousScreen = screen;
 
-  renderLobby(lobbyEl, lobbyModel, connection);
-  root.querySelector<HTMLElement>(".hud")?.toggleAttribute("hidden", lobbyModel.inLobby);
+  renderLobby(lobbyEl, screen, lobbyModel, connection);
+  root.querySelector<HTMLElement>(".hud")?.toggleAttribute("hidden", screen !== "game");
 
-  if (state.wave.phase !== "build") {
+  if (screen !== "game" || state.wave.phase !== "build") {
     locallyReady = false;
   }
 
-  if (state.wave.phase === "combat" || state.wave.phase === "build") {
+  if (screen === "game" && (state.wave.phase === "combat" || state.wave.phase === "build")) {
     if (input.consumePingPressed()) {
       connection.sendPing();
     }
@@ -278,13 +294,22 @@ renderer.app.ticker.add((ticker) => {
     input.consumePingPressed();
   }
 
-  updateHints(state, connection.myPlayerId, nowMs);
+  if (screen === "game") {
+    updateHints(state, connection.myPlayerId, nowMs);
+  } else {
+    activeHint = undefined;
+    renderHintToast(nowMs);
+  }
   renderHud(root, renderer.hudState(state, connection.myPlayerId, connection.status));
-  renderShop(shopEl, state, connection.latestSnapshot, connection.myPlayerId, connection.sendInput);
-  updatePurchaseToast(state, connection.myPlayerId, nowMs);
-  renderScoreboard(scoreboardEl, state.players, connection.myPlayerId, input.isScoreboardHeld() && lobbyModel.activeRun);
-  reviveHintEl.hidden = !ownCanRevive(state.players, connection.myPlayerId);
-  renderEndScreen(endScreenEl, state, stats, state.wave.phase !== "defeat" || renderer.defeatSinkComplete());
+  renderShop(shopEl, screen, state, connection.latestSnapshot, connection.myPlayerId, connection.sendInput);
+  if (screen === "game") {
+    updatePurchaseToast(state, connection.myPlayerId, nowMs);
+  } else {
+    renderBuyToast(nowMs);
+  }
+  renderScoreboard(scoreboardEl, state.players, connection.myPlayerId, input.isScoreboardHeld() && screen === "game");
+  reviveHintEl.hidden = screen !== "game" || !ownCanRevive(state.players, connection.myPlayerId);
+  renderEndScreen(endScreenEl, screen, state, stats, connection.sendInput);
   updatePerfOverlay(perfOverlay, perfFrames, currentQualityTier, nowMs);
 });
 
@@ -306,6 +331,17 @@ function updateHints(
 
   previousOwnCoins = state.players.find((player) => player.id === myPlayerId)?.coins;
   renderHintToast(nowMs);
+}
+
+function resetRunState(): void {
+  stats = createRunStats();
+  locallyReady = false;
+  combatStartedAtMs = undefined;
+  previousOwnCoins = undefined;
+  previousPurchaseState = undefined;
+  previousShopOffers = [];
+  activeBuyToast = undefined;
+  renderer.resetDefeatSink();
 }
 
 function hintViewFromState(
@@ -513,12 +549,13 @@ function pulseHudValue(rootNode: HTMLElement, selector: string): void {
 
 function renderShop(
   shop: HTMLElement,
+  screen: Screen,
   state: InterpolatedState,
   snapshot: Snapshot | undefined,
   myPlayerId: string | undefined,
   send: (message: ClientMessage) => void
 ): void {
-  if (state.wave.phase !== "build") {
+  if (screen !== "game" || state.wave.phase !== "build") {
     shop.hidden = true;
     shopRenderKey = null;
     return;
@@ -692,10 +729,12 @@ function placementText(
   return `Building target: row ${buildTarget.row + 1}, col ${buildTarget.col + 1}. Supplies available: ${Math.floor(supplies)}.`;
 }
 
-function renderLobby(container: HTMLElement, model: LobbyViewModel, connection: Connection): void {
-  container.hidden = !model.inLobby;
+function renderLobby(container: HTMLElement, screen: Screen, model: LobbyViewModel, connection: Connection): void {
+  const visible = screen === "menu" || screen === "lobbyRoom";
+  container.hidden = !visible;
+  container.classList.toggle("menu", screen === "menu");
 
-  if (!model.inLobby) {
+  if (!visible) {
     lobbyRenderVisible = false;
     return;
   }
@@ -714,6 +753,7 @@ function renderLobby(container: HTMLElement, model: LobbyViewModel, connection: 
   lastLobbyKeyCheckMs = nowMs;
 
   const key = JSON.stringify({
+    screen,
     code: model.code,
     players: model.players,
     canStart: model.canStart,
@@ -730,9 +770,16 @@ function renderLobby(container: HTMLElement, model: LobbyViewModel, connection: 
   lobbyRenderKey = key;
   container.replaceChildren();
   const panel = el("div", "lobby-panel");
-  panel.append(el("h1", undefined, "Patchwork Pirates"));
 
-  if (model.code === undefined) {
+  if (screen === "menu") {
+    const title = document.createElement("img");
+    title.className = "title-image";
+    title.src = "/assets/ui/title.png";
+    title.alt = "Patchwork Pirates";
+    title.onerror = () => {
+      title.replaceWith(el("h1", undefined, "Patchwork Pirates"));
+    };
+    panel.append(title);
     panel.append(el("p", "lobby-message", connection.lobby.error ?? model.statusText));
     if (connection.lobby.error !== undefined) {
       panel.lastElementChild?.classList.add("lobby-error");
@@ -751,13 +798,17 @@ function renderLobby(container: HTMLElement, model: LobbyViewModel, connection: 
     if (rejoin !== undefined) {
       const rejoinButton = button(`Rejoin ${rejoin.code}`, () => connection.rejoinStored());
       rejoinButton.className = "secondary";
-      panel.append(el("div", "lobby-message", rejoin.available ? "Disconnected slot found." : "Previous slot found."), rejoinButton);
+      panel.append(
+        el("div", "lobby-message", rejoin.available ? "Disconnected slot found." : "Previous slot found."),
+        rejoinButton
+      );
     }
 
     container.append(panel);
     return;
   }
 
+  panel.append(el("h1", undefined, "Patchwork Pirates"));
   panel.append(el("div", "lobby-message", "Share this code with your teammate."));
   panel.append(el("div", "lobby-code", model.code));
 
@@ -785,7 +836,15 @@ function renderLobby(container: HTMLElement, model: LobbyViewModel, connection: 
     connection.setLobbyReady(!(model.ownPlayer?.ready ?? false));
   });
   ready.classList.toggle("selected", model.ownPlayer?.ready ?? false);
-  panel.append(el("p", connection.lobby.error === undefined ? "lobby-message" : "lobby-message lobby-error", connection.lobby.error ?? model.statusText), ready);
+  const back = button("Back to Menu", () => {
+    connection.sendInput({ type: "leave" } as ClientMessage);
+  });
+  back.className = "secondary";
+  panel.append(
+    el("p", connection.lobby.error === undefined ? "lobby-message" : "lobby-message lobby-error", connection.lobby.error ?? model.statusText),
+    ready,
+    back
+  );
 
   if (rejoin !== undefined && rejoin.available) {
     const rejoinButton = button(`Rejoin ${rejoin.code}`, () => connection.rejoinStored());
@@ -925,17 +984,28 @@ function weaponDefText(defId: string): string {
 
 function renderEndScreen(
   container: HTMLElement,
+  screen: Screen,
   state: InterpolatedState,
   runStats: RunStats,
-  reveal = true
+  send: (message: ClientMessage) => void
 ): void {
-  if ((state.wave.phase !== "victory" && state.wave.phase !== "defeat") || !reveal) {
+  if (screen !== "end") {
     container.hidden = true;
+    endRenderKey = "";
     return;
   }
 
   container.hidden = false;
   const isVictory = state.wave.phase === "victory";
+  const key = JSON.stringify({
+    phase: state.wave.phase,
+    wave: state.wave.number,
+    stats: runStats
+  });
+  if (key === endRenderKey && container.childElementCount > 0) {
+    return;
+  }
+  endRenderKey = key;
   container.replaceChildren();
   const panel = el("div", "end-panel");
   panel.append(
@@ -952,6 +1022,16 @@ function renderEndScreen(
     stat(runStats.finalSalvage, "Final salvage")
   );
   panel.append(statGrid);
+  const actions = el("div", "lobby-actions");
+  actions.append(
+    button("Play Again", () => send({ type: "rematch" } as ClientMessage)),
+    (() => {
+      const back = button("Back to Menu", () => send({ type: "leave" } as ClientMessage));
+      back.className = "secondary";
+      return back;
+    })()
+  );
+  panel.append(actions);
   container.append(panel);
 }
 

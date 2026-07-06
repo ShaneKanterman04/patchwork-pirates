@@ -1,6 +1,7 @@
-import type { LobbyPlayer, PlayerView, Snapshot } from "@patchwork/protocol";
+import type { LobbyPlayer, PlayerView, Snapshot, WavePhaseView } from "@patchwork/protocol";
 
 export type ActiveRunPhase = "combat" | "build" | "victory" | "defeat";
+export type Screen = "menu" | "lobbyRoom" | "game" | "end";
 
 export interface LobbyViewModel {
   inLobby: boolean;
@@ -32,6 +33,30 @@ export type CharacterNameRegistry = Record<string, { name: string } | undefined>
 
 export function isActiveRunPhase(phase: Snapshot["wave"]["phase"] | undefined): phase is ActiveRunPhase {
   return phase === "combat" || phase === "build" || phase === "victory" || phase === "defeat";
+}
+
+export function currentScreen(view: {
+  lobbyCode: string | undefined;
+  wavePhase: WavePhaseView["phase"] | undefined;
+  defeatRevealDone: boolean;
+}): Screen {
+  if (view.lobbyCode === undefined) {
+    return "menu";
+  }
+
+  if (view.wavePhase === undefined || view.wavePhase === "lobby") {
+    return "lobbyRoom";
+  }
+
+  if (view.wavePhase === "victory") {
+    return "end";
+  }
+
+  if (view.wavePhase === "defeat") {
+    return view.defeatRevealDone ? "end" : "game";
+  }
+
+  return "game";
 }
 
 export function lobbyViewModel(input: {

@@ -16,6 +16,7 @@ import {
   disconnectRunningConnection,
   handleClientMessage,
   reattachDisconnectedConnection,
+  rematchEntry,
   removeConnectionFromLobby,
   selectLobbyCharacter,
   setLobbyReady,
@@ -158,9 +159,24 @@ function routeClientMessage(
     case "lobby_ready":
       handleLobbyReady(matches, connections, conn, msg.ready);
       return;
+    case "leave":
+      handleLeave(matches, connections, conn);
+      return;
+    case "rematch":
+      handleRematch(matches, connections, conn);
+      return;
     default:
       routeRunMessage(matches, conn, msg);
   }
+}
+
+function sendWelcome(conn: ConnectionState, entry: MatchEntry, playerId: string): void {
+  send(conn.socket, {
+    type: "welcome",
+    playerId,
+    protocolVersion: PROTOCOL_VERSION,
+    snapshot: buildSnapshot(entry.match)
+  });
 }
 
 function createLobby(
@@ -178,12 +194,7 @@ function createLobby(
   conn.playerId = playerId;
 
   send(conn.socket, { type: "lobby_joined", code, playerId });
-  send(conn.socket, {
-    type: "welcome",
-    playerId,
-    protocolVersion: PROTOCOL_VERSION,
-    snapshot: buildSnapshot(entry.match)
-  });
+  sendWelcome(conn, entry, playerId);
   broadcastLobbyStateForEntry(connections, entry);
 }
 
@@ -217,12 +228,7 @@ function joinLobby(
   conn.playerId = playerId;
 
   send(conn.socket, { type: "lobby_joined", code, playerId });
-  send(conn.socket, {
-    type: "welcome",
-    playerId,
-    protocolVersion: PROTOCOL_VERSION,
-    snapshot: buildSnapshot(entry.match)
-  });
+  sendWelcome(conn, entry, playerId);
   broadcastLobbyStateForEntry(connections, entry);
 }
 
@@ -261,12 +267,40 @@ function rejoinMatch(
   conn.playerId = playerId;
 
   send(conn.socket, { type: "lobby_joined", code, playerId });
-  send(conn.socket, {
-    type: "welcome",
-    playerId,
-    protocolVersion: PROTOCOL_VERSION,
-    snapshot: buildSnapshot(entry.match)
-  });
+  sendWelcome(conn, entry, playerId);
+}
+
+function handleLeave(
+  matches: Map<string, MatchEntry>,
+  connections: Map<string, ConnectionState>,
+  conn: ConnectionState
+): void {
+  leaveCurrentLobby(matches, connections, conn);
+  send(conn.socket, { type: "left" });
+}
+
+function handleRematch(
+  matches: Map<string, MatchEntry>,
+  connections: Map<string, ConnectionState>,
+  conn: ConnectionState
+): void {
+  const routed = routeLobbyMessage(matches, conn);
+  if (routed === null || !isTerminalPhase(routed.entry)) {
+    return;
+  }
+
+  if (!rematchEntry(routed.entry)) {
+    return;
+  }
+
+  for (const [connId, playerId] of routed.entry.conns) {
+    const participant = connections.get(connId);
+    if (participant !== undefined) {
+      sendWelcome(participant, routed.entry, playerId);
+    }
+  }
+
+  broadcastLobbyStateForEntry(connections, routed.entry);
 }
 
 function handleSelect(

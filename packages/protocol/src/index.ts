@@ -160,7 +160,8 @@ export type ServerMessage =
   | { type: "events"; tick: number; events: WireEvent[] }
   | { type: "lobby_joined"; code: string; playerId: string }
   | { type: "lobby_error"; message: string }
-  | { type: "lobby_state"; code: string; players: LobbyPlayer[]; canStart: boolean };
+  | { type: "lobby_state"; code: string; players: LobbyPlayer[]; canStart: boolean }
+  | { type: "left" };
 
 export interface LobbyPlayer {
   id: string;
@@ -188,7 +189,9 @@ export type ClientMessage =
   | { type: "ready"; ready: boolean }
   | { type: "place_module"; defId: string; col: number; row: number }
   | { type: "build_tile"; col: number; row: number }
-  | { type: "ping" };
+  | { type: "ping" }
+  | { type: "leave" }
+  | { type: "rematch" };
 
 export function encodeServerMessage(msg: ServerMessage): string {
   return JSON.stringify(msg);
@@ -203,7 +206,8 @@ export function decodeServerMessage(raw: string): ServerMessage {
     msg.type !== "events" &&
     msg.type !== "lobby_joined" &&
     msg.type !== "lobby_error" &&
-    msg.type !== "lobby_state"
+    msg.type !== "lobby_state" &&
+    msg.type !== "left"
   ) {
     throw new Error(`Unknown server message type: ${String(msg.type)}`);
   }
@@ -232,7 +236,9 @@ export function decodeClientMessage(raw: string): ClientMessage {
     msg.type !== "ready" &&
     msg.type !== "place_module" &&
     msg.type !== "build_tile" &&
-    msg.type !== "ping"
+    msg.type !== "ping" &&
+    msg.type !== "leave" &&
+    msg.type !== "rematch"
   ) {
     throw new Error(`Unknown client message type: ${String(msg.type)}`);
   }

@@ -188,6 +188,44 @@ export const MVP_SPRITE_ASSETS: readonly SpriteAssetSpec[] = [
     ]
   },
   {
+    id: "leaper",
+    category: "enemy",
+    sizeClass: "small",
+    subject: "sleek flying-fish-like leaper sea monster with blade-like fins and coiled energy",
+    frames: [
+      { name: "idle", promptAction: "coiled and ready to spring, facing right" },
+      { name: "move_0", promptAction: "same leaper as idle reference, swim cycle frame 1, facing right; fins tucked and body coiled", optional: true },
+      { name: "move_1", promptAction: "same leaper as idle reference, swim cycle frame 2, facing right; fins slicing outward", optional: true },
+      { name: "move_2", promptAction: "same leaper as idle reference, swim cycle frame 3, facing right; body stretched forward", optional: true },
+      { name: "move_3", promptAction: "same leaper as idle reference, swim cycle frame 4, facing right; fins resetting and tail tucked", optional: true },
+      { name: "attack_0", promptAction: "same leaper as idle reference, crouched coil, about to spring, facing right; blade fins tight", optional: true },
+      { name: "attack_1", promptAction: "same leaper as idle reference, mid-leap lunge, facing right; fins spread like blades", optional: true }
+    ],
+    animations: [
+      { name: "move", frames: ["move_0", "move_1", "move_2", "move_3"], fps: 8, loop: true },
+      { name: "attack", frames: ["attack_0", "attack_1"], fps: 6, loop: false }
+    ]
+  },
+  {
+    id: "coin_thief",
+    category: "enemy",
+    sizeClass: "small",
+    subject: "shifty magpie-crab hybrid sea monster with a little loot satchel and greedy eyes",
+    frames: [
+      { name: "idle", promptAction: "sneaking forward with greedy eyes, facing right" },
+      { name: "move_0", promptAction: "same coin thief as idle reference, scuttle cycle frame 1, facing right; satchel tucked close", optional: true },
+      { name: "move_1", promptAction: "same coin thief as idle reference, scuttle cycle frame 2, facing right; claws lifted and feet spread", optional: true },
+      { name: "move_2", promptAction: "same coin thief as idle reference, scuttle cycle frame 3, facing right; satchel bouncing slightly", optional: true },
+      { name: "move_3", promptAction: "same coin thief as idle reference, scuttle cycle frame 4, facing right; opposite claws lifted", optional: true },
+      { name: "attack_0", promptAction: "same coin thief as idle reference, reaching claw toward a coin, facing right; greedy eyes focused", optional: true },
+      { name: "attack_1", promptAction: "same coin thief as idle reference, stuffing coin in satchel, facing right; little loot bag open", optional: true }
+    ],
+    animations: [
+      { name: "move", frames: ["move_0", "move_1", "move_2", "move_3"], fps: 8, loop: true },
+      { name: "attack", frames: ["attack_0", "attack_1"], fps: 6, loop: false }
+    ]
+  },
+  {
     id: "plank_biter",
     category: "enemy",
     sizeClass: "small",
@@ -219,6 +257,44 @@ export const MVP_SPRITE_ASSETS: readonly SpriteAssetSpec[] = [
       { name: "move_3", promptAction: "same brute turtle as idle reference, heavy walk cycle frame 4, facing right", optional: true },
       { name: "attack_0", promptAction: "same brute turtle as idle reference, shell ram windup pose, facing right; body crouched and shell angled back", optional: true },
       { name: "attack_1", promptAction: "same brute turtle as idle reference, shell ram strike pose, facing right; lunging forward with heavy shell leading", optional: true }
+    ],
+    animations: [
+      { name: "move", frames: ["move_0", "move_1", "move_2", "move_3"], fps: 8, loop: true },
+      { name: "attack", frames: ["attack_0", "attack_1"], fps: 6, loop: false }
+    ]
+  },
+  {
+    id: "bloater",
+    category: "enemy",
+    sizeClass: "large",
+    subject: "bloated pufferfish-blob sea monster, ominously swollen with patchy warts",
+    frames: [
+      { name: "idle", promptAction: "wobbling forward, ominously swollen, facing right" },
+      { name: "move_0", promptAction: "same bloater as idle reference, slow wobble cycle frame 1, facing right; body sagging low", optional: true },
+      { name: "move_1", promptAction: "same bloater as idle reference, slow wobble cycle frame 2, facing right; body squashing wide", optional: true },
+      { name: "move_2", promptAction: "same bloater as idle reference, slow wobble cycle frame 3, facing right; body bobbing upward", optional: true },
+      { name: "move_3", promptAction: "same bloater as idle reference, slow wobble cycle frame 4, facing right; body settling with warts readable", optional: true },
+      { name: "attack_0", promptAction: "same bloater as idle reference, swelling bigger, facing right; round body inflating ominously", optional: true },
+      { name: "attack_1", promptAction: "same bloater as idle reference, about to burst, facing right; spikes flared and body stretched tight", optional: true }
+    ],
+    animations: [
+      { name: "move", frames: ["move_0", "move_1", "move_2", "move_3"], fps: 8, loop: true },
+      { name: "attack", frames: ["attack_0", "attack_1"], fps: 6, loop: false }
+    ]
+  },
+  {
+    id: "screamer",
+    category: "enemy",
+    sizeClass: "small",
+    subject: "banshee-eel sea monster with a huge open mouth and sound-ring motifs",
+    frames: [
+      { name: "idle", promptAction: "hovering forward with huge mouth ready, facing right" },
+      { name: "move_0", promptAction: "same screamer as idle reference, eel swim cycle frame 1, facing right; body curved upward", optional: true },
+      { name: "move_1", promptAction: "same screamer as idle reference, eel swim cycle frame 2, facing right; body stretched and mouth tense", optional: true },
+      { name: "move_2", promptAction: "same screamer as idle reference, eel swim cycle frame 3, facing right; body curved downward", optional: true },
+      { name: "move_3", promptAction: "same screamer as idle reference, eel swim cycle frame 4, facing right; body centered with sound-ring motifs", optional: true },
+      { name: "attack_0", promptAction: "same screamer as idle reference, deep inhale, cheeks puffed, facing right; mouth rounded", optional: true },
+      { name: "attack_1", promptAction: "same screamer as idle reference, mid-scream, mouth wide, facing right; visible ring lines", optional: true }
     ],
     animations: [
       { name: "move", frames: ["move_0", "move_1", "move_2", "move_3"], fps: 8, loop: true },

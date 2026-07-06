@@ -44,6 +44,9 @@ export interface Match {
 
 export interface MatchEntry {
   code: string;
+  baseSeed: number;
+  rematchCount: number;
+  seed: number;
   match: Match;
   lobby: {
     selections: Map<PlayerId, string>;
@@ -83,6 +86,9 @@ export function matchRemovePlayer(match: Match, playerId: string): void {
 export function createMatchEntry(code: string, seed: number): MatchEntry {
   return {
     code,
+    baseSeed: seed >>> 0,
+    rematchCount: 0,
+    seed: seed >>> 0,
     match: createMatch(seed),
     lobby: {
       selections: new Map(),
@@ -92,6 +98,41 @@ export function createMatchEntry(code: string, seed: number): MatchEntry {
     conns: new Map(),
     disconnected: new Set()
   };
+}
+
+export function rematchEntry(entry: MatchEntry): boolean {
+  if (entry.match.world.run.phase !== "victory" && entry.match.world.run.phase !== "defeat") {
+    return false;
+  }
+
+  const selections = new Map(entry.lobby.selections);
+  const connectedPlayerIds = [...entry.conns.values()];
+
+  entry.rematchCount += 1;
+  entry.seed = (entry.baseSeed + entry.rematchCount) >>> 0;
+  entry.match = createMatch(entry.seed);
+  entry.disconnected.clear();
+  entry.lobby.selections.clear();
+  entry.lobby.ready.clear();
+  entry.lobby.started = false;
+
+  let nextPlayerNumber = 1;
+  for (const playerId of connectedPlayerIds) {
+    addPlayer(entry.match.world, playerId);
+    const selection = selections.get(playerId);
+
+    if (selection !== undefined && setCharacter(entry.match.world, playerId, selection)) {
+      entry.lobby.selections.set(playerId, selection);
+    }
+
+    const numericId = Number(playerId.slice(1));
+    if (playerId.startsWith("p") && Number.isInteger(numericId)) {
+      nextPlayerNumber = Math.max(nextPlayerNumber, numericId + 1);
+    }
+  }
+
+  entry.match.nextPlayerNumber = nextPlayerNumber;
+  return true;
 }
 
 export function addConnectionToLobby(entry: MatchEntry, connId: string): string {

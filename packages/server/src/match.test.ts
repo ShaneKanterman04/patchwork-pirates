@@ -12,6 +12,8 @@ import {
   matchAddPlayer,
   matchRemovePlayer,
   reattachDisconnectedConnection,
+  rematchEntry,
+  removeConnectionFromLobby,
   selectLobbyCharacter,
   setLobbyReady,
   setInput,
@@ -304,6 +306,20 @@ describe("match", () => {
     ]);
   });
 
+  it("removes a leaving lobby connection from the roster", () => {
+    const entry = createMatchEntry("ABCD", 123);
+    const playerId = addConnectionToLobby(entry, "c1");
+    selectLobbyCharacter(entry, playerId, "captain");
+    entry.lobby.ready.add(playerId);
+
+    removeConnectionFromLobby(entry, "c1");
+
+    expect(entry.conns.has("c1")).toBe(false);
+    expect(entry.lobby.selections.has(playerId)).toBe(false);
+    expect(entry.lobby.ready.has(playerId)).toBe(false);
+    expect(entry.match.world.players).toEqual([]);
+  });
+
   it("bad lobby code lookup produces no entry", () => {
     const matches = new Map([["ABCD", createMatchEntry("ABCD", 123)]]);
 
@@ -391,5 +407,55 @@ describe("match", () => {
     expect(entry.disconnected.has(playerId)).toBe(false);
     expect(entry.conns.get("c2")).toBe(playerId);
     expect(reattachDisconnectedConnection(entry, "c3", playerId)).toBe(false);
+  });
+
+  it("rematches terminal runs with connected players and preserved selections", () => {
+    const entry = createMatchEntry("ABCD", 123);
+    const p1 = addConnectionToLobby(entry, "c1");
+    const p2 = addConnectionToLobby(entry, "c2");
+    selectLobbyCharacter(entry, p1, "captain");
+    selectLobbyCharacter(entry, p2, "fisher");
+    setLobbyReady(entry, p1, true);
+    setLobbyReady(entry, p2, true);
+    disconnectRunningConnection(entry, "c2");
+    entry.match.world.tick = 57;
+    entry.match.world.run.phase = "victory";
+    entry.lobby.ready.add(p1);
+    entry.lobby.ready.add(p2);
+    const oldSeed = entry.seed;
+
+    expect(rematchEntry(entry)).toBe(true);
+
+    expect(entry.code).toBe("ABCD");
+    expect(entry.seed).not.toBe(oldSeed);
+    expect(entry.match.world.rngState).toBe(entry.seed);
+    expect(entry.match.world.tick).toBe(0);
+    expect(entry.match.world.run).toMatchObject({ wave: 1, phase: "lobby" });
+    expect(entry.match.world.players.map((player) => player.id)).toEqual([p1]);
+    expect(entry.match.world.players[0]?.characterId).toBe("captain");
+    expect(buildLobbyPlayers(entry)).toEqual([
+      { id: p1, characterId: "captain", ready: false }
+    ]);
+    expect(entry.lobby.ready.size).toBe(0);
+    expect(entry.lobby.started).toBe(false);
+    expect(entry.disconnected.size).toBe(0);
+
+    const firstRematchSeed = entry.seed;
+    entry.match.world.run.phase = "defeat";
+    expect(rematchEntry(entry)).toBe(true);
+
+    expect(entry.seed).not.toBe(firstRematchSeed);
+  });
+
+  it("does not rematch non-terminal runs", () => {
+    const entry = createMatchEntry("ABCD", 123);
+    const playerId = addConnectionToLobby(entry, "c1");
+    selectLobbyCharacter(entry, playerId, "captain");
+    setLobbyReady(entry, playerId, true);
+    const world = entry.match.world;
+
+    expect(rematchEntry(entry)).toBe(false);
+    expect(entry.match.world).toBe(world);
+    expect(entry.match.world.run.phase).toBe("combat");
   });
 });
