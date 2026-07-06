@@ -397,7 +397,8 @@ export function buildSnapshot(match: Match): Snapshot {
         row: tile.row,
         kind: tile.kind,
         hpRatio: tile.maxHp > 0 ? tile.hp / tile.maxHp : 0,
-        broken: tile.broken
+        broken: tile.broken,
+        ...(tile.patched ? { patched: true } : {})
       }))
     },
     salvage: match.world.salvage,
@@ -576,6 +577,13 @@ function simEventToWire(event: SimEvent): WireEvent {
       return { type: "tile_built", col: event.col, row: event.row };
     case "tile_broken":
       return { type: "tile_broken", col: event.col, row: event.row };
+    case "player_fell":
+      return {
+        type: "player_fell",
+        playerId: event.playerId,
+        x: event.pos.x,
+        y: event.pos.y
+      };
     case "tile_repaired":
       return { type: "tile_repaired", col: event.col, row: event.row };
     case "core_destroyed":

@@ -402,6 +402,7 @@ export type SimEvent =
   | { type: "trap_triggered"; x: number; y: number }
   | { type: "tile_built"; col: number; row: number }
   | { type: "tile_broken"; col: number; row: number }
+  | { type: "player_fell"; playerId: PlayerId; pos: Vec2 }
   | { type: "tile_repaired"; col: number; row: number }
   | { type: "core_destroyed" };
 
@@ -412,6 +413,7 @@ export interface RaftTile {
   maxHp: number;
   kind: "deck" | "core";
   broken: boolean;
+  patched: boolean;
 }
 
 export interface RaftState {

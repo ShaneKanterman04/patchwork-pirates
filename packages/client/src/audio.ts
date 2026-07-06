@@ -12,7 +12,8 @@ export type SfxKind =
   | "downed"
   | "boss"
   | "scream"
-  | "trap";
+  | "trap"
+  | "plunge";
 
 const MIN_INTERVAL_MS: Record<SfxKind, number> = {
   hit: 70,
@@ -24,7 +25,8 @@ const MIN_INTERVAL_MS: Record<SfxKind, number> = {
   downed: 400,
   boss: 500,
   scream: 200,
-  trap: 150
+  trap: 150,
+  plunge: 180
 };
 
 export class ProceduralAudio {
@@ -65,6 +67,8 @@ export class ProceduralAudio {
       this.play("trap");
     } else if (event.type === "enemy_screamed") {
       this.play("scream");
+    } else if (event.type === "player_fell") {
+      this.play("plunge");
     }
   }
 
@@ -114,6 +118,9 @@ export class ProceduralAudio {
     } else if (kind === "downed") {
       this.tone(220, 0.16, "sine", 0.018, 0);
       this.tone(165, 0.18, "triangle", 0.014, 0.09);
+    } else if (kind === "plunge") {
+      this.noise(0.12, 0.018, 520);
+      this.tone(130, 0.12, "sine", 0.014, 0.015);
     } else {
       this.tone(98, 0.18, "sawtooth", 0.015, 0);
       this.tone(196, 0.22, "triangle", 0.018, 0.08);

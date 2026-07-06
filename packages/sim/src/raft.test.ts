@@ -38,6 +38,55 @@ describe("damageTile", () => {
     expect(world.events).toEqual([{ type: "tile_broken", col: 1, row: 1 }]);
   });
 
+  it("downs a standing player on a deck tile when it breaks", () => {
+    const world = createWorld(1);
+    const player = addPlayer(world, "p1");
+    player.pos = { x: 1.4, y: 1.6 };
+
+    damageTile(world, 1, 1, 1000);
+
+    expect(player.hp).toBe(0);
+    expect(player.downed).toBe(true);
+    expect(player.out).toBe(false);
+    expect(player.bleedOutTicks).toBeGreaterThan(0);
+    expect(world.events).toEqual([
+      { type: "tile_broken", col: 1, row: 1 },
+      { type: "player_fell", playerId: "p1", pos: { x: 1.4, y: 1.6 } }
+    ]);
+  });
+
+  it("does not down players away from the broken tile or double-down fallen players", () => {
+    const world = createWorld(1);
+    const away = addPlayer(world, "away");
+    const downed = addPlayer(world, "downed");
+    away.pos = { x: 1.4, y: 2.6 };
+    downed.pos = { x: 1.4, y: 1.6 };
+    downed.hp = 0;
+    downed.downed = true;
+    downed.bleedOutTicks = 12;
+
+    damageTile(world, 1, 1, 1000);
+
+    expect(away.downed).toBe(false);
+    expect(away.hp).toBe(away.maxHp);
+    expect(downed.downed).toBe(true);
+    expect(downed.bleedOutTicks).toBe(12);
+    expect(world.events).toEqual([{ type: "tile_broken", col: 1, row: 1 }]);
+  });
+
+  it("routes solo player falling through party-wipe defeat", () => {
+    const world = createWorld(1);
+    const player = addPlayer(world, "p1");
+    player.pos = { x: 1.4, y: 1.6 };
+    world.run.phase = "combat";
+
+    damageTile(world, 1, 1, 1000);
+    tick(world, new Map());
+
+    expect(player.downed).toBe(true);
+    expect(world.run.phase).toBe("defeat");
+  });
+
   it("destroys the core without marking it broken and emits core_destroyed once", () => {
     const world = createWorld(1);
     const core = tileAt(world.raft, 2, 2);
@@ -89,9 +138,20 @@ describe("buildTile", () => {
       hp: TILE_MAX_HP,
       maxHp: TILE_MAX_HP,
       kind: "deck",
-      broken: false
+      broken: false,
+      patched: false
     });
     expect(world.events).toEqual([{ type: "tile_built", col: 5, row: 2 }]);
+  });
+
+  it("starts original and newly built tiles as unpatched wood", () => {
+    const world = createWorld(1);
+    world.run.phase = "build";
+    world.salvage = 5;
+
+    expect(world.raft.tiles.every((tile) => tile.patched === false)).toBe(true);
+    expect(buildTile(world, 5, 2)).toBe(true);
+    expect(tileAt(world.raft, 5, 2)?.patched).toBe(false);
   });
 
   it("rejects non-adjacent, occupied, combat phase, insufficient salvage, and max tile builds", () => {
@@ -192,7 +252,12 @@ describe("hole movement", () => {
     const player = addPlayer(world, "p1");
     player.pos = { x: 1.5, y: 1.5 };
     player.moveSpeed = 30;
-    damageTile(world, 1, 1, 1000);
+    const tile = tileAt(world.raft, 1, 1);
+    if (tile === undefined) {
+      throw new Error("missing test tile");
+    }
+    tile.hp = 0;
+    tile.broken = true;
 
     tick(
       world,
@@ -271,9 +336,10 @@ describe("repair", () => {
     expect(player.repairChargeHp).toBe(0);
   });
 
-  it("rebuilds holes in whole chunks, flips repaired at full hp, and emits per chunk", () => {
+  it("rebuilds holes in whole chunks, marks patched at full hp, and emits per chunk", () => {
     const world = createWorld(1);
-    addPlayer(world, "p1");
+    const player = addPlayer(world, "p1");
+    player.pos = { x: 2.5, y: 1.5 };
     world.salvage = 20;
     const tile = tileAt(world.raft, 1, 1);
     damageTile(world, 1, 1, 1000);
@@ -283,6 +349,7 @@ describe("repair", () => {
 
     expect(tile?.hp).toBe(0);
     expect(tile?.broken).toBe(true);
+    expect(tile?.patched).toBe(false);
     expect(world.events).toEqual([]);
 
     let repairEvents = 0;
@@ -291,9 +358,36 @@ describe("repair", () => {
       repairEvents += world.events.filter((event) => event.type === "tile_repaired").length;
     }
 
-    expect(tile).toMatchObject({ hp: TILE_MAX_HP, broken: false });
+    expect(tile).toMatchObject({ hp: TILE_MAX_HP, broken: false, patched: true });
     expect(world.salvage).toBe(16);
     expect(repairEvents).toBe(TILE_MAX_HP / BROKEN_TILE_HP_PER_SUPPLY);
+  });
+
+  it("keeps patched tiles patched through damage, break, and rebuild", () => {
+    const world = createWorld(1);
+    const player = addPlayer(world, "p1");
+    player.pos = { x: 2.5, y: 1.5 };
+    world.salvage = 40;
+    const tile = tileAt(world.raft, 1, 1);
+
+    damageTile(world, 1, 1, 1000);
+    while (tile !== undefined && tile.broken) {
+      tick(world, new Map([["p1", IDLE_INPUT]]));
+    }
+
+    expect(tile).toMatchObject({ broken: false, patched: true });
+
+    damageTile(world, 1, 1, 2);
+    expect(tile).toMatchObject({ broken: false, patched: true });
+
+    damageTile(world, 1, 1, 1000);
+    expect(tile).toMatchObject({ broken: true, patched: true });
+
+    while (tile !== undefined && tile.broken) {
+      tick(world, new Map([["p1", IDLE_INPUT]]));
+    }
+
+    expect(tile).toMatchObject({ hp: TILE_MAX_HP, broken: false, patched: true });
   });
 
   it("repairs the nearest eligible tile with stable array-order ties", () => {

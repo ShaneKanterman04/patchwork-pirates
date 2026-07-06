@@ -331,6 +331,7 @@ function repairNearestTile(
 
   if (tile.broken && tile.hp >= tile.maxHp) {
     tile.broken = false;
+    tile.patched = true;
     player.stats.tilesRepaired += 1;
   }
 }

@@ -6,6 +6,7 @@ export interface RaftTileView {
   kind: "deck" | "core";
   hpRatio: number;
   broken: boolean;
+  patched?: boolean;
 }
 
 export interface RaftView {
@@ -147,6 +148,7 @@ export type WireEvent =
   | { type: "trap_triggered"; x: number; y: number }
   | { type: "tile_built"; col: number; row: number }
   | { type: "tile_broken"; col: number; row: number }
+  | { type: "player_fell"; playerId: string; x: number; y: number }
   | { type: "tile_repaired"; col: number; row: number }
   | { type: "core_destroyed" };
 

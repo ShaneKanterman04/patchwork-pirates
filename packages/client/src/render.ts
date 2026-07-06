@@ -169,6 +169,17 @@ interface PopVfx {
   y: number;
   color: number;
   kind: "hit" | "kill" | "explosion" | "splash" | "repair" | "scream";
+  scaleMult: number;
+}
+
+interface CorpseFadeVfx {
+  ageMs: number;
+  durationMs: number;
+  sprite: Sprite;
+  x: number;
+  y: number;
+  startRotation: number;
+  rotationDelta: number;
 }
 
 interface PingNode {
@@ -304,6 +315,7 @@ export class GameRenderer {
   private readonly slashes: SlashVfx[] = [];
   private readonly weaponSwings = new Map<string, WeaponSwing>();
   private readonly pops: PopVfx[] = [];
+  private readonly corpseFades: CorpseFadeVfx[] = [];
   private readonly particles: ParticleVfx[] = [];
   private readonly pickupFlies: PickupFlyVfx[] = [];
   private readonly repairSupplyFlies: RepairSupplyFlyVfx[] = [];
@@ -311,9 +323,13 @@ export class GameRenderer {
   private readonly vfxSpritePools = new Map<VfxTextureKey, Sprite[]>();
   private readonly enemyKinds = new Map<string, string>();
   private readonly previousEnemyPositions = new Map<string, { x: number; y: number }>();
+  private readonly previousEnemyFacingX = new Map<string, number>();
+  private readonly previousEnemyFacingSampleX = new Map<string, number>();
+  private readonly killedEnemyIds = new Set<string>();
   private readonly enemySprayMs = new Map<string, number>();
   private readonly previousEnemyDeckState = new Map<string, boolean>();
   private readonly previousPlayerHp = new Map<string, number>();
+  private readonly previousPlayerFacingX = new Map<string, number>();
   private readonly previousPlayerPositions = new Map<string, { x: number; y: number }>();
   private readonly repairTargetKeys = new Set<string>();
   private readonly repairSources = new Map<string, { x: number; y: number }>();
@@ -516,6 +532,7 @@ export class GameRenderer {
           this.addShake(0.055);
         }
       } else if (event.type === "enemy_killed") {
+        this.killedEnemyIds.add(event.enemyId);
         this.addPop(event.x, event.y, 0x9be7ff, KILL_DURATION_MS, "kill");
         this.addParticles("kill", event.x, event.y);
       } else if (event.type === "explosion") {
@@ -533,6 +550,9 @@ export class GameRenderer {
         this.addShake(0.03);
       } else if (event.type === "tile_broken") {
         this.addShake(0.045);
+      } else if (event.type === "player_fell") {
+        this.addPop(event.x, event.y, 0xcdf8ff, 240, "splash", 1.18);
+        this.addShake(0.05);
       } else if (event.type === "core_destroyed") {
         this.addShake(0.11);
       }
@@ -562,6 +582,7 @@ export class GameRenderer {
     this.updatePings(state.pings, deltaMs);
     this.updateSlashes(deltaMs);
     this.updatePops(deltaMs);
+    this.updateCorpseFades(deltaMs);
     this.updateParticles(deltaMs);
     this.updatePickupFlies(deltaMs);
     this.updateRepairSupplyFlies(deltaMs);
@@ -757,7 +778,8 @@ export class GameRenderer {
       const displayedHpRatio = this.displayedTileHpRatio(key, hpRatio);
       const displayTileView =
         displayedHpRatio === hpRatio ? tileView : { ...tileView, hpRatio: displayedHpRatio };
-      const baseKey = `${tileView.kind}|${tileView.broken}|${Math.round(displayedHpRatio * 50)}|${sinking ? 1 : 0}`;
+      const patched = tileView.patched === true;
+      const baseKey = `${tileView.kind}|${tileView.broken}|${patched ? 1 : 0}|${Math.round(displayedHpRatio * 50)}|${sinking ? 1 : 0}`;
       if (node.baseKey !== baseKey) {
         node.baseKey = baseKey;
         drawRaftTileBase(node.base.clear(), tileView, displayedHpRatio, sinking);
@@ -1083,6 +1105,7 @@ export class GameRenderer {
         const attackWindow = playerAttackWindow(this.weaponSwings.get(player.id), this.renderClockMs);
         const preferences = attackWindow.active ? ["attack", moving ? "walk" : "idle"] : [moving ? "walk" : "idle"];
         const spriteApplied = this.applyEntityVisual(node, assetId, preferences, PLAYER_RADIUS * 2.15);
+        this.applyPlayerSpriteFacing(node, player);
         if (!spriteApplied) {
           node.body
             .circle(0, 0, PLAYER_RADIUS)
@@ -1119,6 +1142,7 @@ export class GameRenderer {
       if (!seen.has(id)) {
         this.previousPlayerHp.delete(id);
         this.previousPlayerPositions.delete(id);
+        this.previousPlayerFacingX.delete(id);
         this.weaponSwings.delete(id);
       }
     }
@@ -1202,6 +1226,7 @@ export class GameRenderer {
       if (!this.applyEntityVisual(node, enemy.kind, preferences, enemySpriteWorldSize(enemy))) {
         drawEnemy(node, enemy);
       }
+      this.applyEnemySpriteFacing(node, enemy);
       applyEnemyProceduralAttackRead(node, enemy, this.renderClockMs);
       drawHpBar(
         node,
@@ -1213,12 +1238,19 @@ export class GameRenderer {
       drawEntityFlash(node, 0xffffff, Math.max(0.34, enemy.radius * 1.25));
     }
 
+    for (const [id, node] of this.enemies) {
+      if (!seen.has(id) && this.killedEnemyIds.delete(id)) {
+        this.addCorpseFade(node);
+      }
+    }
     removeMissing(this.enemies, seen);
     for (const id of this.enemyKinds.keys()) {
       if (!seen.has(id)) {
         this.enemyKinds.delete(id);
         this.previousEnemyDeckState.delete(id);
         this.previousEnemyPositions.delete(id);
+        this.previousEnemyFacingX.delete(id);
+        this.previousEnemyFacingSampleX.delete(id);
         this.enemySprayMs.delete(id);
       }
     }
@@ -1412,6 +1444,74 @@ export class GameRenderer {
     }
     node.body.visible = false;
     return true;
+  }
+
+  private applyPlayerSpriteFacing(node: EntityNode, player: PlayerView): void {
+    if (node.sprite === undefined || !node.sprite.visible) {
+      return;
+    }
+
+    const facingX = player.facingX;
+    let direction = this.previousPlayerFacingX.get(player.id) ?? 1;
+    if (facingX < -0.01) {
+      direction = -1;
+    } else if (facingX > 0.01) {
+      direction = 1;
+    }
+    this.previousPlayerFacingX.set(player.id, direction);
+    node.sprite.scale.x = Math.abs(node.sprite.scale.x) * direction;
+  }
+
+  private applyEnemySpriteFacing(node: EntityNode, enemy: EnemyView): void {
+    if (
+      node.sprite === undefined ||
+      !node.sprite.visible ||
+      enemy.kind === "kraken_head" ||
+      enemy.kind === "kraken_tentacle"
+    ) {
+      return;
+    }
+
+    const previousX = this.previousEnemyFacingSampleX.get(enemy.id);
+    this.previousEnemyFacingSampleX.set(enemy.id, enemy.x);
+    let direction = this.previousEnemyFacingX.get(enemy.id) ?? 1;
+    if (previousX !== undefined) {
+      const dx = enemy.x - previousX;
+      if (dx < -0.01) {
+        direction = -1;
+      } else if (dx > 0.01) {
+        direction = 1;
+      }
+    }
+    this.previousEnemyFacingX.set(enemy.id, direction);
+    node.sprite.scale.x = Math.abs(node.sprite.scale.x) * direction;
+  }
+
+  private addCorpseFade(node: EntityNode): void {
+    if (this.qualitySettings.particleMultiplier <= 0 || node.sprite === undefined || !node.sprite.visible) {
+      return;
+    }
+
+    const corpse = new Sprite(node.sprite.texture);
+    corpse.anchor.copyFrom(node.sprite.anchor);
+    corpse.position.set(node.container.position.x + node.sprite.position.x, node.container.position.y + node.sprite.position.y);
+    corpse.scale.set(node.container.scale.x * node.sprite.scale.x, node.container.scale.y * node.sprite.scale.y);
+    corpse.rotation = node.container.rotation + node.sprite.rotation;
+    corpse.alpha = node.container.alpha * node.sprite.alpha;
+    this.world.addChild(corpse);
+    this.corpseFades.push({
+      ageMs: 0,
+      durationMs: 400,
+      sprite: corpse,
+      x: corpse.position.x,
+      y: corpse.position.y,
+      startRotation: corpse.rotation,
+      rotationDelta: corpse.scale.x < 0 ? -0.2 : 0.2
+    });
+
+    while (this.corpseFades.length > 12) {
+      this.corpseFades.shift()?.sprite.destroy();
+    }
   }
 
   private applyWorldSprite(
@@ -1672,8 +1772,26 @@ export class GameRenderer {
                 ? 0.14 + t * 0.24
               : 0.2 + t * 0.48;
       pop.sprite.position.set(pop.x, pop.y);
-      pop.sprite.scale.set(radius);
+      pop.sprite.scale.set(radius * pop.scaleMult);
       pop.sprite.alpha = 1 - t;
+    }
+  }
+
+  private updateCorpseFades(deltaMs: number): void {
+    for (let index = this.corpseFades.length - 1; index >= 0; index -= 1) {
+      const corpse = this.corpseFades[index]!;
+      corpse.ageMs += deltaMs;
+
+      if (corpse.ageMs >= corpse.durationMs) {
+        corpse.sprite.destroy();
+        this.corpseFades.splice(index, 1);
+        continue;
+      }
+
+      const t = easeOutCubic(clamp01(corpse.ageMs / corpse.durationMs));
+      corpse.sprite.position.set(corpse.x, corpse.y + t * 0.25);
+      corpse.sprite.rotation = corpse.startRotation + corpse.rotationDelta * t;
+      corpse.sprite.alpha = 1 - t;
     }
   }
 
@@ -1765,12 +1883,13 @@ export class GameRenderer {
     y: number,
     color: number,
     durationMs: number,
-    kind: PopVfx["kind"]
+    kind: PopVfx["kind"],
+    scaleMult = 1
   ): void {
     const key = kind === "splash" ? "splashRing" : kind === "repair" ? "repairRing" : "popRing";
     const sprite = this.acquireVfxSprite(key);
     sprite.tint = color;
-    this.pops.push({ ageMs: 0, durationMs, sprite, x, y, color, kind });
+    this.pops.push({ ageMs: 0, durationMs, sprite, x, y, color, kind, scaleMult });
   }
 
   private addParticles(kind: "kill" | "explosion" | "pickup", x: number, y: number): void {
@@ -2267,10 +2386,34 @@ function drawRaftTileBase(
     .rect(x + 0.03, y + 0.03, 0.94, 0.94)
     .fill(deckColor)
     .stroke({ color: isCore ? 0xffec9f : 0x6f4425, width: isCore ? 0.055 : 0.035 });
-  graphic
-    .moveTo(x + 0.16, y + 0.5)
-    .lineTo(x + 0.84, y + 0.5)
-    .stroke({ color: isCore ? 0xffd77a : 0xd79a5d, width: 0.025, alpha: 0.7 });
+
+  const patched = tile.patched === true;
+  if (patched && !isCore) {
+    graphic
+      .rect(x + 0.1, y + 0.22, 0.78, 0.13)
+      .fill({ color: 0x8a5a33, alpha: 0.9 })
+      .stroke({ color: 0x3d2617, width: 0.014, alpha: 0.45 })
+      .rect(x + 0.16, y + 0.46, 0.68, 0.11)
+      .fill({ color: 0x6b4426, alpha: 0.86 })
+      .stroke({ color: 0x3d2617, width: 0.014, alpha: 0.45 })
+      .rect(x + 0.08, y + 0.67, 0.8, 0.1)
+      .fill({ color: 0x93623a, alpha: 0.82 })
+      .stroke({ color: 0x3d2617, width: 0.014, alpha: 0.42 });
+
+    for (const seamY of [0.38, 0.61]) {
+      for (const seamX of [0.28, 0.5, 0.72]) {
+        graphic
+          .moveTo(x + seamX - 0.035, y + seamY - 0.025)
+          .lineTo(x + seamX + 0.035, y + seamY + 0.025)
+          .stroke({ color: 0xd8dde3, width: 0.018, alpha: 0.86, cap: "round" });
+      }
+    }
+  } else {
+    graphic
+      .moveTo(x + 0.16, y + 0.5)
+      .lineTo(x + 0.84, y + 0.5)
+      .stroke({ color: isCore ? 0xffd77a : 0xd79a5d, width: 0.025, alpha: 0.7 });
+  }
 
   if (isCore) {
     graphic

@@ -447,7 +447,7 @@ describe("plank-biter behavior", () => {
   it("ignores players, chews nearest deck tile into a hole, and draws harpoon targeting", () => {
     const world = createWorld(1, CONTENT);
     const player = addPlayer(world, "p1");
-    player.pos = { x: 0.6, y: 0.6 };
+    player.pos = { x: 1.6, y: 0.6 };
     const biter = addEnemy(world, "biter1", "plank_biter", {
       x: -0.2,
       y: 0.5

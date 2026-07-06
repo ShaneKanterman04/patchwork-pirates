@@ -58,7 +58,8 @@ const snapshot: Snapshot = {
     height: 2,
     tiles: [
       { col: 0, row: 0, kind: "deck", hpRatio: 1, broken: false },
-      { col: 1, row: 0, kind: "core", hpRatio: 0.75, broken: false }
+      { col: 1, row: 0, kind: "core", hpRatio: 0.75, broken: false },
+      { col: 0, row: 1, kind: "deck", hpRatio: 1, broken: false, patched: true }
     ]
   },
   salvage: 5,
@@ -106,7 +107,8 @@ describe("protocol codec", () => {
         { type: "enemy_hit", enemyId: "e1", damage: 18, x: 4, y: 5 },
         { type: "enemy_killed", enemyId: "e1", x: 4, y: 5 },
         { type: "enemy_screamed", x: 4, y: 5 },
-        { type: "trap_triggered", x: 1, y: 2 }
+        { type: "trap_triggered", x: 1, y: 2 },
+        { type: "player_fell", playerId: "p1", x: 1.4, y: 1.6 }
       ]
     };
 

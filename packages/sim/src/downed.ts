@@ -6,7 +6,6 @@ import {
   TICK_RATE
 } from "./constants";
 import { clampToRaft } from "./player";
-import { tileAt } from "./raft";
 import type { PlayerInput, PlayerState, Vec2, WorldState } from "./types";
 
 export function forceDowned(world: WorldState, playerId: string): boolean {
@@ -135,7 +134,7 @@ function revivePlayer(player: PlayerState): void {
 }
 
 function safeReturnPosition(world: WorldState, player: PlayerState): Vec2 {
-  const core = tileAt(world.raft, 2, 2);
+  const core = world.raft.tiles.find((tile) => tile.kind === "core");
   const base = clampToRaft(
     {
       x: (core?.col ?? 2) + 0.5,

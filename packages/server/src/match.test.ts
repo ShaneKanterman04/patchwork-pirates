@@ -170,6 +170,7 @@ describe("match", () => {
     coreTile!.hp = coreTile!.maxHp / 2;
     brokenTile!.hp = 0;
     brokenTile!.broken = true;
+    brokenTile!.patched = true;
     match.world.salvage = 6;
     match.world.modules.push({
       id: "m1",
@@ -203,7 +204,8 @@ describe("match", () => {
       width: match.world.raft.width,
       height: match.world.raft.height
     });
-    expect(brokenView).toMatchObject({ broken: true, hpRatio: 0 });
+    expect(brokenView).toMatchObject({ broken: true, hpRatio: 0, patched: true });
+    expect(coreView?.patched).toBeUndefined();
     expect(coreView?.hpRatio).toBe(0.5);
     expect(playerView).toMatchObject({
       coins: 17,

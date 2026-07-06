@@ -5,10 +5,24 @@ import {
   RAFT_WIDTH,
   TILE_MAX_HP
 } from "./constants";
+import { forceDowned } from "./downed";
 import type { RaftState, RaftTile, WorldState } from "./types";
 
 function tileKey(col: number, row: number): string {
   return `${col},${row}`;
+}
+
+function createTile(
+  tile: Omit<RaftTile, "patched"> & { patched?: boolean }
+): RaftTile {
+  Object.defineProperty(tile, "patched", {
+    value: tile.patched ?? false,
+    writable: true,
+    enumerable: false,
+    configurable: true
+  });
+
+  return tile as RaftTile;
 }
 
 export function createRaft(): RaftState {
@@ -20,14 +34,14 @@ export function createRaft(): RaftState {
       const kind = col === 2 && row === 2 ? "core" : "deck";
       const maxHp = kind === "core" ? CORE_MAX_HP : TILE_MAX_HP;
 
-      const tile: RaftTile = {
+      const tile = createTile({
         col,
         row,
         hp: maxHp,
         maxHp,
         kind,
         broken: false
-      };
+      });
 
       tiles.push(tile);
       tileLookup.set(tileKey(col, row), tile);
@@ -68,14 +82,14 @@ export function buildTile(world: WorldState, col: number, row: number): boolean 
     return false;
   }
 
-  const tile: RaftTile = {
+  const tile = createTile({
     col,
     row,
     hp: TILE_MAX_HP,
     maxHp: TILE_MAX_HP,
     kind: "deck",
     broken: false
-  };
+  });
 
   world.salvage -= salvageCost;
   world.raft.tiles.push(tile);
@@ -116,6 +130,31 @@ export function damageTile(
   if (tile.hp === 0 && !tile.broken) {
     tile.broken = true;
     world.events.push({ type: "tile_broken", col, row });
+    downPlayersOnBrokenTile(world, col, row);
+  }
+}
+
+function downPlayersOnBrokenTile(
+  world: WorldState,
+  col: number,
+  row: number
+): void {
+  for (const player of world.players) {
+    if (
+      Math.floor(player.pos.x) !== col ||
+      Math.floor(player.pos.y) !== row
+    ) {
+      continue;
+    }
+
+    const fell = forceDowned(world, player.id);
+    if (fell) {
+      world.events.push({
+        type: "player_fell",
+        playerId: player.id,
+        pos: { ...player.pos }
+      });
+    }
   }
 }
 
