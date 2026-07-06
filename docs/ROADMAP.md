@@ -65,6 +65,12 @@ Work branch `phase-0`. Legend: ✅ done & committed · 🔨 in progress · ⬜ t
     (trail → ground-hazard system), Crab Trap (trap); replaceable 4-slot loadout (sell_weapon,
     half-price refund, keep ≥1); loadout UI (Weapons n/4, Sell buttons, slots-full copy);
     hazard wire (Snapshot.hazards + trap_triggered) + client render/audio
+  - ✅ 5.2 full session loop: menu (generated title art), lobby room, Play Again (rematch,
+    fresh seed, crew+selections preserved), Back to Menu (leave/left wire), client screen
+    machine + run-state reset
+  - ✅ 5.3 enemies: Leaper (leap), Coin Thief (steal/flee/drop), Bloater (death explosion),
+    Screamer (speed-buff scream + enemy_screamed wire) — defs, waves 3-6, full generated
+    animation sets, client juice
   - ⬜ remaining Phase 5 slices (enemies/modules/characters) — see below
 - Phase 6 ⬜ post-MVP (meta & ship)
 

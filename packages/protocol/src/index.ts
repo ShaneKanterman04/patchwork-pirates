@@ -143,6 +143,7 @@ export type WireEvent =
   | { type: "enemy_hit"; enemyId: string; damage: number; x: number; y: number }
   | { type: "enemy_killed"; enemyId: string; x: number; y: number }
   | { type: "explosion"; x: number; y: number; radius: number }
+  | { type: "enemy_screamed"; x: number; y: number }
   | { type: "trap_triggered"; x: number; y: number }
   | { type: "tile_built"; col: number; row: number }
   | { type: "tile_broken"; col: number; row: number }

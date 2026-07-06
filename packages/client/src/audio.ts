@@ -11,6 +11,7 @@ export type SfxKind =
   | "wave"
   | "downed"
   | "boss"
+  | "scream"
   | "trap";
 
 const MIN_INTERVAL_MS: Record<SfxKind, number> = {
@@ -22,6 +23,7 @@ const MIN_INTERVAL_MS: Record<SfxKind, number> = {
   wave: 600,
   downed: 400,
   boss: 500,
+  scream: 200,
   trap: 150
 };
 
@@ -61,6 +63,8 @@ export class ProceduralAudio {
       this.play("build");
     } else if (event.type === "trap_triggered") {
       this.play("trap");
+    } else if (event.type === "enemy_screamed") {
+      this.play("scream");
     }
   }
 
@@ -100,6 +104,10 @@ export class ProceduralAudio {
     } else if (kind === "trap") {
       this.tone(880, 0.03, "square", 0.012, 0);
       this.tone(180, 0.06, "triangle", 0.017, 0.025);
+    } else if (kind === "scream") {
+      this.tone(300, 0.085, "sawtooth", 0.01, 0);
+      this.tone(700, 0.105, "sawtooth", 0.008, 0.075);
+      this.noise(0.055, 0.0045, 1800);
     } else if (kind === "wave") {
       this.tone(392, 0.1, "sine", 0.02, 0);
       this.tone(523, 0.14, "triangle", 0.022, 0.08);

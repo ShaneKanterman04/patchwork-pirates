@@ -564,6 +564,12 @@ function simEventToWire(event: SimEvent): WireEvent {
         y: event.pos.y,
         radius: event.radius
       };
+    case "enemy_screamed":
+      return {
+        type: "enemy_screamed",
+        x: event.pos.x,
+        y: event.pos.y
+      };
     case "trap_triggered":
       return { type: "trap_triggered", x: event.x, y: event.y };
     case "tile_built":

@@ -117,7 +117,7 @@ function addContentEnemies(world: WorldState): void {
 function addEnemy(
   world: WorldState,
   id: string,
-  type: "spitter_crab" | "plank_biter" | "brute_turtle",
+  type: keyof typeof CONTENT.enemies,
   pos: Vec2
 ): EnemyState {
   const def = CONTENT.enemies[type];
@@ -149,6 +149,18 @@ function addEnemy(
 function behaviorCooldownS(def: (typeof CONTENT.enemies)[keyof typeof CONTENT.enemies]): number {
   if (def.behavior.kind === "swarmer_melee") {
     return def.contactCooldownS;
+  }
+
+  if (
+    def.behavior.kind === "leap" ||
+    def.behavior.kind === "steal" ||
+    def.behavior.kind === "explode_on_death"
+  ) {
+    return def.contactCooldownS;
+  }
+
+  if (def.behavior.kind === "scream_buff") {
+    return def.behavior.screamCooldownS;
   }
 
   return def.behavior.attackCooldownS;

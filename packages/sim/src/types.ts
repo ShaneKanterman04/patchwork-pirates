@@ -220,6 +220,31 @@ export type EnemyBehavior =
       attackCooldownS: number;
       playerDamage: number;
       tileDamage: number;
+    }
+  | {
+      kind: "leap";
+      windupS: number;
+      leapTiles: number;
+      leapSpeedMult: number;
+      cooldownS: number;
+    }
+  | {
+      kind: "steal";
+      fleeSpeedMult: number;
+      maxCarried: number;
+    }
+  | {
+      kind: "explode_on_death";
+      aoeRadius: number;
+      playerDamage: number;
+      tileDamage: number;
+    }
+  | {
+      kind: "scream_buff";
+      screamCooldownS: number;
+      buffRadiusTiles: number;
+      buffSpeedMult: number;
+      buffDurationS: number;
     };
 
 export interface ContentRegistry {
@@ -277,9 +302,17 @@ export interface EnemyState {
   attackAnimTicks: number;
   slowTicks: number;
   slowFactor: number;
+  buffTicks?: number;
+  buffFactor?: number;
   attackingTileId: string | null;
   telegraphTicks: number;
   markTicks: number;
+  leapWindupTicks?: number;
+  leapCooldownTicks?: number;
+  leapRemainingTiles?: number;
+  leapDir?: Vec2;
+  carriedCoins?: number;
+  escaped?: boolean;
 }
 
 export interface BossState {
@@ -363,6 +396,7 @@ export type SimEvent =
   | { type: "enemy_hit"; enemyId: string; damage: number; pos: Vec2 }
   | { type: "enemy_killed"; enemyId: string; pos: Vec2 }
   | { type: "explosion"; pos: Vec2; radius: number }
+  | { type: "enemy_screamed"; pos: Vec2 }
   | { type: "trap_triggered"; x: number; y: number }
   | { type: "tile_built"; col: number; row: number }
   | { type: "tile_broken"; col: number; row: number }

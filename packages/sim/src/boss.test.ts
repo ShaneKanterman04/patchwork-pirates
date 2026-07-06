@@ -267,7 +267,7 @@ function enemyDef(id: string, maxHp: number, behavior: EnemyDef["behavior"]): En
     maxHp,
     speedTilesPerSec: 0,
     contactDamage: 0,
-    contactCooldownS: behavior.kind === "swarmer_melee" ? 0.6 : behavior.attackCooldownS,
+    contactCooldownS: "attackCooldownS" in behavior ? behavior.attackCooldownS : 0.6,
     radius: 0.35,
     coinValue: 0,
     salvageValue: 0,

@@ -105,6 +105,7 @@ describe("protocol codec", () => {
         },
         { type: "enemy_hit", enemyId: "e1", damage: 18, x: 4, y: 5 },
         { type: "enemy_killed", enemyId: "e1", x: 4, y: 5 },
+        { type: "enemy_screamed", x: 4, y: 5 },
         { type: "trap_triggered", x: 1, y: 2 }
       ]
     };

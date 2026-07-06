@@ -3,6 +3,7 @@ import {
   TICK_RATE
 } from "./constants";
 import { isHole, isWalkable, tileAt, damageTile } from "./raft";
+import { nextRandom } from "./world";
 import type {
   EnemyBehavior,
   EnemyDef,
@@ -32,8 +33,16 @@ export function updateEnemies(world: WorldState): void {
     if (enemy.slowTicks === 0) {
       enemy.slowFactor = 1;
     }
+    enemy.buffTicks = Math.max(0, enemy.buffTicks ?? 0);
+    if (enemy.buffTicks === 0) {
+      enemy.buffFactor = 1;
+    } else {
+      enemy.buffTicks -= 1;
+    }
     enemy.animState = enemyAnimState(enemy);
   }
+
+  world.enemies = world.enemies.filter((enemy) => enemy.escaped !== true);
 }
 
 function updateEnemyByBehavior(
@@ -60,6 +69,18 @@ function updateEnemyByBehavior(
     case "kraken_head":
       updateKrakenHead(world, enemy, behavior);
       return;
+    case "leap":
+      updateLeap(world, enemy, behavior);
+      return;
+    case "steal":
+      updateSteal(world, enemy, behavior);
+      return;
+    case "explode_on_death":
+      updateSwarmerMelee(world, enemy);
+      return;
+    case "scream_buff":
+      updateScreamBuff(world, enemy, behavior);
+      return;
   }
 }
 
@@ -76,9 +97,7 @@ function updateSwarmerMelee(world: WorldState, enemy: EnemyState): void {
     distance(enemy.pos, target.pos) <= enemy.radius + PLAYER_RADIUS &&
     enemy.contactCooldownTicks === 0
   ) {
-    target.hp = Math.max(0, target.hp - enemy.contactDamage);
-    startAttackAnim(enemy);
-    enemy.contactCooldownTicks = enemy.contactCooldownMax;
+    damagePlayerByContact(enemy, target);
   }
 }
 
@@ -166,14 +185,12 @@ function updateTankSmasher(
     distance(enemy.pos, target.pos) <= enemy.radius + PLAYER_RADIUS &&
     enemy.contactCooldownTicks === 0
   ) {
-    target.hp = Math.max(0, target.hp - enemy.contactDamage);
+    damagePlayerByContact(enemy, target);
     const tile = tileAt(world.raft, Math.floor(enemy.pos.x), Math.floor(enemy.pos.y));
     if (tile !== undefined) {
       damageTile(world, tile.col, tile.row, behavior.tileDamage);
       enemy.attackingTileId = tileId(tile);
     }
-    startAttackAnim(enemy);
-    enemy.contactCooldownTicks = enemy.contactCooldownMax;
   }
 }
 
@@ -235,6 +252,143 @@ function updateKrakenHead(
   enemy.contactCooldownTicks = enemy.contactCooldownMax;
 }
 
+function updateLeap(
+  world: WorldState,
+  enemy: EnemyState,
+  behavior: Extract<EnemyBehavior, { kind: "leap" }>
+): void {
+  enemy.leapCooldownTicks = Math.max(0, enemy.leapCooldownTicks ?? 0);
+  enemy.leapWindupTicks = Math.max(0, enemy.leapWindupTicks ?? 0);
+  enemy.leapRemainingTiles = Math.max(0, enemy.leapRemainingTiles ?? 0);
+
+  if (enemy.leapRemainingTiles > 0) {
+    const dir = enemy.leapDir ?? { x: 0, y: 0 };
+    const speed = effectiveSpeed(enemy) * behavior.leapSpeedMult;
+    const step = Math.min(enemy.leapRemainingTiles, speed / TICK_RATE);
+    enemy.pos = clampEnemyToRaft(
+      {
+        x: enemy.pos.x + dir.x * step,
+        y: enemy.pos.y + dir.y * step
+      },
+      enemy,
+      world.raft
+    );
+    enemy.leapRemainingTiles -= step;
+    damagePlayersInContact(world, enemy);
+
+    if (enemy.leapRemainingTiles <= 0) {
+      enemy.leapRemainingTiles = 0;
+      enemy.leapCooldownTicks = Math.round(behavior.cooldownS * TICK_RATE);
+    }
+    return;
+  }
+
+  if (enemy.leapWindupTicks > 0) {
+    enemy.leapWindupTicks -= 1;
+    if (enemy.leapWindupTicks === 0) {
+      enemy.leapRemainingTiles = behavior.leapTiles;
+    }
+    return;
+  }
+
+  if (enemy.leapCooldownTicks > 0) {
+    enemy.leapCooldownTicks -= 1;
+  }
+
+  const target = nearestPlayer(world.players, enemy.pos);
+  if (target === null) {
+    return;
+  }
+
+  if (
+    enemy.leapCooldownTicks === 0 &&
+    distance(enemy.pos, target.pos) <= behavior.leapTiles * 0.9
+  ) {
+    enemy.leapDir = normalize({
+      x: target.pos.x - enemy.pos.x,
+      y: target.pos.y - enemy.pos.y
+    });
+    enemy.leapWindupTicks = Math.round(behavior.windupS * TICK_RATE);
+    return;
+  }
+
+  moveToward(enemy, target.pos);
+  damagePlayersInContact(world, enemy);
+}
+
+function updateSteal(
+  world: WorldState,
+  enemy: EnemyState,
+  behavior: Extract<EnemyBehavior, { kind: "steal" }>
+): void {
+  enemy.carriedCoins = enemy.carriedCoins ?? 0;
+
+  const coinTarget = nearestCoinPickup(world, enemy.pos);
+  const shouldFlee =
+    enemy.carriedCoins >= behavior.maxCarried ||
+    (coinTarget === null && enemy.carriedCoins > 0);
+
+  if (shouldFlee) {
+    fleeFromRaft(world, enemy, behavior.fleeSpeedMult);
+    if (isOutsideRaftBy(enemy.pos, world.raft, 3)) {
+      enemy.escaped = true;
+    }
+    return;
+  }
+
+  if (coinTarget !== null) {
+    moveToward(enemy, coinTarget.pos);
+    if (distance(enemy.pos, coinTarget.pos) < enemy.radius + 0.2) {
+      world.pickups = world.pickups.filter((pickup) => pickup.id !== coinTarget.id);
+      enemy.carriedCoins += 1;
+      startAttackAnim(enemy);
+    }
+    return;
+  }
+
+  updateSwarmerMelee(world, enemy);
+}
+
+function updateScreamBuff(
+  world: WorldState,
+  enemy: EnemyState,
+  behavior: Extract<EnemyBehavior, { kind: "scream_buff" }>
+): void {
+  if (enemy.contactCooldownTicks === 0) {
+    const radius = behavior.buffRadiusTiles;
+    for (const other of world.enemies) {
+      if (other.id === enemy.id || other.hp <= 0) {
+        continue;
+      }
+
+      if (distance(enemy.pos, other.pos) <= radius) {
+        other.buffTicks = Math.round(behavior.buffDurationS * TICK_RATE);
+        other.buffFactor = behavior.buffSpeedMult;
+      }
+    }
+
+    startAttackAnim(enemy);
+    world.events.push({ type: "enemy_screamed", pos: { ...enemy.pos } });
+    enemy.contactCooldownTicks = enemy.contactCooldownMax;
+  }
+
+  const target = nearestPlayer(world.players, enemy.pos);
+  if (target === null) {
+    return;
+  }
+
+  const desiredDistance = 4;
+  const distanceToTarget = distance(enemy.pos, target.pos);
+  if (distanceToTarget < desiredDistance * 0.9) {
+    moveAway(enemy, target.pos);
+    return;
+  }
+
+  if (distanceToTarget > desiredDistance * 1.1) {
+    moveToward(enemy, target.pos);
+  }
+}
+
 export function resolveEnemyDeaths(world: WorldState): void {
   const survivors: EnemyState[] = [];
 
@@ -247,6 +401,7 @@ export function resolveEnemyDeaths(world: WorldState): void {
     const def = world.content.enemies[enemy.type];
     const value = def?.coinValue ?? 0;
     const salvageValue = def?.salvageValue ?? 0;
+    const carriedCoins = enemy.carriedCoins ?? 0;
 
     if (world.boss?.headEnemyId === enemy.id) {
       world.boss.hp = Math.min(world.boss.hp, enemy.hp);
@@ -256,12 +411,30 @@ export function resolveEnemyDeaths(world: WorldState): void {
       enemyId: enemy.id,
       pos: { ...enemy.pos }
     });
-    world.pickups.push({
-      id: nextEntityId(world),
-      kind: "coin",
-      pos: { ...enemy.pos },
-      value
-    });
+    if (def?.behavior.kind === "explode_on_death") {
+      explodeOnDeath(world, enemy, def.behavior);
+    }
+    if (carriedCoins === 0) {
+      world.pickups.push({
+        id: nextEntityId(world),
+        kind: "coin",
+        pos: { ...enemy.pos },
+        value
+      });
+    }
+    for (let i = 0; i < carriedCoins + 1 && carriedCoins > 0; i += 1) {
+      const angle = nextRandom(world) * Math.PI * 2;
+      const radius = nextRandom(world) * 0.35;
+      world.pickups.push({
+        id: nextEntityId(world),
+        kind: "coin",
+        pos: {
+          x: enemy.pos.x + Math.cos(angle) * radius,
+          y: enemy.pos.y + Math.sin(angle) * radius
+        },
+        value: 1
+      });
+    }
     if (salvageValue > 0) {
       world.pickups.push({
         id: nextEntityId(world),
@@ -298,10 +471,18 @@ export function createEnemy(
     attackAnimTicks: 0,
     slowTicks: 0,
     slowFactor: 1,
+    buffTicks: 0,
+    buffFactor: 1,
     attackingTileId: null,
     telegraphTicks: 0,
     markTicks: 0,
-    animState: "move"
+    animState: "move",
+    leapWindupTicks: 0,
+    leapCooldownTicks: 0,
+    leapRemainingTiles: 0,
+    leapDir: { x: 0, y: 0 },
+    carriedCoins: 0,
+    escaped: false
   };
 }
 
@@ -314,6 +495,10 @@ function enemyAnimState(enemy: EnemyState): EnemyState["animState"] {
     return "attack";
   }
 
+  if ((enemy.leapWindupTicks ?? 0) > 0) {
+    return "windup";
+  }
+
   if (enemy.telegraphTicks > 0) {
     return "windup";
   }
@@ -322,11 +507,21 @@ function enemyAnimState(enemy: EnemyState): EnemyState["animState"] {
 }
 
 function behaviorCooldownS(def: EnemyDef): number {
-  if (def.behavior.kind === "swarmer_melee") {
-    return def.contactCooldownS;
+  switch (def.behavior.kind) {
+    case "swarmer_melee":
+    case "leap":
+    case "steal":
+    case "explode_on_death":
+      return def.contactCooldownS;
+    case "scream_buff":
+      return def.behavior.screamCooldownS;
+    case "ranged_lobber":
+    case "tile_eater":
+    case "tank_smasher":
+    case "tentacle":
+    case "kraken_head":
+      return def.behavior.attackCooldownS;
   }
-
-  return def.behavior.attackCooldownS;
 }
 
 function moveToward(enemy: EnemyState, target: Vec2): void {
@@ -334,13 +529,64 @@ function moveToward(enemy: EnemyState, target: Vec2): void {
     x: target.x - enemy.pos.x,
     y: target.y - enemy.pos.y
   });
-  const speed = enemy.speed * (enemy.slowTicks > 0 ? enemy.slowFactor : 1);
+  const speed = effectiveSpeed(enemy);
   const step = speed / TICK_RATE;
 
   enemy.pos = {
     x: enemy.pos.x + movementDir.x * step,
     y: enemy.pos.y + movementDir.y * step
   };
+}
+
+function moveAway(enemy: EnemyState, target: Vec2): void {
+  const movementDir = normalize({
+    x: enemy.pos.x - target.x,
+    y: enemy.pos.y - target.y
+  });
+  const step = effectiveSpeed(enemy) / TICK_RATE;
+
+  enemy.pos = {
+    x: enemy.pos.x + movementDir.x * step,
+    y: enemy.pos.y + movementDir.y * step
+  };
+}
+
+function effectiveSpeed(enemy: EnemyState): number {
+  return (
+    enemy.speed *
+    (enemy.slowTicks > 0 ? enemy.slowFactor : 1) *
+    ((enemy.buffTicks ?? 0) > 0 ? (enemy.buffFactor ?? 1) : 1)
+  );
+}
+
+function explodeOnDeath(
+  world: WorldState,
+  enemy: EnemyState,
+  behavior: Extract<EnemyBehavior, { kind: "explode_on_death" }>
+): void {
+  world.events.push({
+    type: "explosion",
+    pos: { ...enemy.pos },
+    radius: behavior.aoeRadius
+  });
+
+  for (const player of world.players) {
+    if (player.out || player.downed) {
+      continue;
+    }
+
+    if (distance(enemy.pos, player.pos) <= behavior.aoeRadius + PLAYER_RADIUS) {
+      player.hp = Math.max(0, player.hp - behavior.playerDamage);
+    }
+  }
+
+  const col = Math.floor(enemy.pos.x);
+  const row = Math.floor(enemy.pos.y);
+  damageTile(world, col, row, behavior.tileDamage);
+  damageTile(world, col + 1, row, behavior.tileDamage);
+  damageTile(world, col - 1, row, behavior.tileDamage);
+  damageTile(world, col, row + 1, behavior.tileDamage);
+  damageTile(world, col, row - 1, behavior.tileDamage);
 }
 
 function spawnEnemyLob(
@@ -449,6 +695,89 @@ function applyKnockbackAura(
   }
 }
 
+function damagePlayersInContact(world: WorldState, enemy: EnemyState): void {
+  for (const player of world.players) {
+    if (player.out) {
+      continue;
+    }
+
+    if (
+      distance(enemy.pos, player.pos) <= enemy.radius + PLAYER_RADIUS &&
+      enemy.contactCooldownTicks === 0
+    ) {
+      damagePlayerByContact(enemy, player);
+      return;
+    }
+  }
+}
+
+function damagePlayerByContact(enemy: EnemyState, player: PlayerState): void {
+  player.hp = Math.max(0, player.hp - enemy.contactDamage);
+  startAttackAnim(enemy);
+  enemy.contactCooldownTicks = enemy.contactCooldownMax;
+}
+
+function nearestCoinPickup(
+  world: WorldState,
+  pos: Vec2
+): WorldState["pickups"][number] | null {
+  let selected: WorldState["pickups"][number] | null = null;
+  let selectedDistance = Infinity;
+
+  for (const pickup of world.pickups) {
+    if (pickup.kind !== "coin") {
+      continue;
+    }
+
+    const distanceToPickup = distance(pos, pickup.pos);
+    if (distanceToPickup < selectedDistance) {
+      selected = pickup;
+      selectedDistance = distanceToPickup;
+    }
+  }
+
+  return selected;
+}
+
+function fleeFromRaft(
+  world: WorldState,
+  enemy: EnemyState,
+  speedMult: number
+): void {
+  const center = raftCenter(world.raft);
+  const dir = normalize({
+    x: enemy.pos.x - center.x,
+    y: enemy.pos.y - center.y
+  });
+  const speed =
+    effectiveSpeed(enemy) * speedMult;
+  const step = speed / TICK_RATE;
+  enemy.pos = {
+    x: enemy.pos.x + dir.x * step,
+    y: enemy.pos.y + dir.y * step
+  };
+}
+
+function raftCenter(raft: WorldState["raft"]): Vec2 {
+  return {
+    x: (raft.minCol + raft.maxCol + 1) / 2,
+    y: (raft.minRow + raft.maxRow + 1) / 2
+  };
+}
+
+function isOutsideRaftBy(
+  pos: Vec2,
+  raft: WorldState["raft"],
+  margin: number
+): boolean {
+  return (
+    pos.x < raft.minCol - margin ||
+    pos.x > raft.maxCol + 1 + margin ||
+    pos.y < raft.minRow - margin ||
+    pos.y > raft.maxRow + 1 + margin
+  );
+}
+
 function movePlayerOnRaft(
   world: WorldState,
   currentPos: Vec2,
@@ -484,6 +813,17 @@ function clampToRaft(pos: Vec2, raft: WorldState["raft"]): Vec2 {
   return {
     x: clamp(pos.x, raft.minCol + PLAYER_RADIUS, raft.maxCol + 1 - PLAYER_RADIUS),
     y: clamp(pos.y, raft.minRow + PLAYER_RADIUS, raft.maxRow + 1 - PLAYER_RADIUS)
+  };
+}
+
+function clampEnemyToRaft(
+  pos: Vec2,
+  enemy: EnemyState,
+  raft: WorldState["raft"]
+): Vec2 {
+  return {
+    x: clamp(pos.x, raft.minCol + enemy.radius, raft.maxCol + 1 - enemy.radius),
+    y: clamp(pos.y, raft.minRow + enemy.radius, raft.maxRow + 1 - enemy.radius)
   };
 }
 

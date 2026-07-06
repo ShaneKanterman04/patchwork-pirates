@@ -138,6 +138,91 @@ export const CHUM = {
   behavior: { kind: "swarmer_melee" }
 } as const satisfies EnemyDef;
 
+export const LEAPER = {
+  id: "leaper",
+  name: "Leaper",
+  maxHp: 22,
+  speedTilesPerSec: 2.2,
+  contactDamage: 10,
+  contactCooldownS: 0.9,
+  radius: 0.3,
+  coinValue: 2,
+  salvageValue: 0,
+  heavy: false,
+  basePriority: 0,
+  elite: false,
+  behavior: {
+    kind: "leap",
+    windupS: 0.6,
+    leapTiles: 3,
+    leapSpeedMult: 4,
+    cooldownS: 2.5
+  }
+} as const satisfies EnemyDef;
+
+export const COIN_THIEF = {
+  id: "coin_thief",
+  name: "Coin Thief",
+  maxHp: 16,
+  speedTilesPerSec: 2.4,
+  contactDamage: 4,
+  contactCooldownS: 1.0,
+  radius: 0.3,
+  coinValue: 1,
+  salvageValue: 0,
+  heavy: false,
+  basePriority: 1,
+  elite: false,
+  behavior: {
+    kind: "steal",
+    fleeSpeedMult: 1.5,
+    maxCarried: 3
+  }
+} as const satisfies EnemyDef;
+
+export const BLOATER = {
+  id: "bloater",
+  name: "Bloater",
+  maxHp: 120,
+  speedTilesPerSec: 0.9,
+  contactDamage: 8,
+  contactCooldownS: 1.2,
+  radius: 0.55,
+  coinValue: 4,
+  salvageValue: 2,
+  heavy: true,
+  basePriority: 0,
+  elite: false,
+  behavior: {
+    kind: "explode_on_death",
+    aoeRadius: 1.2,
+    playerDamage: 18,
+    tileDamage: 3
+  }
+} as const satisfies EnemyDef;
+
+export const SCREAMER = {
+  id: "screamer",
+  name: "Screamer",
+  maxHp: 30,
+  speedTilesPerSec: 1.8,
+  contactDamage: 0,
+  contactCooldownS: 1.0,
+  radius: 0.3,
+  coinValue: 3,
+  salvageValue: 1,
+  heavy: false,
+  basePriority: 2,
+  elite: false,
+  behavior: {
+    kind: "scream_buff",
+    screamCooldownS: 2.5,
+    buffRadiusTiles: 2.5,
+    buffSpeedMult: 1.3,
+    buffDurationS: 1.5
+  }
+} as const satisfies EnemyDef;
+
 export const SPITTER_CRAB = {
   id: "spitter_crab",
   name: "Spitter Crab",
@@ -359,6 +444,10 @@ export const ITEMS = {
 
 export const ENEMIES = {
   chum: CHUM,
+  leaper: LEAPER,
+  coin_thief: COIN_THIEF,
+  bloater: BLOATER,
+  screamer: SCREAMER,
   spitter_crab: SPITTER_CRAB,
   plank_biter: PLANK_BITER,
   brute_turtle: BRUTE_TURTLE,
@@ -394,6 +483,7 @@ export const WAVES = [
     budget: 26,
     table: [
       { enemyId: "chum", weight: 6, cost: 1 },
+      { enemyId: "leaper", weight: 1, cost: 2 },
       { enemyId: "plank_biter", weight: 2, cost: 2 },
       { enemyId: "spitter_crab", weight: 2, cost: 3 }
     ]
@@ -413,6 +503,9 @@ export const WAVES = [
     budget: 44,
     table: [
       { enemyId: "chum", weight: 5, cost: 1 },
+      { enemyId: "leaper", weight: 1, cost: 2 },
+      { enemyId: "coin_thief", weight: 1, cost: 2 },
+      { enemyId: "bloater", weight: 1, cost: 5 },
       { enemyId: "plank_biter", weight: 3, cost: 2 },
       { enemyId: "spitter_crab", weight: 2, cost: 3 },
       { enemyId: "brute_turtle", weight: 1, cost: 8 }
@@ -423,6 +516,10 @@ export const WAVES = [
     budget: 56,
     table: [
       { enemyId: "chum", weight: 5, cost: 1 },
+      { enemyId: "leaper", weight: 2, cost: 2 },
+      { enemyId: "coin_thief", weight: 1, cost: 2 },
+      { enemyId: "bloater", weight: 1, cost: 5 },
+      { enemyId: "screamer", weight: 1, cost: 3 },
       { enemyId: "plank_biter", weight: 3, cost: 2 },
       { enemyId: "spitter_crab", weight: 3, cost: 3 },
       { enemyId: "brute_turtle", weight: 1, cost: 8 }
@@ -433,6 +530,10 @@ export const WAVES = [
     budget: 70,
     table: [
       { enemyId: "chum", weight: 4, cost: 1 },
+      { enemyId: "leaper", weight: 2, cost: 2 },
+      { enemyId: "coin_thief", weight: 1, cost: 2 },
+      { enemyId: "bloater", weight: 1, cost: 5 },
+      { enemyId: "screamer", weight: 1, cost: 3 },
       { enemyId: "plank_biter", weight: 3, cost: 2 },
       { enemyId: "spitter_crab", weight: 3, cost: 3 },
       { enemyId: "brute_turtle", weight: 2, cost: 8 }
@@ -444,6 +545,10 @@ export const WAVES = [
     boss: "kraken",
     table: [
       { enemyId: "chum", weight: 5, cost: 1 },
+      { enemyId: "leaper", weight: 2, cost: 2 },
+      { enemyId: "coin_thief", weight: 1, cost: 2 },
+      { enemyId: "bloater", weight: 1, cost: 5 },
+      { enemyId: "screamer", weight: 1, cost: 3 },
       { enemyId: "plank_biter", weight: 4, cost: 2 },
       { enemyId: "spitter_crab", weight: 4, cost: 3 },
       { enemyId: "brute_turtle", weight: 3, cost: 8 }

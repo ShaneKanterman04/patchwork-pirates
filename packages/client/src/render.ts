@@ -56,6 +56,8 @@ const DEFEAT_TILE_STAGGER_MS = 110;
 const DEFEAT_TILE_SINK_MS = 650;
 const DEFEAT_UI_DELAY_MS = 220;
 const PROJECTILE_TRAIL_INTERVAL_MS = 55;
+const LEAPER_SPRAY_INTERVAL_MS = 70;
+const LEAPER_FAST_DELTA_TILES = 0.12;
 
 interface ProjectileMotionConfig {
   faceHeading?: boolean;
@@ -152,7 +154,7 @@ interface PopVfx {
   x: number;
   y: number;
   color: number;
-  kind: "hit" | "kill" | "explosion" | "splash" | "repair";
+  kind: "hit" | "kill" | "explosion" | "splash" | "repair" | "scream";
 }
 
 interface PingNode {
@@ -286,6 +288,8 @@ export class GameRenderer {
   private readonly vfxTextures = new Map<VfxTextureKey, Texture>();
   private readonly vfxSpritePools = new Map<VfxTextureKey, Sprite[]>();
   private readonly enemyKinds = new Map<string, string>();
+  private readonly previousEnemyPositions = new Map<string, { x: number; y: number }>();
+  private readonly enemySprayMs = new Map<string, number>();
   private readonly previousEnemyDeckState = new Map<string, boolean>();
   private readonly previousPlayerHp = new Map<string, number>();
   private readonly previousPlayerPositions = new Map<string, { x: number; y: number }>();
@@ -489,6 +493,9 @@ export class GameRenderer {
         this.addPop(event.x, event.y, 0xffb020, EXPLOSION_DURATION_MS, "explosion");
         this.addParticles("explosion", event.x, event.y);
         this.addShake(0.085);
+      } else if (event.type === "enemy_screamed") {
+        this.addPop(event.x, event.y, 0xffb3ec, 320, "scream");
+        this.addShake(0.02);
       } else if (event.type === "trap_triggered") {
         this.addPop(event.x, event.y, 0xd9e5ec, 180, "hit");
         this.addShake(0.035);
@@ -965,6 +972,7 @@ export class GameRenderer {
     for (const enemy of enemies) {
       seen.add(enemy.id);
       const node = getOrCreateEntity(this.enemies, this.world, enemy.id, false);
+      this.updateLeaperSpray(enemy, deltaMs);
       const onDeck = isEnemyOnDeck(raft, enemy.x, enemy.y);
       const wasOnDeck = this.previousEnemyDeckState.get(enemy.id);
       if (onDeck && wasOnDeck === false) {
@@ -1011,6 +1019,8 @@ export class GameRenderer {
       if (!seen.has(id)) {
         this.enemyKinds.delete(id);
         this.previousEnemyDeckState.delete(id);
+        this.previousEnemyPositions.delete(id);
+        this.enemySprayMs.delete(id);
       }
     }
   }
@@ -1455,6 +1465,8 @@ export class GameRenderer {
           ? 0.12 + t * 0.22
           : pop.kind === "explosion"
             ? 0.32 + t * 0.9
+            : pop.kind === "scream"
+              ? 0.3 + t * 1.4
             : pop.kind === "splash"
               ? 0.16 + t * 0.36
               : pop.kind === "repair"
@@ -1572,6 +1584,52 @@ export class GameRenderer {
     }
   }
 
+  private addParticle(spec: ParticleSpec): void {
+    const sprite = this.acquireVfxSprite(particleTextureKey(spec.shape));
+    sprite.tint = spec.color;
+    sprite.scale.set(spec.radius);
+    this.particles.push({ ...spec, ageMs: 0, sprite });
+  }
+
+  private updateLeaperSpray(enemy: EnemyView, deltaMs: number): void {
+    const previousPosition = this.previousEnemyPositions.get(enemy.id);
+    this.previousEnemyPositions.set(enemy.id, { x: enemy.x, y: enemy.y });
+    if (enemy.kind !== "leaper") {
+      this.enemySprayMs.delete(enemy.id);
+      return;
+    }
+
+    if (this.qualitySettings.particleMultiplier <= 0 || previousPosition === undefined) {
+      this.enemySprayMs.set(enemy.id, 0);
+      return;
+    }
+
+    const moved = Math.hypot(enemy.x - previousPosition.x, enemy.y - previousPosition.y);
+    if (moved <= LEAPER_FAST_DELTA_TILES) {
+      this.enemySprayMs.set(enemy.id, 0);
+      return;
+    }
+
+    const intervalMs = LEAPER_SPRAY_INTERVAL_MS / this.qualitySettings.particleMultiplier;
+    const accumulatedMs = (this.enemySprayMs.get(enemy.id) ?? intervalMs) + deltaMs;
+    if (accumulatedMs < intervalMs) {
+      this.enemySprayMs.set(enemy.id, accumulatedMs);
+      return;
+    }
+
+    this.enemySprayMs.set(enemy.id, accumulatedMs % intervalMs);
+    this.addParticle({
+      x: enemy.x,
+      y: enemy.y,
+      vx: 0,
+      vy: 0,
+      radius: 0.05,
+      lifeMs: 240,
+      color: 0xd9fbff,
+      shape: "bubble"
+    });
+  }
+
   private addPickupFly(pickup: CollectedPickup): void {
     const sprite = this.acquireVfxSprite("pickupFlyOrb");
     sprite.tint = pickup.kind === "coin" ? 0xffcf33 : 0xf3f0a5;
@@ -1666,6 +1724,13 @@ export class GameRenderer {
     pickups: readonly PickupView[],
     players: readonly PlayerView[]
   ): CollectedPickup[] {
+    const currentPickupIds = new Set(pickups.map((pickup) => pickup.id));
+    for (const previousPickup of this.previousPickupRecords.values()) {
+      if (!currentPickupIds.has(previousPickup.id)) {
+        this.addThiefPickupRead(previousPickup);
+      }
+    }
+
     const collected = detectCollectedPickups(this.previousPickups, pickups, players);
     for (const pickup of collected) {
       this.addPickupFly(pickup);
@@ -1691,6 +1756,28 @@ export class GameRenderer {
       }
     }
     return collected;
+  }
+
+  private addThiefPickupRead(pickup: PickupRecord): void {
+    if (pickup.kind !== "coin") {
+      return;
+    }
+
+    for (const [enemyId, kind] of this.enemyKinds) {
+      if (kind !== "coin_thief") {
+        continue;
+      }
+      const node = this.enemies.get(enemyId);
+      if (node === undefined) {
+        continue;
+      }
+      const dx = node.container.position.x - pickup.x;
+      const dy = node.container.position.y - pickup.y;
+      if (Math.hypot(dx, dy) <= 0.6) {
+        this.addPop(pickup.x, pickup.y, 0xff6a6a, 200, "hit");
+        return;
+      }
+    }
   }
 
   private flashEnemy(enemyId: string, x: number, y: number): void {

@@ -167,8 +167,8 @@
       "assetId": "fisher",
       "frame": "walk_0",
       "source": "../../../../../art/sprites/normalized/fisher/walk_0.png",
-      "x": 0,
-      "y": 128,
+      "x": 1024,
+      "y": 0,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -187,8 +187,8 @@
       "assetId": "fisher",
       "frame": "walk_1",
       "source": "../../../../../art/sprites/normalized/fisher/walk_1.png",
-      "x": 128,
-      "y": 128,
+      "x": 1152,
+      "y": 0,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -207,7 +207,7 @@
       "assetId": "fisher",
       "frame": "walk_2",
       "source": "../../../../../art/sprites/normalized/fisher/walk_2.png",
-      "x": 256,
+      "x": 0,
       "y": 128,
       "w": 128,
       "h": 128,
@@ -227,7 +227,7 @@
       "assetId": "fisher",
       "frame": "walk_3",
       "source": "../../../../../art/sprites/normalized/fisher/walk_3.png",
-      "x": 384,
+      "x": 128,
       "y": 128,
       "w": 128,
       "h": 128,
@@ -247,7 +247,7 @@
       "assetId": "fisher",
       "frame": "attack_0",
       "source": "../../../../../art/sprites/normalized/fisher/attack_0.png",
-      "x": 512,
+      "x": 256,
       "y": 128,
       "w": 128,
       "h": 128,
@@ -267,7 +267,7 @@
       "assetId": "fisher",
       "frame": "attack_1",
       "source": "../../../../../art/sprites/normalized/fisher/attack_1.png",
-      "x": 640,
+      "x": 384,
       "y": 128,
       "w": 128,
       "h": 128,
@@ -287,7 +287,7 @@
       "assetId": "chum",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/chum/idle.png",
-      "x": 768,
+      "x": 512,
       "y": 128,
       "w": 128,
       "h": 128,
@@ -307,7 +307,7 @@
       "assetId": "chum",
       "frame": "move_0",
       "source": "../../../../../art/sprites/normalized/chum/move_0.png",
-      "x": 896,
+      "x": 640,
       "y": 128,
       "w": 128,
       "h": 128,
@@ -327,8 +327,8 @@
       "assetId": "chum",
       "frame": "move_1",
       "source": "../../../../../art/sprites/normalized/chum/move_1.png",
-      "x": 0,
-      "y": 256,
+      "x": 768,
+      "y": 128,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -347,8 +347,8 @@
       "assetId": "chum",
       "frame": "move_2",
       "source": "../../../../../art/sprites/normalized/chum/move_2.png",
-      "x": 128,
-      "y": 256,
+      "x": 896,
+      "y": 128,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -367,8 +367,8 @@
       "assetId": "chum",
       "frame": "move_3",
       "source": "../../../../../art/sprites/normalized/chum/move_3.png",
-      "x": 256,
-      "y": 256,
+      "x": 1024,
+      "y": 128,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -387,8 +387,8 @@
       "assetId": "chum",
       "frame": "attack_0",
       "source": "../../../../../art/sprites/normalized/chum/attack_0.png",
-      "x": 384,
-      "y": 256,
+      "x": 1152,
+      "y": 128,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -407,7 +407,7 @@
       "assetId": "chum",
       "frame": "attack_1",
       "source": "../../../../../art/sprites/normalized/chum/attack_1.png",
-      "x": 512,
+      "x": 0,
       "y": 256,
       "w": 128,
       "h": 128,
@@ -427,7 +427,7 @@
       "assetId": "spitter_crab",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/spitter_crab/idle.png",
-      "x": 640,
+      "x": 128,
       "y": 256,
       "w": 128,
       "h": 128,
@@ -447,7 +447,7 @@
       "assetId": "spitter_crab",
       "frame": "move_0",
       "source": "../../../../../art/sprites/normalized/spitter_crab/move_0.png",
-      "x": 768,
+      "x": 256,
       "y": 256,
       "w": 128,
       "h": 128,
@@ -467,7 +467,7 @@
       "assetId": "spitter_crab",
       "frame": "move_1",
       "source": "../../../../../art/sprites/normalized/spitter_crab/move_1.png",
-      "x": 896,
+      "x": 384,
       "y": 256,
       "w": 128,
       "h": 128,
@@ -487,8 +487,8 @@
       "assetId": "spitter_crab",
       "frame": "move_2",
       "source": "../../../../../art/sprites/normalized/spitter_crab/move_2.png",
-      "x": 0,
-      "y": 384,
+      "x": 512,
+      "y": 256,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -507,8 +507,8 @@
       "assetId": "spitter_crab",
       "frame": "move_3",
       "source": "../../../../../art/sprites/normalized/spitter_crab/move_3.png",
-      "x": 128,
-      "y": 384,
+      "x": 640,
+      "y": 256,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -527,8 +527,8 @@
       "assetId": "spitter_crab",
       "frame": "attack_0",
       "source": "../../../../../art/sprites/normalized/spitter_crab/attack_0.png",
-      "x": 256,
-      "y": 384,
+      "x": 768,
+      "y": 256,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -547,8 +547,8 @@
       "assetId": "spitter_crab",
       "frame": "attack_1",
       "source": "../../../../../art/sprites/normalized/spitter_crab/attack_1.png",
-      "x": 384,
-      "y": 384,
+      "x": 896,
+      "y": 256,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -563,12 +563,292 @@
         "h": 45
       }
     },
+    "leaper/idle": {
+      "assetId": "leaper",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/leaper/idle.png",
+      "x": 1024,
+      "y": 256,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 33,
+        "w": 64,
+        "h": 62
+      }
+    },
+    "leaper/move_0": {
+      "assetId": "leaper",
+      "frame": "move_0",
+      "source": "../../../../../art/sprites/normalized/leaper/move_0.png",
+      "x": 1152,
+      "y": 256,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 32,
+        "w": 64,
+        "h": 63
+      }
+    },
+    "leaper/move_1": {
+      "assetId": "leaper",
+      "frame": "move_1",
+      "source": "../../../../../art/sprites/normalized/leaper/move_1.png",
+      "x": 0,
+      "y": 384,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 32,
+        "w": 64,
+        "h": 63
+      }
+    },
+    "leaper/move_2": {
+      "assetId": "leaper",
+      "frame": "move_2",
+      "source": "../../../../../art/sprites/normalized/leaper/move_2.png",
+      "x": 128,
+      "y": 384,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 32,
+        "w": 64,
+        "h": 63
+      }
+    },
+    "leaper/move_3": {
+      "assetId": "leaper",
+      "frame": "move_3",
+      "source": "../../../../../art/sprites/normalized/leaper/move_3.png",
+      "x": 256,
+      "y": 384,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 32,
+        "w": 64,
+        "h": 63
+      }
+    },
+    "leaper/attack_0": {
+      "assetId": "leaper",
+      "frame": "attack_0",
+      "source": "../../../../../art/sprites/normalized/leaper/attack_0.png",
+      "x": 384,
+      "y": 384,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 36,
+        "w": 64,
+        "h": 55
+      }
+    },
+    "leaper/attack_1": {
+      "assetId": "leaper",
+      "frame": "attack_1",
+      "source": "../../../../../art/sprites/normalized/leaper/attack_1.png",
+      "x": 512,
+      "y": 384,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 36,
+        "w": 64,
+        "h": 55
+      }
+    },
+    "coin_thief/idle": {
+      "assetId": "coin_thief",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/coin_thief/idle.png",
+      "x": 640,
+      "y": 384,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 41,
+        "w": 64,
+        "h": 46
+      }
+    },
+    "coin_thief/move_0": {
+      "assetId": "coin_thief",
+      "frame": "move_0",
+      "source": "../../../../../art/sprites/normalized/coin_thief/move_0.png",
+      "x": 768,
+      "y": 384,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 40,
+        "w": 64,
+        "h": 48
+      }
+    },
+    "coin_thief/move_1": {
+      "assetId": "coin_thief",
+      "frame": "move_1",
+      "source": "../../../../../art/sprites/normalized/coin_thief/move_1.png",
+      "x": 896,
+      "y": 384,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 40,
+        "w": 64,
+        "h": 48
+      }
+    },
+    "coin_thief/move_2": {
+      "assetId": "coin_thief",
+      "frame": "move_2",
+      "source": "../../../../../art/sprites/normalized/coin_thief/move_2.png",
+      "x": 1024,
+      "y": 384,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 40,
+        "w": 64,
+        "h": 48
+      }
+    },
+    "coin_thief/move_3": {
+      "assetId": "coin_thief",
+      "frame": "move_3",
+      "source": "../../../../../art/sprites/normalized/coin_thief/move_3.png",
+      "x": 1152,
+      "y": 384,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 40,
+        "w": 64,
+        "h": 48
+      }
+    },
+    "coin_thief/attack_0": {
+      "assetId": "coin_thief",
+      "frame": "attack_0",
+      "source": "../../../../../art/sprites/normalized/coin_thief/attack_0.png",
+      "x": 0,
+      "y": 512,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 32,
+        "w": 64,
+        "h": 64
+      }
+    },
+    "coin_thief/attack_1": {
+      "assetId": "coin_thief",
+      "frame": "attack_1",
+      "source": "../../../../../art/sprites/normalized/coin_thief/attack_1.png",
+      "x": 128,
+      "y": 512,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 32,
+        "w": 64,
+        "h": 64
+      }
+    },
     "plank_biter/idle": {
       "assetId": "plank_biter",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/plank_biter/idle.png",
-      "x": 512,
-      "y": 384,
+      "x": 256,
+      "y": 512,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -587,8 +867,8 @@
       "assetId": "plank_biter",
       "frame": "attack_0",
       "source": "../../../../../art/sprites/normalized/plank_biter/attack_0.png",
-      "x": 640,
-      "y": 384,
+      "x": 384,
+      "y": 512,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -607,8 +887,8 @@
       "assetId": "plank_biter",
       "frame": "attack_1",
       "source": "../../../../../art/sprites/normalized/plank_biter/attack_1.png",
-      "x": 768,
-      "y": 384,
+      "x": 512,
+      "y": 512,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -627,8 +907,8 @@
       "assetId": "brute_turtle",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/brute_turtle/idle.png",
-      "x": 896,
-      "y": 384,
+      "x": 640,
+      "y": 512,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -647,7 +927,7 @@
       "assetId": "brute_turtle",
       "frame": "attack_0",
       "source": "../../../../../art/sprites/normalized/brute_turtle/attack_0.png",
-      "x": 0,
+      "x": 768,
       "y": 512,
       "w": 128,
       "h": 128,
@@ -667,7 +947,7 @@
       "assetId": "brute_turtle",
       "frame": "attack_1",
       "source": "../../../../../art/sprites/normalized/brute_turtle/attack_1.png",
-      "x": 128,
+      "x": 896,
       "y": 512,
       "w": 128,
       "h": 128,
@@ -683,12 +963,292 @@
         "h": 85
       }
     },
+    "bloater/idle": {
+      "assetId": "bloater",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/bloater/idle.png",
+      "x": 1024,
+      "y": 512,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "large",
+      "contentBounds": {
+        "x": 10,
+        "y": 15,
+        "w": 108,
+        "h": 98
+      }
+    },
+    "bloater/move_0": {
+      "assetId": "bloater",
+      "frame": "move_0",
+      "source": "../../../../../art/sprites/normalized/bloater/move_0.png",
+      "x": 1152,
+      "y": 512,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "large",
+      "contentBounds": {
+        "x": 10,
+        "y": 14,
+        "w": 108,
+        "h": 100
+      }
+    },
+    "bloater/move_1": {
+      "assetId": "bloater",
+      "frame": "move_1",
+      "source": "../../../../../art/sprites/normalized/bloater/move_1.png",
+      "x": 0,
+      "y": 640,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "large",
+      "contentBounds": {
+        "x": 10,
+        "y": 14,
+        "w": 108,
+        "h": 100
+      }
+    },
+    "bloater/move_2": {
+      "assetId": "bloater",
+      "frame": "move_2",
+      "source": "../../../../../art/sprites/normalized/bloater/move_2.png",
+      "x": 128,
+      "y": 640,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "large",
+      "contentBounds": {
+        "x": 10,
+        "y": 14,
+        "w": 108,
+        "h": 100
+      }
+    },
+    "bloater/move_3": {
+      "assetId": "bloater",
+      "frame": "move_3",
+      "source": "../../../../../art/sprites/normalized/bloater/move_3.png",
+      "x": 256,
+      "y": 640,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "large",
+      "contentBounds": {
+        "x": 10,
+        "y": 14,
+        "w": 108,
+        "h": 100
+      }
+    },
+    "bloater/attack_0": {
+      "assetId": "bloater",
+      "frame": "attack_0",
+      "source": "../../../../../art/sprites/normalized/bloater/attack_0.png",
+      "x": 384,
+      "y": 640,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "large",
+      "contentBounds": {
+        "x": 10,
+        "y": 14,
+        "w": 108,
+        "h": 100
+      }
+    },
+    "bloater/attack_1": {
+      "assetId": "bloater",
+      "frame": "attack_1",
+      "source": "../../../../../art/sprites/normalized/bloater/attack_1.png",
+      "x": 512,
+      "y": 640,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "large",
+      "contentBounds": {
+        "x": 10,
+        "y": 14,
+        "w": 108,
+        "h": 100
+      }
+    },
+    "screamer/idle": {
+      "assetId": "screamer",
+      "frame": "idle",
+      "source": "../../../../../art/sprites/normalized/screamer/idle.png",
+      "x": 640,
+      "y": 640,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 39,
+        "w": 64,
+        "h": 50
+      }
+    },
+    "screamer/move_0": {
+      "assetId": "screamer",
+      "frame": "move_0",
+      "source": "../../../../../art/sprites/normalized/screamer/move_0.png",
+      "x": 768,
+      "y": 640,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 37,
+        "w": 64,
+        "h": 53
+      }
+    },
+    "screamer/move_1": {
+      "assetId": "screamer",
+      "frame": "move_1",
+      "source": "../../../../../art/sprites/normalized/screamer/move_1.png",
+      "x": 896,
+      "y": 640,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 37,
+        "w": 64,
+        "h": 53
+      }
+    },
+    "screamer/move_2": {
+      "assetId": "screamer",
+      "frame": "move_2",
+      "source": "../../../../../art/sprites/normalized/screamer/move_2.png",
+      "x": 1024,
+      "y": 640,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 37,
+        "w": 64,
+        "h": 53
+      }
+    },
+    "screamer/move_3": {
+      "assetId": "screamer",
+      "frame": "move_3",
+      "source": "../../../../../art/sprites/normalized/screamer/move_3.png",
+      "x": 1152,
+      "y": 640,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 32,
+        "y": 37,
+        "w": 64,
+        "h": 53
+      }
+    },
+    "screamer/attack_0": {
+      "assetId": "screamer",
+      "frame": "attack_0",
+      "source": "../../../../../art/sprites/normalized/screamer/attack_0.png",
+      "x": 0,
+      "y": 768,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 33,
+        "y": 38,
+        "w": 63,
+        "h": 52
+      }
+    },
+    "screamer/attack_1": {
+      "assetId": "screamer",
+      "frame": "attack_1",
+      "source": "../../../../../art/sprites/normalized/screamer/attack_1.png",
+      "x": 128,
+      "y": 768,
+      "w": 128,
+      "h": 128,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sizeClass": "small",
+      "contentBounds": {
+        "x": 33,
+        "y": 38,
+        "w": 63,
+        "h": 52
+      }
+    },
     "kraken_tentacle/idle": {
       "assetId": "kraken_tentacle",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/kraken_tentacle/idle.png",
       "x": 256,
-      "y": 512,
+      "y": 768,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -708,7 +1268,7 @@
       "frame": "move_0",
       "source": "../../../../../art/sprites/normalized/kraken_tentacle/move_0.png",
       "x": 384,
-      "y": 512,
+      "y": 768,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -728,7 +1288,7 @@
       "frame": "move_1",
       "source": "../../../../../art/sprites/normalized/kraken_tentacle/move_1.png",
       "x": 512,
-      "y": 512,
+      "y": 768,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -748,7 +1308,7 @@
       "frame": "move_2",
       "source": "../../../../../art/sprites/normalized/kraken_tentacle/move_2.png",
       "x": 640,
-      "y": 512,
+      "y": 768,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -768,7 +1328,7 @@
       "frame": "move_3",
       "source": "../../../../../art/sprites/normalized/kraken_tentacle/move_3.png",
       "x": 768,
-      "y": 512,
+      "y": 768,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -788,7 +1348,7 @@
       "frame": "attack_0",
       "source": "../../../../../art/sprites/normalized/kraken_tentacle/attack_0.png",
       "x": 896,
-      "y": 512,
+      "y": 768,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -807,8 +1367,8 @@
       "assetId": "kraken_tentacle",
       "frame": "attack_1",
       "source": "../../../../../art/sprites/normalized/kraken_tentacle/attack_1.png",
-      "x": 0,
-      "y": 640,
+      "x": 1024,
+      "y": 768,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -827,8 +1387,8 @@
       "assetId": "kraken_head",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/kraken_head/idle.png",
-      "x": 128,
-      "y": 640,
+      "x": 1152,
+      "y": 768,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -847,8 +1407,8 @@
       "assetId": "kraken_head",
       "frame": "move_0",
       "source": "../../../../../art/sprites/normalized/kraken_head/move_0.png",
-      "x": 256,
-      "y": 640,
+      "x": 0,
+      "y": 896,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -867,8 +1427,8 @@
       "assetId": "kraken_head",
       "frame": "move_1",
       "source": "../../../../../art/sprites/normalized/kraken_head/move_1.png",
-      "x": 384,
-      "y": 640,
+      "x": 128,
+      "y": 896,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -887,8 +1447,8 @@
       "assetId": "kraken_head",
       "frame": "move_2",
       "source": "../../../../../art/sprites/normalized/kraken_head/move_2.png",
-      "x": 512,
-      "y": 640,
+      "x": 256,
+      "y": 896,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -907,8 +1467,8 @@
       "assetId": "kraken_head",
       "frame": "move_3",
       "source": "../../../../../art/sprites/normalized/kraken_head/move_3.png",
-      "x": 640,
-      "y": 640,
+      "x": 384,
+      "y": 896,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -927,8 +1487,8 @@
       "assetId": "cannon",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/cannon/idle.png",
-      "x": 768,
-      "y": 640,
+      "x": 512,
+      "y": 896,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -947,8 +1507,8 @@
       "assetId": "repair_station",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/repair_station/idle.png",
-      "x": 896,
-      "y": 640,
+      "x": 640,
+      "y": 896,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -967,8 +1527,8 @@
       "assetId": "coin",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/coin/idle.png",
-      "x": 0,
-      "y": 768,
+      "x": 768,
+      "y": 896,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -987,8 +1547,8 @@
       "assetId": "salvage",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/salvage/idle.png",
-      "x": 128,
-      "y": 768,
+      "x": 896,
+      "y": 896,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -1007,8 +1567,8 @@
       "assetId": "harpoon_projectile",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/harpoon_projectile/idle.png",
-      "x": 256,
-      "y": 768,
+      "x": 1024,
+      "y": 896,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -1027,8 +1587,8 @@
       "assetId": "coconut_projectile",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/coconut_projectile/idle.png",
-      "x": 384,
-      "y": 768,
+      "x": 1152,
+      "y": 896,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -1047,8 +1607,8 @@
       "assetId": "cannon_projectile",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/cannon_projectile/idle.png",
-      "x": 512,
-      "y": 768,
+      "x": 0,
+      "y": 1024,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -1067,8 +1627,8 @@
       "assetId": "enemy_glob",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/enemy_glob/idle.png",
-      "x": 640,
-      "y": 768,
+      "x": 128,
+      "y": 1024,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -1087,8 +1647,8 @@
       "assetId": "anchor_flail",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/anchor_flail/idle.png",
-      "x": 768,
-      "y": 768,
+      "x": 256,
+      "y": 1024,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -1107,8 +1667,8 @@
       "assetId": "seagull_bell",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/seagull_bell/idle.png",
-      "x": 896,
-      "y": 768,
+      "x": 384,
+      "y": 1024,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -1127,8 +1687,8 @@
       "assetId": "seagull_bell",
       "frame": "idle_1",
       "source": "../../../../../art/sprites/normalized/seagull_bell/idle_1.png",
-      "x": 0,
-      "y": 896,
+      "x": 512,
+      "y": 1024,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -1147,8 +1707,8 @@
       "assetId": "puddle",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/puddle/idle.png",
-      "x": 128,
-      "y": 896,
+      "x": 640,
+      "y": 1024,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -1167,8 +1727,8 @@
       "assetId": "puddle",
       "frame": "idle_1",
       "source": "../../../../../art/sprites/normalized/puddle/idle_1.png",
-      "x": 256,
-      "y": 896,
+      "x": 768,
+      "y": 1024,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -1187,8 +1747,8 @@
       "assetId": "trap",
       "frame": "idle",
       "source": "../../../../../art/sprites/normalized/trap/idle.png",
-      "x": 384,
-      "y": 896,
+      "x": 896,
+      "y": 1024,
       "w": 128,
       "h": 128,
       "anchor": {
@@ -1341,6 +1901,74 @@
         "h": 45
       }
     },
+    "leaper/move": {
+      "assetId": "leaper",
+      "name": "move",
+      "frames": [
+        "leaper/move_0",
+        "leaper/move_1",
+        "leaper/move_2",
+        "leaper/move_3"
+      ],
+      "fps": 8,
+      "loop": true,
+      "sharedBounds": {
+        "x": 32,
+        "y": 32,
+        "w": 64,
+        "h": 63
+      }
+    },
+    "leaper/attack": {
+      "assetId": "leaper",
+      "name": "attack",
+      "frames": [
+        "leaper/attack_0",
+        "leaper/attack_1"
+      ],
+      "fps": 6,
+      "loop": false,
+      "sharedBounds": {
+        "x": 32,
+        "y": 36,
+        "w": 64,
+        "h": 55
+      }
+    },
+    "coin_thief/move": {
+      "assetId": "coin_thief",
+      "name": "move",
+      "frames": [
+        "coin_thief/move_0",
+        "coin_thief/move_1",
+        "coin_thief/move_2",
+        "coin_thief/move_3"
+      ],
+      "fps": 8,
+      "loop": true,
+      "sharedBounds": {
+        "x": 32,
+        "y": 40,
+        "w": 64,
+        "h": 48
+      }
+    },
+    "coin_thief/attack": {
+      "assetId": "coin_thief",
+      "name": "attack",
+      "frames": [
+        "coin_thief/attack_0",
+        "coin_thief/attack_1"
+      ],
+      "fps": 6,
+      "loop": false,
+      "sharedBounds": {
+        "x": 32,
+        "y": 32,
+        "w": 64,
+        "h": 64
+      }
+    },
     "plank_biter/attack": {
       "assetId": "plank_biter",
       "name": "attack",
@@ -1371,6 +1999,74 @@
         "y": 21,
         "w": 108,
         "h": 85
+      }
+    },
+    "bloater/move": {
+      "assetId": "bloater",
+      "name": "move",
+      "frames": [
+        "bloater/move_0",
+        "bloater/move_1",
+        "bloater/move_2",
+        "bloater/move_3"
+      ],
+      "fps": 8,
+      "loop": true,
+      "sharedBounds": {
+        "x": 10,
+        "y": 14,
+        "w": 108,
+        "h": 100
+      }
+    },
+    "bloater/attack": {
+      "assetId": "bloater",
+      "name": "attack",
+      "frames": [
+        "bloater/attack_0",
+        "bloater/attack_1"
+      ],
+      "fps": 6,
+      "loop": false,
+      "sharedBounds": {
+        "x": 10,
+        "y": 14,
+        "w": 108,
+        "h": 100
+      }
+    },
+    "screamer/move": {
+      "assetId": "screamer",
+      "name": "move",
+      "frames": [
+        "screamer/move_0",
+        "screamer/move_1",
+        "screamer/move_2",
+        "screamer/move_3"
+      ],
+      "fps": 8,
+      "loop": true,
+      "sharedBounds": {
+        "x": 32,
+        "y": 37,
+        "w": 64,
+        "h": 53
+      }
+    },
+    "screamer/attack": {
+      "assetId": "screamer",
+      "name": "attack",
+      "frames": [
+        "screamer/attack_0",
+        "screamer/attack_1"
+      ],
+      "fps": 6,
+      "loop": false,
+      "sharedBounds": {
+        "x": 33,
+        "y": 38,
+        "w": 63,
+        "h": 52
       }
     },
     "kraken_tentacle/move": {
