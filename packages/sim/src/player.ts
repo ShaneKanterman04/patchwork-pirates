@@ -48,6 +48,8 @@ export function addPlayer(
     prevHp: PLAYER_MAX_HP,
     moveSpeed: PLAYER_MOVE_SPEED,
     repairSpeed: 1.0,
+    repairChargeHp: 0,
+    repairTargetKey: null,
     coins: 0,
     damageMult: 1,
     attackSpeedMult: 1,

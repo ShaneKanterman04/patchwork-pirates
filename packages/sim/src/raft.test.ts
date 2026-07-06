@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BROKEN_TILE_HP_PER_SUPPLY,
   CORE_MAX_HP,
   DAMAGED_TILE_HP_PER_SUPPLY,
-  HOLE_REBUILD_RATE,
   MAX_RAFT_TILES,
   PLAYER_RADIUS,
   PLAYER_REPAIR_RATE,
@@ -207,37 +207,71 @@ describe("hole movement", () => {
 });
 
 describe("repair", () => {
-  it("repairs damaged tiles at the player repair rate up to max hp", () => {
+  it("spends one supply and applies one HP chunk only after the damaged tile threshold", () => {
     const world = createWorld(1);
     addPlayer(world, "p1");
     world.salvage = 2;
     const tile = tileAt(world.raft, 1, 1);
     damageTile(world, 1, 1, 2);
 
+    for (let i = 0; i < TICK_RATE - 1; i += 1) {
+      tick(world, new Map([["p1", IDLE_INPUT]]));
+    }
+
+    expect(tile?.hp).toBe(TILE_MAX_HP - 2);
+    expect(world.salvage).toBe(2);
+
     tick(world, new Map([["p1", IDLE_INPUT]]));
 
-    expect(tile?.hp).toBeCloseTo(TILE_MAX_HP - 2 + PLAYER_REPAIR_RATE / TICK_RATE);
-    expect(world.salvage).toBeCloseTo(2 - (PLAYER_REPAIR_RATE / TICK_RATE) / DAMAGED_TILE_HP_PER_SUPPLY);
+    expect(tile?.hp).toBeCloseTo(TILE_MAX_HP);
+    expect(world.salvage).toBe(1);
+    expect(world.events).toContainEqual({ type: "tile_repaired", col: 1, row: 1 });
+  });
+
+  it("lands repeated chunks at the base repair cadence", () => {
+    const world = createWorld(1);
+    addPlayer(world, "p1");
+    world.salvage = 3;
+    const tile = tileAt(world.raft, 1, 1);
+    damageTile(world, 1, 1, 8);
 
     for (let i = 0; i < TICK_RATE; i += 1) {
       tick(world, new Map([["p1", IDLE_INPUT]]));
     }
 
-    expect(tile?.hp).toBeCloseTo(TILE_MAX_HP);
+    expect(tile?.hp).toBe(TILE_MAX_HP - 4);
+    expect(world.salvage).toBe(2);
+
+    for (let i = 0; i < TICK_RATE; i += 1) {
+      tick(world, new Map([["p1", IDLE_INPUT]]));
+    }
+
+    expect(tile?.hp).toBe(TILE_MAX_HP);
+    expect(world.salvage).toBe(1);
   });
 
-  it("does not repair without supplies", () => {
+  it("holds repair charge at the threshold without supplies and resumes when salvage arrives", () => {
     const world = createWorld(1);
-    addPlayer(world, "p1");
+    const player = addPlayer(world, "p1");
     const tile = tileAt(world.raft, 1, 1);
     damageTile(world, 1, 1, 2);
 
-    tick(world, new Map([["p1", IDLE_INPUT]]));
+    for (let i = 0; i < TICK_RATE + 5; i += 1) {
+      tick(world, new Map([["p1", IDLE_INPUT]]));
+    }
 
     expect(tile?.hp).toBe(TILE_MAX_HP - 2);
+    expect(player.repairChargeHp).toBe(DAMAGED_TILE_HP_PER_SUPPLY);
+
+    world.salvage = 1;
+    tick(world, new Map([["p1", IDLE_INPUT]]));
+
+    expect(tile?.hp).toBe(TILE_MAX_HP);
+    expect(world.salvage).toBe(0);
+    expect(player.repairChargeHp).toBe(0);
   });
 
-  it("rebuilds holes at the slower rate and emits tile_repaired at full hp", () => {
+  it("rebuilds holes in whole chunks, flips repaired at full hp, and emits per chunk", () => {
     const world = createWorld(1);
     addPlayer(world, "p1");
     world.salvage = 20;
@@ -247,20 +281,19 @@ describe("repair", () => {
 
     tick(world, new Map([["p1", IDLE_INPUT]]));
 
-    expect(tile?.hp).toBeCloseTo(HOLE_REBUILD_RATE / TICK_RATE);
+    expect(tile?.hp).toBe(0);
     expect(tile?.broken).toBe(true);
     expect(world.events).toEqual([]);
 
+    let repairEvents = 0;
     while (tile !== undefined && tile.broken) {
       tick(world, new Map([["p1", IDLE_INPUT]]));
+      repairEvents += world.events.filter((event) => event.type === "tile_repaired").length;
     }
 
     expect(tile).toMatchObject({ hp: TILE_MAX_HP, broken: false });
-    expect(world.events).toContainEqual({
-      type: "tile_repaired",
-      col: 1,
-      row: 1
-    });
+    expect(world.salvage).toBe(16);
+    expect(repairEvents).toBe(TILE_MAX_HP / BROKEN_TILE_HP_PER_SUPPLY);
   });
 
   it("repairs the nearest eligible tile with stable array-order ties", () => {
@@ -275,17 +308,47 @@ describe("repair", () => {
     damageTile(world, 0, 1, 2);
     damageTile(world, 1, 0, 2);
 
-    tick(world, new Map([["p1", IDLE_INPUT]]));
+    for (let i = 0; i < TICK_RATE; i += 1) {
+      tick(world, new Map([["p1", IDLE_INPUT]]));
+    }
 
-    expect(nearest?.hp).toBeCloseTo(TILE_MAX_HP - 2 + PLAYER_REPAIR_RATE / TICK_RATE);
+    expect(nearest?.hp).toBe(TILE_MAX_HP);
     expect(tiedFirst?.hp).toBe(TILE_MAX_HP - 2);
     expect(tiedSecond?.hp).toBe(TILE_MAX_HP - 2);
 
     nearest!.hp = TILE_MAX_HP;
+    world.salvage = 2;
+    for (let i = 0; i < TICK_RATE; i += 1) {
+      tick(world, new Map([["p1", IDLE_INPUT]]));
+    }
+
+    expect(tiedFirst?.hp).toBe(TILE_MAX_HP);
+    expect(tiedSecond?.hp).toBe(TILE_MAX_HP - 2);
+  });
+
+  it("resets accumulated charge when switching repair targets", () => {
+    const world = createWorld(1);
+    const player = addPlayer(world, "p1");
+    player.pos = { x: 1.5, y: 1.5 };
+    world.salvage = 2;
+    const first = tileAt(world.raft, 1, 1);
+    const second = tileAt(world.raft, 1, 0);
+    damageTile(world, 1, 1, 2);
+    damageTile(world, 1, 0, 2);
+
+    for (let i = 0; i < TICK_RATE / 2; i += 1) {
+      tick(world, new Map([["p1", IDLE_INPUT]]));
+    }
+
+    expect(first?.hp).toBe(TILE_MAX_HP - 2);
+    expect(player.repairChargeHp).toBeCloseTo(PLAYER_REPAIR_RATE / 2);
+
+    first!.hp = TILE_MAX_HP;
     tick(world, new Map([["p1", IDLE_INPUT]]));
 
-    expect(tiedFirst?.hp).toBeCloseTo(TILE_MAX_HP - 2 + PLAYER_REPAIR_RATE / TICK_RATE);
-    expect(tiedSecond?.hp).toBe(TILE_MAX_HP - 2);
+    expect(second?.hp).toBe(TILE_MAX_HP - 2);
+    expect(player.repairChargeHp).toBeCloseTo(PLAYER_REPAIR_RATE / TICK_RATE);
+    expect(world.salvage).toBe(2);
   });
 
   it("does nothing when no damaged tile is in range", () => {

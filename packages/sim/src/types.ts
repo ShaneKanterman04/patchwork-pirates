@@ -29,6 +29,8 @@ export interface PlayerState {
   prevHp: number;
   moveSpeed: number;
   repairSpeed: number;
+  repairChargeHp: number;
+  repairTargetKey: string | null;
   coins: number;
   damageMult: number;
   attackSpeedMult: number;

@@ -44,6 +44,7 @@ const ZERO_INPUT: PlayerInput = {
 };
 
 const FACING_EPSILON = 0.000001;
+const REPAIR_CHARGE_EPSILON = 0.000001;
 const MAX_PINGS = 12;
 
 export function mulberry32(seed: number): () => number {
@@ -300,28 +301,37 @@ function repairNearestTile(
   player: PlayerState
 ): void {
   const tile = nearestRepairTarget(world, player.pos);
-  if (tile === null || world.salvage <= 0) {
+  if (tile === null) {
+    player.repairChargeHp = 0;
+    player.repairTargetKey = null;
     return;
+  }
+
+  const targetKey = `${tile.col},${tile.row}`;
+  if (player.repairTargetKey !== targetKey) {
+    player.repairChargeHp = 0;
+    player.repairTargetKey = targetKey;
   }
 
   const rate = tile.broken ? HOLE_REBUILD_RATE : PLAYER_REPAIR_RATE;
   const hpPerSupply = tile.broken ? BROKEN_TILE_HP_PER_SUPPLY : DAMAGED_TILE_HP_PER_SUPPLY;
-  const wantedRepair = rate * player.repairSpeed / TICK_RATE;
-  const missingHp = tile.maxHp - tile.hp;
-  const affordableRepair = world.salvage * hpPerSupply;
-  const repairHp = Math.min(missingHp, wantedRepair, affordableRepair);
+  player.repairChargeHp = Math.min(
+    hpPerSupply,
+    player.repairChargeHp + (rate * player.repairSpeed) / TICK_RATE
+  );
 
-  if (repairHp <= 0) {
+  if (player.repairChargeHp + REPAIR_CHARGE_EPSILON < hpPerSupply || world.salvage < 1) {
     return;
   }
 
-  tile.hp += repairHp;
-  world.salvage = Math.max(0, world.salvage - repairHp / hpPerSupply);
+  tile.hp = Math.min(tile.maxHp, tile.hp + hpPerSupply);
+  world.salvage -= 1;
+  player.repairChargeHp = Math.max(0, player.repairChargeHp - hpPerSupply);
+  world.events.push({ type: "tile_repaired", col: tile.col, row: tile.row });
 
   if (tile.broken && tile.hp >= tile.maxHp) {
     tile.broken = false;
     player.stats.tilesRepaired += 1;
-    world.events.push({ type: "tile_repaired", col: tile.col, row: tile.row });
   }
 }
 

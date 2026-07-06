@@ -9,8 +9,10 @@ export const CORE_MAX_HP = 10;
 export const PLAYER_MAX_HP = 100;
 export const PLAYER_MOVE_SPEED = 4;
 export const PLAYER_RADIUS = 0.4;
-export const PLAYER_REPAIR_RATE = 2;
-export const HOLE_REBUILD_RATE = 2;
+// Repair chunks land every 1.0s on damaged tiles (4 HP / 4 HP/s) and
+// about 0.6s on holes (2.5 HP / 4 HP/s).
+export const PLAYER_REPAIR_RATE = 4;
+export const HOLE_REBUILD_RATE = 4;
 export const BASE_SUPPLY_CAP = 20;
 export const SUPPLY_CACHE_CAPACITY = 10;
 // Scratch top-up = 2.5 supplies from empty; keeps repairs cheaper than rebuilds.

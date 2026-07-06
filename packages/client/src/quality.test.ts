@@ -47,21 +47,24 @@ describe("quality monitor", () => {
       particleMultiplier: 1,
       enemyWakes: true,
       screenShake: true,
-      enemyDeckBob: true
+      enemyDeckBob: true,
+      oceanAnimation: true
     });
     expect(settingsForTier("medium")).toEqual({
       resolutionScale: 0.75,
       particleMultiplier: 0.5,
       enemyWakes: false,
       screenShake: true,
-      enemyDeckBob: true
+      enemyDeckBob: true,
+      oceanAnimation: true
     });
     expect(settingsForTier("low")).toEqual({
       resolutionScale: 0.5,
       particleMultiplier: 0,
       enemyWakes: false,
       screenShake: false,
-      enemyDeckBob: false
+      enemyDeckBob: false,
+      oceanAnimation: false
     });
   });
 });

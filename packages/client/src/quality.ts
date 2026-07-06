@@ -6,6 +6,7 @@ export interface QualitySettings {
   enemyWakes: boolean;
   screenShake: boolean;
   enemyDeckBob: boolean;
+  oceanAnimation: boolean;
 }
 
 export interface QualityMonitor {
@@ -29,7 +30,8 @@ export function settingsForTier(tier: QualityTier): QualitySettings {
       particleMultiplier: 1,
       enemyWakes: true,
       screenShake: true,
-      enemyDeckBob: true
+      enemyDeckBob: true,
+      oceanAnimation: true
     };
   }
 
@@ -39,7 +41,8 @@ export function settingsForTier(tier: QualityTier): QualitySettings {
       particleMultiplier: 0.5,
       enemyWakes: false,
       screenShake: true,
-      enemyDeckBob: true
+      enemyDeckBob: true,
+      oceanAnimation: true
     };
   }
 
@@ -48,7 +51,8 @@ export function settingsForTier(tier: QualityTier): QualitySettings {
     particleMultiplier: 0,
     enemyWakes: false,
     screenShake: false,
-    enemyDeckBob: false
+    enemyDeckBob: false,
+    oceanAnimation: false
   };
 }
 

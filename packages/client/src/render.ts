@@ -1,4 +1,4 @@
-import { Application, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
+import { Application, Assets, Container, Graphics, Sprite, Text, Texture, TilingSprite } from "pixi.js";
 import { CHARACTERS, ENEMIES, WEAPONS } from "@patchwork/content";
 import type {
   EnemyView,
@@ -46,7 +46,7 @@ const ENEMY_ATTACK_PULSE_STRENGTH = 0.22;
 const ENEMY_WINDUP_SCALE = 1.06;
 const ENEMY_WINDUP_ROTATION = 0.06;
 const PICKUP_FLY_MS = 320;
-const REPAIR_SUPPLY_FLY_MS = 700;
+const REPAIR_SUPPLY_FLY_MS = 320;
 const REPAIR_TILE_HP = 10;
 // Mirrors packages/sim/src/constants.ts; client cannot import sim.
 const DAMAGED_TILE_HP_PER_SUPPLY = 4;
@@ -58,6 +58,20 @@ const DEFEAT_UI_DELAY_MS = 220;
 const PROJECTILE_TRAIL_INTERVAL_MS = 55;
 const LEAPER_SPRAY_INTERVAL_MS = 70;
 const LEAPER_FAST_DELTA_TILES = 0.12;
+const OCEAN_BASE_PATH = "/assets/water/ocean-base.png";
+const OCEAN_SHIMMER_PATH = "/assets/water/ocean-shimmer.png";
+const OCEAN_TILE_SCALE = 0.5;
+const OCEAN_PARALLAX = 0.2;
+const OCEAN_SWAY_PX = 6;
+
+interface OceanLayers {
+  base: TilingSprite;
+  shimmer: TilingSprite;
+  baseScrollX: number;
+  baseScrollY: number;
+  shimmerScrollX: number;
+  shimmerScrollY: number;
+}
 
 interface ProjectileMotionConfig {
   faceHeading?: boolean;
@@ -186,6 +200,14 @@ interface PickupFlyVfx {
   ownerY: number;
 }
 
+interface PendingRepairPresentation {
+  hpDelta: number;
+  applyAtMs: number;
+  x: number;
+  y: number;
+  broken: boolean;
+}
+
 interface RepairSupplyFlyVfx {
   ageMs: number;
   sprite: Sprite;
@@ -298,6 +320,7 @@ export class GameRenderer {
   private readonly needSupplyTargetKeys = new Set<string>();
   private readonly previousTileState = new Map<string, { hpRatio: number; broken: boolean }>();
   private readonly repairSupplyRemainders = new Map<string, number>();
+  private readonly pendingRepairPresentation = new Map<string, PendingRepairPresentation[]>();
   private buildTarget: TileCoord | undefined;
   private readonly expansionSites: TileCoord[] = [];
   private nearestExpansionSite: TileCoord | undefined;
@@ -314,6 +337,7 @@ export class GameRenderer {
   private renderClockMs = 0;
   private readonly baseResolution: number;
   private qualitySettings: QualitySettings = settingsForTier("high");
+  private oceanLayers: OceanLayers | undefined;
 
   private constructor(
     readonly app: Application,
@@ -329,6 +353,7 @@ export class GameRenderer {
     this.drawRaft();
     this.resize();
     window.addEventListener("resize", this.resize);
+    this.initOceanLayers();
   }
 
   static async create(parent: HTMLElement): Promise<GameRenderer> {
@@ -370,12 +395,14 @@ export class GameRenderer {
       this.qualitySettings.particleMultiplier === settings.particleMultiplier &&
       this.qualitySettings.enemyWakes === settings.enemyWakes &&
       this.qualitySettings.screenShake === settings.screenShake &&
-      this.qualitySettings.enemyDeckBob === settings.enemyDeckBob
+      this.qualitySettings.enemyDeckBob === settings.enemyDeckBob &&
+      this.qualitySettings.oceanAnimation === settings.oceanAnimation
     ) {
       return;
     }
 
     this.qualitySettings = settings;
+    this.applyOceanQuality();
     this.app.renderer.resolution = this.baseResolution * settings.resolutionScale;
     this.app.resize();
   }
@@ -399,7 +426,8 @@ export class GameRenderer {
       this.pops.length +
       this.particles.length +
       this.pickupFlies.length +
-      this.repairSupplyFlies.length;
+      this.repairSupplyFlies.length +
+      (this.oceanLayers === undefined ? 0 : 2);
 
     for (const node of this.players.values()) {
       graphicsAlive += countEntityGraphics(node);
@@ -416,6 +444,7 @@ export class GameRenderer {
       return;
     }
 
+    this.pendingRepairPresentation.clear();
     const tiles = (raft?.tiles ?? fallbackRaft().tiles).map((tile) => ({ ...tile }));
     this.defeatSink = {
       startedAtMs: this.renderClockMs,
@@ -519,6 +548,7 @@ export class GameRenderer {
     this.updateExpansionSites(state, myPlayerId);
     this.updateRepairTargets(state.players, state.raft, state.salvage ?? 0);
     this.updateRepairFeedback(state.raft);
+    this.updatePendingRepairPresentation(state.raft);
     this.drawRaft(state.raft);
     this.updateExpansionMarkers(state.wave.phase);
     this.updateTelegraphs(state.enemies);
@@ -536,6 +566,7 @@ export class GameRenderer {
     this.updatePickupFlies(deltaMs);
     this.updateRepairSupplyFlies(deltaMs);
     this.updateShake(deltaMs);
+    this.updateOceanLayers(deltaMs);
     return collectedPickups;
   }
 
@@ -592,7 +623,96 @@ export class GameRenderer {
 
   private readonly resize = (): void => {
     this.fitViewportToRaftBounds();
+    this.resizeOceanLayers();
   };
+
+  private initOceanLayers(): void {
+    void this.loadOceanLayers();
+  }
+
+  private async loadOceanLayers(): Promise<void> {
+    try {
+      const [baseTexture, shimmerTexture] = await Promise.all([
+        Assets.load<Texture>(OCEAN_BASE_PATH),
+        Assets.load<Texture>(OCEAN_SHIMMER_PATH)
+      ]);
+
+      if (this.oceanLayers !== undefined) {
+        return;
+      }
+
+      const base = new TilingSprite({
+        texture: baseTexture,
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+      const shimmer = new TilingSprite({
+        texture: shimmerTexture,
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+      base.tileScale.set(OCEAN_TILE_SCALE);
+      shimmer.tileScale.set(OCEAN_TILE_SCALE);
+      shimmer.alpha = 0.28;
+      this.oceanLayers = {
+        base,
+        shimmer,
+        baseScrollX: 0,
+        baseScrollY: 0,
+        shimmerScrollX: 0,
+        shimmerScrollY: 0
+      };
+      this.app.stage.addChildAt(base, 0);
+      this.app.stage.addChildAt(shimmer, 1);
+      this.applyOceanQuality();
+      this.resizeOceanLayers();
+      this.updateOceanLayers(0);
+    } catch {
+      console.info("Ocean texture assets unavailable; using flat water background.");
+    }
+  }
+
+  private applyOceanQuality(): void {
+    if (this.oceanLayers === undefined) {
+      return;
+    }
+
+    this.oceanLayers.shimmer.visible = this.qualitySettings.oceanAnimation;
+  }
+
+  private resizeOceanLayers(): void {
+    if (this.oceanLayers === undefined) {
+      return;
+    }
+
+    this.oceanLayers.base.width = window.innerWidth;
+    this.oceanLayers.base.height = window.innerHeight;
+    this.oceanLayers.shimmer.width = window.innerWidth;
+    this.oceanLayers.shimmer.height = window.innerHeight;
+  }
+
+  private updateOceanLayers(deltaMs: number): void {
+    if (this.oceanLayers === undefined || !this.qualitySettings.oceanAnimation) {
+      return;
+    }
+
+    const layers = this.oceanLayers;
+    const sway = Math.sin(this.renderClockMs * 0.0003) * OCEAN_SWAY_PX;
+    const parallaxX = (this.baseWorldX + (this.world.position.x - this.baseWorldX)) * OCEAN_PARALLAX;
+    const parallaxY = (this.baseWorldY + (this.world.position.y - this.baseWorldY)) * OCEAN_PARALLAX;
+    layers.baseScrollX += deltaMs * 0.008;
+    layers.baseScrollY += deltaMs * 0.005;
+    layers.shimmerScrollX -= deltaMs * 0.0128;
+    layers.shimmerScrollY -= deltaMs * 0.008;
+    layers.base.tilePosition.set(
+      layers.baseScrollX + sway + parallaxX,
+      layers.baseScrollY + parallaxY
+    );
+    layers.shimmer.tilePosition.set(
+      layers.shimmerScrollX - sway * 0.6 + parallaxX * 0.65,
+      layers.shimmerScrollY + parallaxY * 0.65
+    );
+  }
 
   private fitViewportToRaftBounds(): void {
     const widthTiles = this.raftBounds.maxCol - this.raftBounds.minCol + 1;
@@ -634,20 +754,23 @@ export class GameRenderer {
       }
 
       const hpRatio = clamp01(tileView.hpRatio);
-      const baseKey = `${tileView.kind}|${tileView.broken}|${Math.round(hpRatio * 50)}|${sinking ? 1 : 0}`;
+      const displayedHpRatio = this.displayedTileHpRatio(key, hpRatio);
+      const displayTileView =
+        displayedHpRatio === hpRatio ? tileView : { ...tileView, hpRatio: displayedHpRatio };
+      const baseKey = `${tileView.kind}|${tileView.broken}|${Math.round(displayedHpRatio * 50)}|${sinking ? 1 : 0}`;
       if (node.baseKey !== baseKey) {
         node.baseKey = baseKey;
-        drawRaftTileBase(node.base.clear(), tileView, hpRatio, sinking);
+        drawRaftTileBase(node.base.clear(), tileView, displayedHpRatio, sinking);
       }
 
       const repairing = this.repairTargetKeys.has(key);
       const needsSupply = this.needSupplyTargetKeys.has(key);
       const buildTarget = isSameTile(this.buildTarget, tileView);
-      const damaged = tileView.broken || hpRatio < 1;
-      const overlayKey = `${damaged ? Math.round(hpRatio * 50) : -1}|${repairing}|${needsSupply}|${buildTarget}`;
+      const damaged = tileView.broken || displayedHpRatio < 1;
+      const overlayKey = `${damaged ? Math.round(displayedHpRatio * 50) : -1}|${repairing}|${needsSupply}|${buildTarget}`;
       if (node.overlayKey !== overlayKey) {
         node.overlayKey = overlayKey;
-        drawTileAffordances(node.overlay.clear(), tileView, {
+        drawTileAffordances(node.overlay.clear(), displayTileView, {
           repairing,
           needsSupply,
           buildTarget
@@ -805,6 +928,9 @@ export class GameRenderer {
 
   private updateRepairFeedback(raft: RaftView | undefined): void {
     if (raft === undefined || this.defeatSink !== undefined) {
+      if (this.defeatSink !== undefined) {
+        this.pendingRepairPresentation.clear();
+      }
       return;
     }
 
@@ -813,17 +939,25 @@ export class GameRenderer {
       const key = tileKey(tile.col, tile.row);
       seen.add(key);
       const previous = this.previousTileState.get(key);
+      const brokenStateChanged = previous !== undefined && previous.broken !== tile.broken;
+      if (brokenStateChanged) {
+        this.pendingRepairPresentation.delete(key);
+      }
       if (
         previous !== undefined &&
         (tile.hpRatio > previous.hpRatio + 0.003 || (previous.broken && !tile.broken))
       ) {
-        this.addRepairSupplyFliesForHpGain(
+        const hpDelta = Math.max(0, tile.hpRatio - previous.hpRatio) * REPAIR_TILE_HP;
+        const supplyPackets = this.addRepairSupplyFliesForHpGain(
           key,
-          Math.max(0, tile.hpRatio - previous.hpRatio) * REPAIR_TILE_HP,
+          hpDelta,
           previous.broken,
           tile.col + 0.5,
           tile.row + 0.5
         );
+        if (supplyPackets > 0 && !brokenStateChanged) {
+          this.addPendingRepairPresentation(key, hpDelta, tile.col + 0.5, tile.row + 0.5, tile.broken);
+        }
       }
 
       this.previousTileState.set(key, { hpRatio: tile.hpRatio, broken: tile.broken });
@@ -833,8 +967,73 @@ export class GameRenderer {
       if (!seen.has(key)) {
         this.previousTileState.delete(key);
         this.repairSupplyRemainders.delete(key);
+        this.pendingRepairPresentation.delete(key);
       }
     }
+  }
+
+  private addPendingRepairPresentation(
+    key: string,
+    hpDelta: number,
+    x: number,
+    y: number,
+    broken: boolean
+  ): void {
+    if (hpDelta <= 0) {
+      return;
+    }
+
+    const pending = this.pendingRepairPresentation.get(key) ?? [];
+    pending.push({
+      hpDelta,
+      applyAtMs: this.renderClockMs + REPAIR_SUPPLY_FLY_MS,
+      x,
+      y,
+      broken
+    });
+    this.pendingRepairPresentation.set(key, pending);
+  }
+
+  private updatePendingRepairPresentation(raft: RaftView | undefined): void {
+    if (raft === undefined || this.defeatSink !== undefined) {
+      this.pendingRepairPresentation.clear();
+      return;
+    }
+
+    const tiles = new Map(raft.tiles.map((tile) => [tileKey(tile.col, tile.row), tile]));
+    for (const [key, pending] of this.pendingRepairPresentation) {
+      const tile = tiles.get(key);
+      if (tile === undefined || pending.some((entry) => entry.broken !== tile.broken)) {
+        this.pendingRepairPresentation.delete(key);
+        continue;
+      }
+
+      const remaining: PendingRepairPresentation[] = [];
+      for (const entry of pending) {
+        if (this.renderClockMs >= entry.applyAtMs) {
+          this.addPop(entry.x, entry.y, 0x9dffd7, 200, "repair");
+          this.addShake(0.015);
+        } else {
+          remaining.push(entry);
+        }
+      }
+
+      if (remaining.length > 0) {
+        this.pendingRepairPresentation.set(key, remaining);
+      } else {
+        this.pendingRepairPresentation.delete(key);
+      }
+    }
+  }
+
+  private displayedTileHpRatio(key: string, hpRatio: number): number {
+    const pending = this.pendingRepairPresentation.get(key);
+    if (pending === undefined) {
+      return hpRatio;
+    }
+
+    const pendingDelta = pending.reduce((sum, entry) => sum + entry.hpDelta, 0);
+    return clamp01(hpRatio - pendingDelta / REPAIR_TILE_HP);
   }
 
   private updatePlayers(
@@ -1531,7 +1730,6 @@ export class GameRenderer {
       if (fly.ageMs >= REPAIR_SUPPLY_FLY_MS) {
         this.releaseVfxSprite("supplyCrate", fly.sprite);
         this.repairSupplyFlies.splice(index, 1);
-        this.addPop(fly.targetX, fly.targetY, 0x9dffd7, 200, "repair");
         continue;
       }
 
@@ -1651,10 +1849,10 @@ export class GameRenderer {
     wasBroken: boolean,
     targetX: number,
     targetY: number
-  ): void {
+  ): number {
     const source = this.repairSources.get(tileKeyValue);
     if (source === undefined || hpGain <= 0) {
-      return;
+      return 0;
     }
 
     const hpPerSupply = wasBroken ? BROKEN_TILE_HP_PER_SUPPLY : DAMAGED_TILE_HP_PER_SUPPLY;
@@ -1665,7 +1863,7 @@ export class GameRenderer {
     for (let index = 0; index < supplyPackets; index += 1) {
       const sprite = this.acquireVfxSprite("supplyCrate");
       this.repairSupplyFlies.push({
-        ageMs: -index * 85,
+        ageMs: 0,
         sprite,
         x: source.x,
         y: source.y - 0.1,
@@ -1674,6 +1872,7 @@ export class GameRenderer {
         wobble: ((this.renderClockMs + index * 53) % 997) * 0.019
       });
     }
+    return supplyPackets;
   }
 
   private acquireVfxSprite(key: VfxTextureKey): Sprite {
