@@ -3,7 +3,7 @@ export const HINT_STORAGE_KEY = "pp_seen_hints";
 export const HINT_COPY = {
   move: "Move with WASD / arrows - your weapons fight on their own!",
   dash: "Dash with Space or Shift",
-  repair: "Stand near damaged raft tiles with Supplies to repair automatically",
+  repair: "Repairs happen during BUILD - hold E near a damaged tile!",
   coins: "Coins buy weapons & items in the build shop",
   build: "Build phase - stand near a deck tile, spend Supplies on modules, then Ready Up",
   expand: "Stand at the water's edge during BUILD to expand the raft!",
@@ -39,7 +39,7 @@ export function nextHint(seen: ReadonlySet<string>, view: HintView): HintId | nu
     return "revive";
   }
 
-  if (view.nearDamagedTile && !seen.has("repair")) {
+  if (view.inBuildPhase && view.nearDamagedTile && !seen.has("repair")) {
     return "repair";
   }
 

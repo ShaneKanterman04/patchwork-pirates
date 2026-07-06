@@ -117,6 +117,27 @@ describe("downed state", () => {
     expect(downed.reviveProgressTicks).toBe(0);
   });
 
+  it("allows hold-E revives during combat", () => {
+    const world = createWorld(2, TEST_CONTENT);
+    world.run.phase = "combat";
+    const downed = addPlayer(world, "downed");
+    const reviver = addPlayer(world, "reviver");
+    reviver.pos = { x: downed.pos.x + REVIVE_RANGE - 0.1, y: downed.pos.y };
+    downed.hp = 0;
+    tick(world, new Map());
+
+    expect(downed.downed).toBe(true);
+
+    for (let i = 0; i < REVIVE_S * TICK_RATE; i += 1) {
+      tick(world, new Map([["reviver", INTERACT_INPUT]]));
+    }
+
+    expect(world.run.phase).toBe("combat");
+    expect(downed.downed).toBe(false);
+    expect(downed.hp).toBe(Math.round(downed.maxHp * REVIVE_HP_FRACTION));
+    expect(reviver.stats.revives).toBe(1);
+  });
+
   it("resets revive progress when the reviver takes a hit or leaves range", () => {
     const world = createWorld(3, TEST_CONTENT);
     const downed = addPlayer(world, "downed");

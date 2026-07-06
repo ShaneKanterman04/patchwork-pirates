@@ -566,7 +566,7 @@ export class GameRenderer {
   ): CollectedPickup[] {
     this.renderClockMs += deltaMs;
     this.updateExpansionSites(state, myPlayerId);
-    this.updateRepairTargets(state.players, state.raft, state.salvage ?? 0);
+    this.updateRepairTargets(state.wave.phase, state.players, state.raft, state.salvage ?? 0);
     this.updateRepairFeedback(state.raft);
     this.updatePendingRepairPresentation(state.raft);
     this.drawRaft(state.raft);
@@ -917,6 +917,7 @@ export class GameRenderer {
   }
 
   private updateRepairTargets(
+    phase: InterpolatedState["wave"]["phase"],
     players: readonly PlayerView[],
     raft: RaftView | undefined,
     supplies: number
@@ -924,7 +925,7 @@ export class GameRenderer {
     this.repairTargetKeys.clear();
     this.repairSources.clear();
     this.needSupplyTargetKeys.clear();
-    if (raft === undefined) {
+    if (phase !== "build" || raft === undefined) {
       return;
     }
 

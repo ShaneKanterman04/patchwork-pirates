@@ -300,6 +300,12 @@ function repairNearestTile(
   world: WorldState,
   player: PlayerState
 ): void {
+  if (world.run.phase !== "build") {
+    player.repairChargeHp = 0;
+    player.repairTargetKey = null;
+    return;
+  }
+
   const tile = nearestRepairTarget(world, player.pos);
   if (tile === null) {
     player.repairChargeHp = 0;

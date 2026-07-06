@@ -76,6 +76,9 @@ describe("scoreboard stats", () => {
   it("credits player-held repairs when a broken tile is rebuilt", () => {
     const world = createWorld(2, TEST_CONTENT);
     world.run.spawnTimer = Number.MAX_SAFE_INTEGER;
+    // Repairs only run during the build phase now.
+    world.run.phase = "build";
+    world.run.phaseTicksLeft = Number.MAX_SAFE_INTEGER;
     const player = addPlayer(world, "p1");
     world.salvage = 1;
     const tile = world.raft.tiles.find(

@@ -274,6 +274,7 @@ describe("hole movement", () => {
 describe("repair", () => {
   it("spends one supply and applies one HP chunk only after the damaged tile threshold", () => {
     const world = createWorld(1);
+    world.run.phase = "build";
     addPlayer(world, "p1");
     world.salvage = 2;
     const tile = tileAt(world.raft, 1, 1);
@@ -295,6 +296,7 @@ describe("repair", () => {
 
   it("lands repeated chunks at the base repair cadence", () => {
     const world = createWorld(1);
+    world.run.phase = "build";
     addPlayer(world, "p1");
     world.salvage = 3;
     const tile = tileAt(world.raft, 1, 1);
@@ -317,6 +319,7 @@ describe("repair", () => {
 
   it("holds repair charge at the threshold without supplies and resumes when salvage arrives", () => {
     const world = createWorld(1);
+    world.run.phase = "build";
     const player = addPlayer(world, "p1");
     const tile = tileAt(world.raft, 1, 1);
     damageTile(world, 1, 1, 2);
@@ -338,6 +341,7 @@ describe("repair", () => {
 
   it("rebuilds holes in whole chunks, marks patched at full hp, and emits per chunk", () => {
     const world = createWorld(1);
+    world.run.phase = "build";
     const player = addPlayer(world, "p1");
     player.pos = { x: 2.5, y: 1.5 };
     world.salvage = 20;
@@ -365,6 +369,7 @@ describe("repair", () => {
 
   it("keeps patched tiles patched through damage, break, and rebuild", () => {
     const world = createWorld(1);
+    world.run.phase = "build";
     const player = addPlayer(world, "p1");
     player.pos = { x: 2.5, y: 1.5 };
     world.salvage = 40;
@@ -392,6 +397,7 @@ describe("repair", () => {
 
   it("repairs the nearest eligible tile with stable array-order ties", () => {
     const world = createWorld(1);
+    world.run.phase = "build";
     const player = addPlayer(world, "p1");
     player.pos = { x: 1.5, y: 1.5 };
     world.salvage = 2;
@@ -422,6 +428,7 @@ describe("repair", () => {
 
   it("resets accumulated charge when switching repair targets", () => {
     const world = createWorld(1);
+    world.run.phase = "build";
     const player = addPlayer(world, "p1");
     player.pos = { x: 1.5, y: 1.5 };
     world.salvage = 2;
@@ -447,6 +454,7 @@ describe("repair", () => {
 
   it("does nothing when no damaged tile is in range", () => {
     const world = createWorld(1);
+    world.run.phase = "build";
     addPlayer(world, "p1");
     world.salvage = 2;
     const tile = tileAt(world.raft, 4, 4);
@@ -458,4 +466,68 @@ describe("repair", () => {
     expect(tile?.hp).toBe(TILE_MAX_HP - 2);
     expect(world.events).toEqual([]);
   });
+
+  it("does not accrue charge, spend supply, or repair during combat", () => {
+    const world = createWorld(1);
+    world.run.phase = "combat";
+    const player = addPlayer(world, "p1");
+    world.salvage = 2;
+    const tile = tileAt(world.raft, 1, 1);
+    damageTile(world, 1, 1, 2);
+    world.events = [];
+
+    for (let i = 0; i < TICK_RATE; i += 1) {
+      tick(world, new Map([["p1", IDLE_INPUT]]));
+    }
+
+    expect(tile?.hp).toBe(TILE_MAX_HP - 2);
+    expect(world.salvage).toBe(2);
+    expect(player.repairChargeHp).toBe(0);
+    expect(player.repairTargetKey).toBeNull();
+    expect(world.events).toEqual([]);
+  });
+
+  it("clears partial repair charge when combat starts", () => {
+    const world = createWorld(1);
+    world.run.phase = "build";
+    const player = addPlayer(world, "p1");
+    world.salvage = 2;
+    const tile = tileAt(world.raft, 1, 1);
+    damageTile(world, 1, 1, 2);
+
+    for (let i = 0; i < TICK_RATE / 2; i += 1) {
+      tick(world, new Map([["p1", IDLE_INPUT]]));
+    }
+
+    expect(tile?.hp).toBe(TILE_MAX_HP - 2);
+    expect(player.repairChargeHp).toBeCloseTo(PLAYER_REPAIR_RATE / 2);
+
+    world.run.phase = "combat";
+    tick(world, new Map([["p1", IDLE_INPUT]]));
+
+    expect(tile?.hp).toBe(TILE_MAX_HP - 2);
+    expect(world.salvage).toBe(2);
+    expect(player.repairChargeHp).toBe(0);
+    expect(player.repairTargetKey).toBeNull();
+  });
+
+  it.each(["lobby", "victory", "defeat"] as const)(
+    "does not repair during %s phase",
+    (phase) => {
+      const world = createWorld(1);
+      world.run.phase = phase;
+      const player = addPlayer(world, "p1");
+      world.salvage = 2;
+      const tile = tileAt(world.raft, 1, 1);
+      damageTile(world, 1, 1, 2);
+
+      for (let i = 0; i < TICK_RATE; i += 1) {
+        tick(world, new Map([["p1", IDLE_INPUT]]));
+      }
+
+      expect(tile?.hp).toBe(TILE_MAX_HP - 2);
+      expect(world.salvage).toBe(2);
+      expect(player.repairChargeHp).toBe(0);
+    }
+  );
 });

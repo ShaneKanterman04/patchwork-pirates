@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { nextHint } from "./hints";
+import { HINT_COPY, nextHint } from "./hints";
 import type { HintId, HintView } from "./hints";
 
 describe("contextual hints", () => {
   it.each([
     ["move", { inCombat: true }],
     ["dash", { inCombat: true, combatAgeMs: 3_500 }, ["move"]],
-    ["repair", { nearDamagedTile: true }],
+    ["repair", { inBuildPhase: true, nearDamagedTile: true }],
     ["coins", { coinsIncreased: true }],
     ["expand", { canExpandRaft: true }],
     ["build", { inBuildPhase: true }],
@@ -21,7 +21,18 @@ describe("contextual hints", () => {
 
   it("respects seen hints", () => {
     expect(nextHint(new Set(["move"]), view({ inCombat: true }))).toBeNull();
-    expect(nextHint(new Set(["repair"]), view({ nearDamagedTile: true }))).toBeNull();
+    expect(
+      nextHint(new Set(["repair", "build"]), view({ inBuildPhase: true, nearDamagedTile: true }))
+    ).toBeNull();
+  });
+
+  it("only shows the repair hint during build phase near a damaged tile", () => {
+    expect(nextHint(new Set(), view({ nearDamagedTile: true }))).toBeNull();
+    expect(
+      nextHint(new Set(["move", "dash"]), view({ inCombat: true, nearDamagedTile: true }))
+    ).toBeNull();
+    expect(nextHint(new Set(), view({ inBuildPhase: true, nearDamagedTile: true }))).toBe("repair");
+    expect(HINT_COPY.repair).toBe("Repairs happen during BUILD - hold E near a damaged tile!");
   });
 
   it("does not show dash until shortly after combat starts", () => {
@@ -55,6 +66,7 @@ describe("contextual hints", () => {
           nearDamagedTile: true,
           coinsIncreased: true,
           canExpandRaft: true,
+          inBuildPhase: true,
           teammateDowned: true,
           bossPresent: true
         })

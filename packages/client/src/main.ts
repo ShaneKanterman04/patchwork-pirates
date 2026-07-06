@@ -364,7 +364,9 @@ function hintViewFromState(
     inCombat: state.wave.phase === "combat",
     combatAgeMs,
     nearDamagedTile:
-      ownPlayer !== undefined && isDamagedRaftTileNearPlayer(state.raft, ownPlayer.x, ownPlayer.y),
+      state.wave.phase === "build" &&
+      ownPlayer !== undefined &&
+      isDamagedRaftTileNearPlayer(state.raft, ownPlayer.x, ownPlayer.y),
     coinsIncreased:
       previousOwnCoins !== undefined &&
       ownCoinsValue !== undefined &&
