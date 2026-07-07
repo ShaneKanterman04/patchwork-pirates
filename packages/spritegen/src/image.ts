@@ -110,8 +110,67 @@ export function removeChromaKey(source: RgbaImage, threshold: number): RgbaImage
     }
   }
 
+  despillEdges(image);
   clearTransparentRgb(image);
   return image;
+}
+
+function despillEdges(image: RgbaImage): void {
+  const alpha = Buffer.alloc(image.width * image.height);
+
+  for (let i = 0; i < alpha.length; i += 1) {
+    alpha[i] = image.data[i * 4 + 3] ?? 0;
+  }
+
+  for (let y = 0; y < image.height; y += 1) {
+    for (let x = 0; x < image.width; x += 1) {
+      const pixelIndex = y * image.width + x;
+      if (alpha[pixelIndex] !== 255 || !isNearTransparentPixel(alpha, image.width, image.height, x, y, 2)) {
+        continue;
+      }
+
+      const offset = pixelIndex * 4;
+      const r = image.data[offset] ?? 0;
+      const g = image.data[offset + 1] ?? 0;
+      const b = image.data[offset + 2] ?? 0;
+
+      if (g > 60 && g > r * 1.4 && g > b * 1.4) {
+        image.data[offset] = 0;
+        image.data[offset + 1] = 0;
+        image.data[offset + 2] = 0;
+        image.data[offset + 3] = 0;
+      } else if (g > r * 1.15 && g > b * 1.15) {
+        image.data[offset + 1] = Math.max(r, b);
+      }
+    }
+  }
+}
+
+function isNearTransparentPixel(
+  alpha: Buffer,
+  width: number,
+  height: number,
+  x: number,
+  y: number,
+  radius: number
+): boolean {
+  const minY = Math.max(0, y - radius);
+  const maxY = Math.min(height - 1, y + radius);
+  const minX = Math.max(0, x - radius);
+  const maxX = Math.min(width - 1, x + radius);
+
+  for (let py = minY; py <= maxY; py += 1) {
+    for (let px = minX; px <= maxX; px += 1) {
+      if (px === x && py === y) {
+        continue;
+      }
+      if (alpha[py * width + px] === 0) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 function isGreenScreenPixel(image: RgbaImage, offset: number): boolean {

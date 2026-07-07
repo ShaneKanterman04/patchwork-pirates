@@ -1,12 +1,14 @@
 import {
   CORE_MAX_HP,
+  EMERGENCY_PATCH_COOLDOWN_S,
   MAX_RAFT_TILES,
   RAFT_HEIGHT,
+  TICK_RATE,
   RAFT_WIDTH,
   TILE_MAX_HP
 } from "./constants";
 import { forceDowned } from "./downed";
-import type { RaftState, RaftTile, WorldState } from "./types";
+import type { PlayerState, RaftState, RaftTile, WorldState } from "./types";
 
 function tileKey(col: number, row: number): string {
   return `${col},${row}`;
@@ -128,10 +130,41 @@ export function damageTile(
   }
 
   if (tile.hp === 0 && !tile.broken) {
+    const emergencyPatchOwner = emergencyPatchPlayer(world);
     tile.broken = true;
     world.events.push({ type: "tile_broken", col, row });
     downPlayersOnBrokenTile(world, col, row);
+    applyEmergencyPatch(world, tile, emergencyPatchOwner);
   }
+}
+
+function emergencyPatchPlayer(world: WorldState): PlayerState | undefined {
+  return world.players.find(
+    (player) =>
+      player.special === "emergency_patch" &&
+      !player.downed &&
+      !player.out &&
+      player.hp > 0 &&
+      player.specialCooldownTicks <= 0
+  );
+}
+
+function applyEmergencyPatch(
+  world: WorldState,
+  tile: RaftTile,
+  player: PlayerState | undefined
+): void {
+  if (player === undefined) {
+    return;
+  }
+
+  tile.hp = Math.min(tile.maxHp, 5);
+  tile.broken = false;
+  tile.patched = true;
+  player.specialCooldownTicks = Math.round(
+    EMERGENCY_PATCH_COOLDOWN_S * TICK_RATE
+  );
+  world.events.push({ type: "tile_repaired", col: tile.col, row: tile.row });
 }
 
 function downPlayersOnBrokenTile(

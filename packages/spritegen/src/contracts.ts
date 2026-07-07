@@ -150,6 +150,48 @@ export const MVP_SPRITE_ASSETS: readonly SpriteAssetSpec[] = [
     ]
   },
   {
+    id: "carpenter",
+    category: "player",
+    sizeClass: "medium",
+    subject: "friendly shipwright character with tool belt, rolled sleeves, sturdy apron, and small hammer at hip",
+    frames: [
+      { name: "idle", promptAction: "standing ready, facing right" },
+      { name: "idle_1", promptAction: "same carpenter as idle reference, subtle breathing pose, facing right; change only pose", optional: true },
+      { name: "walk_0", promptAction: "same carpenter as idle reference, walking pose frame 1, facing right; change only legs and small body tilt", optional: true },
+      { name: "walk_1", promptAction: "same carpenter as idle reference, walking pose frame 2, facing right; opposite leg forward", optional: true },
+      { name: "walk_2", promptAction: "same carpenter as idle reference, walking pose frame 3, facing right; passing step", optional: true },
+      { name: "walk_3", promptAction: "same carpenter as idle reference, walking pose frame 4, facing right; opposite passing step", optional: true },
+      { name: "attack_0", promptAction: "same carpenter as idle reference, overhead mallet windup pose, facing right; change only arms and body tilt", optional: true },
+      { name: "attack_1", promptAction: "same carpenter as idle reference, mallet smash follow-through pose, facing right; change only arms and body tilt", optional: true }
+    ],
+    animations: [
+      { name: "idle", frames: ["idle", "idle_1"], fps: 2, loop: true },
+      { name: "walk", frames: ["walk_0", "walk_1", "walk_2", "walk_3"], fps: 8, loop: true },
+      { name: "attack", frames: ["attack_0", "attack_1"], fps: 6, loop: false }
+    ]
+  },
+  {
+    id: "cook",
+    category: "player",
+    sizeClass: "medium",
+    subject: "cheery sea-cook character with apron, kerchief, slight belly, and ladle at belt",
+    frames: [
+      { name: "idle", promptAction: "standing ready, facing right" },
+      { name: "idle_1", promptAction: "same cook as idle reference, subtle breathing pose, facing right; change only pose", optional: true },
+      { name: "walk_0", promptAction: "same cook as idle reference, walking pose frame 1, facing right; change only legs and small body tilt", optional: true },
+      { name: "walk_1", promptAction: "same cook as idle reference, walking pose frame 2, facing right; opposite leg forward", optional: true },
+      { name: "walk_2", promptAction: "same cook as idle reference, walking pose frame 3, facing right; passing step", optional: true },
+      { name: "walk_3", promptAction: "same cook as idle reference, walking pose frame 4, facing right; opposite passing step", optional: true },
+      { name: "attack_0", promptAction: "same cook as idle reference, frying-pan swat windup pose, facing right; change only arms and body tilt", optional: true },
+      { name: "attack_1", promptAction: "same cook as idle reference, frying-pan swat follow-through pose, facing right; change only arms and body tilt", optional: true }
+    ],
+    animations: [
+      { name: "idle", frames: ["idle", "idle_1"], fps: 2, loop: true },
+      { name: "walk", frames: ["walk_0", "walk_1", "walk_2", "walk_3"], fps: 8, loop: true },
+      { name: "attack", frames: ["attack_0", "attack_1"], fps: 6, loop: false }
+    ]
+  },
+  {
     id: "chum",
     category: "enemy",
     sizeClass: "small",
@@ -369,6 +411,13 @@ export const MVP_SPRITE_ASSETS: readonly SpriteAssetSpec[] = [
     frames: [{ name: "idle", promptAction: "centered icon-like pickup" }]
   },
   {
+    id: "food",
+    category: "pickup",
+    sizeClass: "small",
+    subject: "hearty stew bowl with steam curl",
+    frames: [{ name: "idle", promptAction: "centered icon-like pickup" }]
+  },
+  {
     id: "harpoon_projectile",
     category: "projectile",
     sizeClass: "projectile",
@@ -387,6 +436,20 @@ export const MVP_SPRITE_ASSETS: readonly SpriteAssetSpec[] = [
     category: "projectile",
     sizeClass: "projectile",
     subject: "small dark cannonball projectile with bright rim highlight",
+    frames: [{ name: "idle", promptAction: "flying right, centered" }]
+  },
+  {
+    id: "powder_keg_toss",
+    category: "projectile",
+    sizeClass: "small",
+    subject: "wooden powder keg projectile with a lit sparking fuse",
+    frames: [{ name: "idle", promptAction: "flying right, centered" }]
+  },
+  {
+    id: "swordfish_rapier",
+    category: "projectile",
+    sizeClass: "small",
+    subject: "slim silver swordfish-bill dart projectile, pointing right",
     frames: [{ name: "idle", promptAction: "flying right, centered" }]
   },
   {

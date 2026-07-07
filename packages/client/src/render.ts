@@ -58,6 +58,7 @@ const DEFEAT_UI_DELAY_MS = 220;
 const PROJECTILE_TRAIL_INTERVAL_MS = 55;
 const LEAPER_SPRAY_INTERVAL_MS = 70;
 const LEAPER_FAST_DELTA_TILES = 0.12;
+const FOOD_HEAL_TINT = 0x9dffd7;
 const OCEAN_BASE_PATH = "/assets/water/ocean-base.png";
 const OCEAN_SHIMMER_PATH = "/assets/water/ocean-shimmer.png";
 const OCEAN_TILE_SCALE = 0.5;
@@ -90,6 +91,8 @@ const PROJECTILE_MOTION: Record<string, ProjectileMotionConfig> = {
   seagull_bell: { faceHeading: true, rotationOffset: -Math.PI / 2, wobble: true, trailTint: 0xffffff },
   coconut_launcher: { spinMs: 0.012, arcBob: true, trailTint: 0xd8f2a4 },
   coconut_projectile: { spinMs: 0.012, arcBob: true, trailTint: 0xd8f2a4 },
+  powder_keg_toss: { spinMs: 0.004, arcBob: true, trailTint: 0x8a8f96 },
+  swordfish_rapier: { faceHeading: true, rotationOffset: 0, trailTint: 0xd9f4ff },
   cannon: { spinMs: 0.006, trailTint: 0x9aa7b0 },
   cannon_projectile: { spinMs: 0.006, trailTint: 0x9aa7b0 },
   anchor_flail: { spinMs: 0.0014, noTrail: true, skipHeading: true, trailTint: 0xffffff }
@@ -1716,11 +1719,7 @@ export class GameRenderer {
       graphic.visible = !spriteApplied;
       if (!spriteApplied) {
         graphic.position.set(pickup.x, pickup.y);
-        graphic
-          .clear()
-          .circle(0, 0, 0.16)
-          .fill(pickup.kind === "coin" ? 0xffcf33 : 0xf3f0a5)
-          .stroke({ color: 0x8f6400, width: 0.035 });
+        drawPickupFallback(graphic, pickup.kind);
       }
     }
 
@@ -1821,6 +1820,9 @@ export class GameRenderer {
       fly.ageMs += deltaMs;
 
       if (fly.ageMs >= PICKUP_FLY_MS) {
+        if (fly.kind === "food") {
+          this.addPop(fly.ownerX, fly.ownerY, FOOD_HEAL_TINT, 180, "repair");
+        }
         this.releaseVfxSprite("pickupFlyOrb", fly.sprite);
         this.pickupFlies.splice(index, 1);
         continue;
@@ -1950,7 +1952,7 @@ export class GameRenderer {
 
   private addPickupFly(pickup: CollectedPickup): void {
     const sprite = this.acquireVfxSprite("pickupFlyOrb");
-    sprite.tint = pickup.kind === "coin" ? 0xffcf33 : 0xf3f0a5;
+    sprite.tint = pickup.kind === "coin" ? 0xffcf33 : pickup.kind === "food" ? FOOD_HEAL_TINT : 0xf3f0a5;
     this.pickupFlies.push({
       ageMs: 0,
       sprite,
@@ -3255,6 +3257,29 @@ function projectileSpriteId(kind: string): string {
   return kind;
 }
 
+function drawPickupFallback(graphic: Graphics, kind: string): void {
+  graphic.clear();
+  if (kind === "food") {
+    graphic
+      .ellipse(0, 0.04, 0.18, 0.11)
+      .fill(0xc96f38)
+      .stroke({ color: 0x7c3f1d, width: 0.026 })
+      .ellipse(0, 0.005, 0.13, 0.055)
+      .fill(0xffd394)
+      .moveTo(-0.055, -0.06)
+      .quadraticCurveTo(-0.12, -0.16, -0.035, -0.2)
+      .moveTo(0.035, -0.05)
+      .quadraticCurveTo(0.11, -0.14, 0.045, -0.2)
+      .stroke({ color: 0xfff2dc, width: 0.024, alpha: 0.82, cap: "round" });
+    return;
+  }
+
+  graphic
+    .circle(0, 0, 0.16)
+    .fill(kind === "coin" ? 0xffcf33 : 0xf3f0a5)
+    .stroke({ color: 0x8f6400, width: 0.035 });
+}
+
 function drawProjectileFallback(
   graphic: Graphics,
   kind: string,
@@ -3270,6 +3295,16 @@ function drawProjectileFallback(
     return;
   }
 
+  if (kind === "powder_keg_toss") {
+    drawPowderKegProjectile(graphic);
+    return;
+  }
+
+  if (kind === "swordfish_rapier") {
+    drawSwordfishRapierProjectile(graphic);
+    return;
+  }
+
   const isEnemy = faction === "enemy";
   graphic
     .clear()
@@ -3279,6 +3314,38 @@ function drawProjectileFallback(
     .moveTo(isEnemy ? -0.18 : -0.26, 0)
     .lineTo(0.04, 0)
     .stroke({ color: isEnemy ? 0xb9ff9e : 0xffffff, width: 0.04, alpha: 0.65 });
+}
+
+function drawPowderKegProjectile(graphic: Graphics): void {
+  graphic
+    .clear()
+    .roundRect(-0.15, -0.2, 0.3, 0.4, 0.08)
+    .fill(0x8a5a33)
+    .stroke({ color: 0x4e2f1d, width: 0.024 })
+    .moveTo(-0.055, -0.17)
+    .lineTo(-0.055, 0.17)
+    .moveTo(0.055, -0.17)
+    .lineTo(0.055, 0.17)
+    .stroke({ color: 0xb9814e, width: 0.018, alpha: 0.75, cap: "round" })
+    .roundRect(-0.17, -0.15, 0.34, 0.07, 0.025)
+    .roundRect(-0.17, 0.08, 0.34, 0.07, 0.025)
+    .fill(0x3d3d3d);
+}
+
+function drawSwordfishRapierProjectile(graphic: Graphics): void {
+  graphic
+    .clear()
+    .moveTo(-0.18, -0.028)
+    .lineTo(0.15, -0.018)
+    .lineTo(0.2, 0)
+    .lineTo(0.15, 0.018)
+    .lineTo(-0.18, 0.028)
+    .lineTo(-0.14, 0)
+    .lineTo(-0.18, -0.028)
+    .fill(0xd8e4ec)
+    .stroke({ color: 0x6f8794, width: 0.014, join: "round" })
+    .circle(-0.16, 0, 0.035)
+    .fill(0xeffaff);
 }
 
 function drawAnchorFlailProjectile(graphic: Graphics): void {

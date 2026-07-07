@@ -252,6 +252,12 @@ renderer.app.ticker.add((ticker) => {
 
   const collectedPickups = renderer.update(state, connection.myPlayerId, ticker.deltaMS);
   for (const pickup of collectedPickups) {
+    if (pickup.kind === "food") {
+      // Heal, not currency: soft chime + HP pulse instead of coin feedback.
+      audio.play("repair");
+      pulseHudValue(root, "[data-hp-text]");
+      continue;
+    }
     audio.play("coin");
     pulseHudValue(root, pickup.kind === "salvage" ? "[data-salvage]" : "[data-coins]");
   }

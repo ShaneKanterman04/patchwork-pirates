@@ -17,6 +17,7 @@ export interface PlayerState {
   passive: CharacterPassive;
   special: CharacterSpecial;
   specialCooldownTicks: number;
+  chefKillCounter?: number;
   auraAttackSpeedMult: number;
   pos: Vec2;
   facing: Vec2;
@@ -119,11 +120,17 @@ export interface WeaponDef {
   pattern: WeaponPattern;
 }
 
-export type CharacterPassive = "none" | "attack_speed_aura";
+export type CharacterPassive =
+  | "none"
+  | "attack_speed_aura"
+  | "master_repairs"
+  | "chef";
 export type CharacterSpecial =
   | "none"
   | "mark_dangerous"
-  | "harpoon_raft_priority";
+  | "harpoon_raft_priority"
+  | "emergency_patch"
+  | "soup_pot";
 
 export interface CharacterDef {
   id: string;
@@ -328,7 +335,7 @@ export interface BossState {
 
 export interface PickupState {
   id: string;
-  kind: "coin" | "salvage";
+  kind: "coin" | "salvage" | "food";
   pos: Vec2;
   value: number;
 }

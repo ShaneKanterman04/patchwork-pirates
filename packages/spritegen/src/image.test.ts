@@ -18,6 +18,31 @@ describe("sprite image helpers", () => {
     expect(keyed.data[3]).toBe(0);
   });
 
+  it("despills green edge fringe after removing chroma key", () => {
+    const image = emptyImage(8, 8);
+    fill(image, 0, 255, 0, 255);
+    rect(image, 3, 3, 3, 3, 130, 70, 90, 255);
+    pixel(image, 2, 3, 3, 169, 3, 255);
+    pixel(image, 3, 2, 84, 110, 70, 255);
+
+    const keyed = removeChromaKey(image, 8);
+
+    expect(getPixel(keyed, 2, 3)).toEqual([0, 0, 0, 0]);
+    expect(getPixel(keyed, 3, 2)).toEqual([84, 84, 70, 255]);
+    expect(getPixel(keyed, 3, 3)).toEqual([130, 70, 90, 255]);
+  });
+
+  it("leaves interior green pixels untouched away from transparent edges", () => {
+    const image = emptyImage(10, 10);
+    fill(image, 0, 255, 0, 255);
+    rect(image, 2, 2, 6, 6, 120, 80, 60, 255);
+    pixel(image, 5, 5, 20, 140, 30, 255);
+
+    const keyed = removeChromaKey(image, 8);
+
+    expect(getPixel(keyed, 5, 5)).toEqual([20, 140, 30, 255]);
+  });
+
   it("normalizes visible content into a centered fixed-size cell", () => {
     const image = emptyImage(20, 20);
     rect(image, 4, 7, 10, 5, 120, 80, 40, 255);
@@ -77,4 +102,30 @@ function rect(
       image.data[offset + 3] = a;
     }
   }
+}
+
+function pixel(
+  image: { width: number; height: number; data: Buffer },
+  x: number,
+  y: number,
+  r: number,
+  g: number,
+  b: number,
+  a: number
+): void {
+  const offset = (y * image.width + x) * 4;
+  image.data[offset] = r;
+  image.data[offset + 1] = g;
+  image.data[offset + 2] = b;
+  image.data[offset + 3] = a;
+}
+
+function getPixel(image: { width: number; data: Buffer }, x: number, y: number): [number, number, number, number] {
+  const offset = (y * image.width + x) * 4;
+  return [
+    image.data[offset] ?? 0,
+    image.data[offset + 1] ?? 0,
+    image.data[offset + 2] ?? 0,
+    image.data[offset + 3] ?? 0
+  ];
 }

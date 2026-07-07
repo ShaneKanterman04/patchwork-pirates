@@ -60,6 +60,12 @@ export const MARK_INTERVAL_S = 12;
 export const MARK_DURATION_S = 5;
 export const MARK_DAMAGE_MULT = 1.4;
 export const MARK_RADIUS = 5;
+export const MASTER_REPAIR_MULT = 1.5;
+export const CHEF_KILL_RADIUS = 3;
+export const CHEF_KILLS_PER_FOOD = 4;
+export const FOOD_HEAL_VALUE = 15;
+export const EMERGENCY_PATCH_COOLDOWN_S = 25;
+export const SOUP_POT_COOLDOWN_S = 20;
 
 export const KRAKEN_HP = 1200;
 export const TENTACLE_COUNT = 3;

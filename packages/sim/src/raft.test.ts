@@ -38,6 +38,34 @@ describe("damageTile", () => {
     expect(world.events).toEqual([{ type: "tile_broken", col: 1, row: 1 }]);
   });
 
+  it("uses emergency patch on the first deck tile break and leaves the next break on cooldown", () => {
+    const world = createWorld(1);
+    const carpenter = addPlayer(world, "carpenter");
+    carpenter.special = "emergency_patch";
+    const first = tileAt(world.raft, 1, 1);
+    const second = tileAt(world.raft, 1, 2);
+
+    damageTile(world, 1, 1, 1000);
+
+    expect(first).toMatchObject({ hp: 5, broken: false, patched: true });
+    expect(carpenter.specialCooldownTicks).toBe(25 * TICK_RATE);
+    expect(world.events).toEqual([
+      { type: "tile_broken", col: 1, row: 1 },
+      {
+        type: "player_fell",
+        playerId: "carpenter",
+        pos: { x: 1.5, y: 1.5 }
+      },
+      { type: "tile_repaired", col: 1, row: 1 }
+    ]);
+
+    world.events = [];
+    damageTile(world, 1, 2, 1000);
+
+    expect(second).toMatchObject({ hp: 0, broken: true, patched: false });
+    expect(world.events).toEqual([{ type: "tile_broken", col: 1, row: 2 }]);
+  });
+
   it("downs a standing player on a deck tile when it breaks", () => {
     const world = createWorld(1);
     const player = addPlayer(world, "p1");
@@ -292,6 +320,37 @@ describe("repair", () => {
     expect(tile?.hp).toBeCloseTo(TILE_MAX_HP);
     expect(world.salvage).toBe(1);
     expect(world.events).toContainEqual({ type: "tile_repaired", col: 1, row: 1 });
+  });
+
+  it("lets master repairs restore larger chunks while other players keep base repair chunks", () => {
+    const carpenterWorld = createWorld(1);
+    carpenterWorld.run.phase = "build";
+    const carpenter = addPlayer(carpenterWorld, "carpenter");
+    carpenter.passive = "master_repairs";
+    carpenterWorld.salvage = 1;
+    const carpenterTile = tileAt(carpenterWorld.raft, 1, 1);
+    damageTile(carpenterWorld, 1, 1, 8);
+
+    for (let i = 0; i < TICK_RATE * 1.5; i += 1) {
+      tick(carpenterWorld, new Map([["carpenter", IDLE_INPUT]]));
+    }
+
+    expect(carpenterTile?.hp).toBe(TILE_MAX_HP - 2);
+    expect(carpenterWorld.salvage).toBe(0);
+
+    const otherWorld = createWorld(1);
+    otherWorld.run.phase = "build";
+    addPlayer(otherWorld, "p1");
+    otherWorld.salvage = 1;
+    const otherTile = tileAt(otherWorld.raft, 1, 1);
+    damageTile(otherWorld, 1, 1, 8);
+
+    for (let i = 0; i < TICK_RATE; i += 1) {
+      tick(otherWorld, new Map([["p1", IDLE_INPUT]]));
+    }
+
+    expect(otherTile?.hp).toBe(TILE_MAX_HP - 4);
+    expect(otherWorld.salvage).toBe(0);
   });
 
   it("lands repeated chunks at the base repair cadence", () => {

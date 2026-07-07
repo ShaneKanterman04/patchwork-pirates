@@ -9,6 +9,7 @@ import {
   TICK_RATE,
   addPlayer,
   createWorld,
+  resolveEnemyDeaths,
   selectTarget,
   tick
 } from "./index";
@@ -82,6 +83,24 @@ const FISHER: CharacterDef = {
   special: "harpoon_raft_priority"
 };
 
+const CARPENTER: CharacterDef = {
+  id: "carpenter",
+  name: "Carpenter",
+  startingWeaponId: "cutlass",
+  statProfile: {},
+  passive: "master_repairs",
+  special: "emergency_patch"
+};
+
+const COOK: CharacterDef = {
+  id: "cook",
+  name: "Cook",
+  startingWeaponId: "cutlass",
+  statProfile: {},
+  passive: "chef",
+  special: "soup_pot"
+};
+
 const CONTENT: ContentRegistry = {
   weapons: {
     cutlass: CUTLASS,
@@ -89,7 +108,12 @@ const CONTENT: ContentRegistry = {
     test_harpoon: TEST_HARPOON,
     lob: LOB
   },
-  characters: { captain: CAPTAIN, fisher: FISHER },
+  characters: {
+    captain: CAPTAIN,
+    fisher: FISHER,
+    carpenter: CARPENTER,
+    cook: COOK
+  },
   items: {},
   enemies: {
     chum: enemyDef("chum", 100, 0),
@@ -119,6 +143,13 @@ describe("characters", () => {
       "harpoon_gun"
     ]);
     expect(fisher.pickupRadius).toBeCloseTo(BASE_PICKUP_RADIUS + 0.6);
+
+    const carpenter = addPlayer(world, "carpenter", [], "carpenter");
+    const cook = addPlayer(world, "cook", [], "cook");
+    expect(carpenter.passive).toBe("master_repairs");
+    expect(carpenter.special).toBe("emergency_patch");
+    expect(cook.passive).toBe("chef");
+    expect(cook.special).toBe("soup_pot");
   });
 
   it("applies captain aura to nearby teammates and removes it out of range or downed", () => {
@@ -234,6 +265,73 @@ describe("characters", () => {
 
     expect(selectTarget(world, fisher, TEST_HARPOON)).toBe(raftAttacker);
     expect(selectTarget(world, fisher, TEST_HARPOON)).not.toBe(near);
+  });
+
+  it("drops food on every fourth nearby kill for each cook and ignores far kills", () => {
+    const world = createWorld(1, CONTENT);
+    const firstCook = addPlayer(world, "cook1", [], "cook");
+    const secondCook = addPlayer(world, "cook2", [], "cook");
+    firstCook.pos = { x: 1.5, y: 1.5 };
+    secondCook.pos = { x: 4.5, y: 4.5 };
+
+    for (let i = 0; i < 3; i += 1) {
+      const enemy = addEnemy(world, `near${i}`, "chum", {
+        x: firstCook.pos.x + 1,
+        y: firstCook.pos.y
+      });
+      enemy.hp = 0;
+    }
+    const far = addEnemy(world, "far", "chum", { x: 4.5, y: 4.5 });
+    far.hp = 0;
+
+    resolveEnemyDeaths(world);
+
+    expect(firstCook.chefKillCounter).toBe(3);
+    expect(secondCook.chefKillCounter).toBe(1);
+    expect(world.pickups.filter((pickup) => pickup.kind === "food")).toEqual([]);
+
+    const fourth = addEnemy(world, "fourth", "chum", {
+      x: firstCook.pos.x + 1,
+      y: firstCook.pos.y
+    });
+    fourth.hp = 0;
+
+    resolveEnemyDeaths(world);
+
+    expect(firstCook.chefKillCounter).toBe(0);
+    expect(secondCook.chefKillCounter).toBe(1);
+    expect(world.pickups.filter((pickup) => pickup.kind === "food")).toEqual([
+      { id: "e5", kind: "food", pos: { x: 2.5, y: 1.5 }, value: 15 }
+    ]);
+  });
+
+  it("drops soup pot food every 20s during combat and not during build", () => {
+    const buildWorld = createWorld(1, CONTENT);
+    buildWorld.run.phase = "build";
+    addPlayer(buildWorld, "cook", [], "cook");
+
+    tick(buildWorld, new Map([["cook", IDLE_INPUT]]));
+
+    expect(buildWorld.pickups.filter((pickup) => pickup.kind === "food")).toEqual([]);
+
+    const combatWorld = createWorld(1, CONTENT);
+    combatWorld.run.phase = "combat";
+    combatWorld.run.spawnTimer = Number.MAX_SAFE_INTEGER;
+    const cook = addPlayer(combatWorld, "cook", [], "cook");
+
+    tick(combatWorld, new Map([["cook", IDLE_INPUT]]));
+
+    expect(combatWorld.pickups.filter((pickup) => pickup.kind === "food")).toEqual([
+      { id: "e1", kind: "food", pos: { ...cook.pos }, value: 15 }
+    ]);
+    expect(cook.specialCooldownTicks).toBe(20 * TICK_RATE);
+
+    for (let i = 0; i < 20 * TICK_RATE; i += 1) {
+      tick(combatWorld, new Map([["cook", IDLE_INPUT]]));
+    }
+
+    expect(combatWorld.pickups.filter((pickup) => pickup.kind === "food")).toHaveLength(2);
+    expect(cook.specialCooldownTicks).toBe(20 * TICK_RATE);
   });
 
   it("replays captain and fisher worlds deterministically", () => {

@@ -1,9 +1,11 @@
 import {
   AURA_ATTACK_SPEED_BONUS,
   AURA_RADIUS,
+  FOOD_HEAL_VALUE,
   MARK_DURATION_S,
   MARK_INTERVAL_S,
   MARK_RADIUS,
+  SOUP_POT_COOLDOWN_S,
   TICK_RATE
 } from "./constants";
 import { threatScore } from "./targeting";
@@ -43,6 +45,22 @@ export function updateSpecials(world: WorldState): void {
   for (const player of world.players) {
     if (player.specialCooldownTicks > 0) {
       player.specialCooldownTicks -= 1;
+    }
+
+    if (
+      player.special === "soup_pot" &&
+      isActivePlayer(player) &&
+      player.specialCooldownTicks === 0 &&
+      world.run.phase === "combat"
+    ) {
+      world.pickups.push({
+        id: nextEntityId(world),
+        kind: "food",
+        pos: { ...player.pos },
+        value: FOOD_HEAL_VALUE
+      });
+      player.specialCooldownTicks = Math.round(SOUP_POT_COOLDOWN_S * TICK_RATE);
+      continue;
     }
 
     if (
@@ -97,4 +115,10 @@ function distance(a: { x: number; y: number }, b: { x: number; y: number }) {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
   return Math.sqrt(dx * dx + dy * dy);
+}
+
+function nextEntityId(world: WorldState): string {
+  const id = `e${world.nextEntityId}`;
+  world.nextEntityId += 1;
+  return id;
 }

@@ -6,6 +6,7 @@ import {
   DAMAGED_TILE_HP_PER_SUPPLY,
   HOLE_REBUILD_RATE,
   INTERACT_RANGE,
+  MASTER_REPAIR_MULT,
   PING_SCAN_RADIUS,
   PING_TTL_S,
   PLAYER_REPAIR_RATE,
@@ -229,6 +230,13 @@ export function collectPickups(world: WorldState): void {
     let selectedDistanceSquared = Number.POSITIVE_INFINITY;
 
     for (const player of world.players) {
+      if (
+        pickup.kind === "food" &&
+        (player.downed || player.out || player.hp <= 0 || player.hp >= player.maxHp)
+      ) {
+        continue;
+      }
+
       const dx = pickup.pos.x - player.pos.x;
       const dy = pickup.pos.y - player.pos.y;
       const distanceSquared = dx * dx + dy * dy;
@@ -256,6 +264,8 @@ export function collectPickups(world: WorldState): void {
 
     if (pickup.kind === "coin") {
       selected.coins += pickup.value;
+    } else if (pickup.kind === "food") {
+      selected.hp = Math.min(selected.maxHp, selected.hp + pickup.value);
     } else {
       world.salvage = Math.min(supplyCapacity(world), world.salvage + pickup.value);
     }
@@ -320,7 +330,13 @@ function repairNearestTile(
   }
 
   const rate = tile.broken ? HOLE_REBUILD_RATE : PLAYER_REPAIR_RATE;
-  const hpPerSupply = tile.broken ? BROKEN_TILE_HP_PER_SUPPLY : DAMAGED_TILE_HP_PER_SUPPLY;
+  const baseHpPerSupply = tile.broken
+    ? BROKEN_TILE_HP_PER_SUPPLY
+    : DAMAGED_TILE_HP_PER_SUPPLY;
+  const hpPerSupply =
+    player.passive === "master_repairs"
+      ? baseHpPerSupply * MASTER_REPAIR_MULT
+      : baseHpPerSupply;
   player.repairChargeHp = Math.min(
     hpPerSupply,
     player.repairChargeHp + (rate * player.repairSpeed) / TICK_RATE

@@ -28,6 +28,30 @@ export const CUTLASS = {
   pattern: { kind: "melee_arc", arcDegrees: 90 }
 } as const satisfies DescribedWeaponDef;
 
+export const MALLET = {
+  id: "mallet",
+  name: "Mallet",
+  description: "Heavy overhead swing: slow but crushing",
+  shopPrice: 14,
+  targeting: "nearest",
+  cooldownS: 1.1,
+  rangeTiles: 1.3,
+  damage: 30,
+  pattern: { kind: "melee_arc", arcDegrees: 70 }
+} as const satisfies DescribedWeaponDef;
+
+export const FRYING_PAN = {
+  id: "frying_pan",
+  name: "Frying Pan",
+  description: "Wide sizzling swat: keeps the crowd off you",
+  shopPrice: 14,
+  targeting: "nearest",
+  cooldownS: 0.8,
+  rangeTiles: 1.2,
+  damage: 22,
+  pattern: { kind: "melee_arc", arcDegrees: 110 }
+} as const satisfies DescribedWeaponDef;
+
 export const HARPOON_GUN = {
   id: "harpoon_gun",
   name: "Harpoon Gun",
@@ -59,6 +83,30 @@ export const COCONUT_LAUNCHER = {
   rangeTiles: 5,
   damage: 26,
   pattern: { kind: "lob", projectileSpeed: 7, aoeRadius: 1.3 }
+} as const satisfies DescribedWeaponDef;
+
+export const POWDER_KEG_TOSS = {
+  id: "powder_keg_toss",
+  name: "Powder Keg Toss",
+  description: "Lobbed keg: huge blast, slow fuse",
+  shopPrice: 24,
+  targeting: "densest_cluster",
+  cooldownS: 2.4,
+  rangeTiles: 5.5,
+  damage: 34,
+  pattern: { kind: "lob", projectileSpeed: 6, aoeRadius: 1.6 }
+} as const satisfies DescribedWeaponDef;
+
+export const SWORDFISH_RAPIER = {
+  id: "swordfish_rapier",
+  name: "Swordfish Rapier",
+  description: "Rapid darting jabs: a flurry of quick bolts",
+  shopPrice: 20,
+  targeting: "nearest",
+  cooldownS: 0.35,
+  rangeTiles: 5,
+  damage: 12,
+  pattern: { kind: "projectile", projectileSpeed: 16, homing: false }
 } as const satisfies DescribedWeaponDef;
 
 export const ANCHOR_FLAIL = {
@@ -360,8 +408,12 @@ export const REPAIR_STATION = {
 
 export const WEAPONS = {
   cutlass: CUTLASS,
+  mallet: MALLET,
+  frying_pan: FRYING_PAN,
   harpoon_gun: HARPOON_GUN,
   coconut_launcher: COCONUT_LAUNCHER,
+  powder_keg_toss: POWDER_KEG_TOSS,
+  swordfish_rapier: SWORDFISH_RAPIER,
   anchor_flail: ANCHOR_FLAIL,
   seagull_bell: SEAGULL_BELL,
   leaky_bucket: LEAKY_BUCKET,
@@ -386,9 +438,29 @@ export const FISHER = {
   special: "harpoon_raft_priority"
 } as const satisfies CharacterDef;
 
+export const CARPENTER = {
+  id: "carpenter",
+  name: "Carpenter",
+  startingWeaponId: "mallet",
+  statProfile: { maxHp: 10, repairSpeed: 0.25 },
+  passive: "master_repairs",
+  special: "emergency_patch"
+} as const satisfies CharacterDef;
+
+export const COOK = {
+  id: "cook",
+  name: "Cook",
+  startingWeaponId: "frying_pan",
+  statProfile: { maxHp: 20, moveSpeed: -0.2 },
+  passive: "chef",
+  special: "soup_pot"
+} as const satisfies CharacterDef;
+
 export const CHARACTERS = {
   captain: CAPTAIN,
-  fisher: FISHER
+  fisher: FISHER,
+  carpenter: CARPENTER,
+  cook: COOK
 } as const satisfies Record<string, CharacterDef>;
 
 export const PLATED_HULL = {

@@ -1,4 +1,7 @@
 import {
+  CHEF_KILL_RADIUS,
+  CHEF_KILLS_PER_FOOD,
+  FOOD_HEAL_VALUE,
   PLAYER_RADIUS,
   TICK_RATE
 } from "./constants";
@@ -411,6 +414,7 @@ export function resolveEnemyDeaths(world: WorldState): void {
       enemyId: enemy.id,
       pos: { ...enemy.pos }
     });
+    updateChefKills(world, enemy);
     if (def?.behavior.kind === "explode_on_death") {
       explodeOnDeath(world, enemy, def.behavior);
     }
@@ -446,6 +450,41 @@ export function resolveEnemyDeaths(world: WorldState): void {
   }
 
   world.enemies = survivors;
+}
+
+function updateChefKills(world: WorldState, enemy: EnemyState): void {
+  const radiusSquared = CHEF_KILL_RADIUS * CHEF_KILL_RADIUS;
+
+  for (const player of world.players) {
+    if (
+      player.passive !== "chef" ||
+      player.downed ||
+      player.out ||
+      player.hp <= 0 ||
+      distanceSquared(player.pos, enemy.pos) > radiusSquared
+    ) {
+      continue;
+    }
+
+    player.chefKillCounter = (player.chefKillCounter ?? 0) + 1;
+    if (player.chefKillCounter < CHEF_KILLS_PER_FOOD) {
+      continue;
+    }
+
+    player.chefKillCounter = 0;
+    world.pickups.push({
+      id: nextEntityId(world),
+      kind: "food",
+      pos: { ...enemy.pos },
+      value: FOOD_HEAL_VALUE
+    });
+  }
+}
+
+function distanceSquared(a: Vec2, b: Vec2): number {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return dx * dx + dy * dy;
 }
 
 export function createEnemy(

@@ -150,6 +150,24 @@ describe("pickup collection", () => {
 
     expect(world.salvage).toBe(BASE_SUPPLY_CAP);
   });
+
+  it("heals the nearest eligible food collector, caps at max hp, and ignores downed players", () => {
+    const world = createWorld(1, CONTENT);
+    const downed = addPlayer(world, "a_downed");
+    const player = addPlayer(world, "b_player");
+    downed.pos = { x: 1.5, y: 1.5 };
+    downed.hp = 0;
+    downed.downed = true;
+    player.pos = { x: 1.8, y: 1.5 };
+    player.hp = player.maxHp - 5;
+    world.pickups.push({ id: "food", kind: "food", pos: { x: 1.5, y: 1.5 }, value: 15 });
+
+    collectPickups(world);
+
+    expect(player.hp).toBe(player.maxHp);
+    expect(downed.hp).toBe(0);
+    expect(world.pickups).toEqual([]);
+  });
 });
 
 describe("salvage drops", () => {
