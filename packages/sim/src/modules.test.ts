@@ -51,12 +51,12 @@ const REPAIR_STATION: ModuleDef = {
 const SPIKE_RAIL: ModuleDef = {
   id: "spike_rail",
   name: "Spike Rail",
-  maxHp: 45,
-  salvageCost: 14,
+  maxHp: 55,
+  salvageCost: 11,
   behavior: {
     kind: "spike_rail",
-    damage: 6,
-    rangeTiles: 0.75,
+    damage: 10,
+    rangeTiles: 0.9,
     cooldownS: 0.5
   }
 };
@@ -213,19 +213,21 @@ describe("spike rail module", () => {
   it("damages enemies in boarding range", () => {
     const world = createWorld(1, CONTENT);
     const module = placeModule(world, "spike_rail", 1, 1);
-    const enemy = addEnemy(world, "e1", { x: 2.45, y: 1.5 });
+    const firstEnemy = addEnemy(world, "e1", { x: 2.65, y: 1.5 });
+    const secondEnemy = addEnemy(world, "e2", { x: 1.5, y: 2.65 });
 
     updateModules(world);
 
     expect(module).not.toBeNull();
-    expect(enemy.hp).toBe(CHUM.maxHp - 6);
+    expect(firstEnemy.hp).toBe(CHUM.maxHp - 10);
+    expect(secondEnemy.hp).toBe(CHUM.maxHp - 10);
     expect(module?.cooldownTicks).toBe(Math.round(0.5 * TICK_RATE));
   });
 
   it("ignores enemies outside boarding range", () => {
     const world = createWorld(1, CONTENT);
     const module = placeModule(world, "spike_rail", 1, 1);
-    const enemy = addEnemy(world, "e1", { x: 2.6, y: 1.5 });
+    const enemy = addEnemy(world, "e1", { x: 2.75, y: 1.5 });
 
     updateModules(world);
 
@@ -236,19 +238,19 @@ describe("spike rail module", () => {
   it("respects cooldown between pulses", () => {
     const world = createWorld(1, CONTENT);
     const module = placeModule(world, "spike_rail", 1, 1);
-    const enemy = addEnemy(world, "e1", { x: 2.45, y: 1.5 });
+    const enemy = addEnemy(world, "e1", { x: 2.65, y: 1.5 });
 
     updateModules(world);
     updateModules(world);
 
-    expect(enemy.hp).toBe(CHUM.maxHp - 6);
+    expect(enemy.hp).toBe(CHUM.maxHp - 10);
     expect(module?.cooldownTicks).toBe(Math.round(0.5 * TICK_RATE) - 1);
 
     for (let i = 1; i < Math.round(0.5 * TICK_RATE); i += 1) {
       updateModules(world);
     }
 
-    expect(enemy.hp).toBe(CHUM.maxHp - 12);
+    expect(enemy.hp).toBe(CHUM.maxHp - 20);
     expect(module?.cooldownTicks).toBe(Math.round(0.5 * TICK_RATE));
   });
 });
@@ -299,6 +301,7 @@ function createModuleReplayWorld(): WorldState {
   const world = createWorld(99, CONTENT);
   addPlayer(world, "p1");
   placeModule(world, "cannon", 1, 1);
+  placeModule(world, "spike_rail", 2, 2);
   placeModule(world, "repair_station", 3, 3);
   damageTile(world, 3, 4, 5);
   addEnemy(world, "e1", { x: 4.5, y: 1.5 });

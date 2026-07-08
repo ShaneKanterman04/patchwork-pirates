@@ -410,12 +410,12 @@ export const SPIKE_RAIL = {
   id: "spike_rail",
   name: "Spike Rail",
   description: "Damages enemies that board the raft over this edge",
-  maxHp: 45,
-  salvageCost: 14,
+  maxHp: 55,
+  salvageCost: 11,
   behavior: {
     kind: "spike_rail",
-    damage: 6,
-    rangeTiles: 0.75,
+    damage: 10,
+    rangeTiles: 0.9,
     cooldownS: 0.5
   }
 } as const satisfies DescribedModuleDef;
