@@ -25,7 +25,7 @@ describe("shop readability helpers", () => {
   });
 
   it("formats weapon stats and stacks compactly", () => {
-    expect(weaponStatLine(WEAPONS.cutlass)).toBe("DMG 18 · every 0.7s · range 1.4");
+    expect(weaponStatLine(WEAPONS.cutlass)).toBe("DMG 18 · every 0.3s · range 1.4");
     expect(weaponStackText(["cutlass", "coconut_launcher", "cutlass"])).toBe(
       "Weapons 3/4: Cutlass x2, Coconut Launcher x1"
     );
@@ -72,7 +72,7 @@ describe("shop readability helpers", () => {
         purchaseSnapshot(playerView({ coins: 8, weaponIds: ["cutlass", "cutlass"] })),
         offers
       )
-    ).toBe("Bought Cutlass - DMG 18 · every 0.7s · range 1.4");
+    ).toBe("Bought Cutlass - DMG 18 · every 0.3s · range 1.4");
   });
 });
 

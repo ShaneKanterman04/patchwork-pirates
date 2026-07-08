@@ -320,6 +320,8 @@ describe("repair", () => {
     expect(tile?.hp).toBeCloseTo(TILE_MAX_HP);
     expect(world.salvage).toBe(1);
     expect(world.events).toContainEqual({ type: "tile_repaired", col: 1, row: 1 });
+    expect(tile?.broken).toBe(false);
+    expect(tile?.patched).toBe(true);
   });
 
   it("lets master repairs restore larger chunks while other players keep base repair chunks", () => {

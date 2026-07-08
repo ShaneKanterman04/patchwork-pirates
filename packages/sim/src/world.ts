@@ -351,10 +351,12 @@ function repairNearestTile(
   player.repairChargeHp = Math.max(0, player.repairChargeHp - hpPerSupply);
   world.events.push({ type: "tile_repaired", col: tile.col, row: tile.row });
 
-  if (tile.broken && tile.hp >= tile.maxHp) {
-    tile.broken = false;
+  if (tile.hp >= tile.maxHp) {
     tile.patched = true;
-    player.stats.tilesRepaired += 1;
+    if (tile.broken) {
+      tile.broken = false;
+      player.stats.tilesRepaired += 1;
+    }
   }
 }
 

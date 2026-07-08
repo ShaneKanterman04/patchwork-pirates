@@ -22,7 +22,7 @@ export const CUTLASS = {
   description: "Melee slash: hits foes in a wide arc in front of you",
   shopPrice: 12,
   targeting: "nearest",
-  cooldownS: 0.7,
+  cooldownS: 0.35,
   rangeTiles: 1.4,
   damage: 18,
   pattern: { kind: "melee_arc", arcDegrees: 90 }
@@ -34,7 +34,7 @@ export const MALLET = {
   description: "Heavy overhead swing: slow but crushing",
   shopPrice: 14,
   targeting: "nearest",
-  cooldownS: 1.1,
+  cooldownS: 0.55,
   rangeTiles: 1.3,
   damage: 30,
   pattern: { kind: "melee_arc", arcDegrees: 70 }
@@ -46,7 +46,7 @@ export const FRYING_PAN = {
   description: "Wide sizzling swat: keeps the crowd off you",
   shopPrice: 14,
   targeting: "nearest",
-  cooldownS: 0.8,
+  cooldownS: 0.4,
   rangeTiles: 1.2,
   damage: 22,
   pattern: { kind: "melee_arc", arcDegrees: 110 }
