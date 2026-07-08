@@ -305,7 +305,7 @@ export interface WeaponInstance {
 export interface EnemyState {
   id: string;
   type: string;
-  animState: "move" | "windup" | "attack";
+  animState: "move" | "windup" | "attack" | "climb";
   pos: Vec2;
   hp: number;
   maxHp: number;
@@ -319,6 +319,8 @@ export interface EnemyState {
   slowFactor: number;
   buffTicks?: number;
   buffFactor?: number;
+  onRaft?: boolean;
+  boardingAnimTicks?: number;
   attackingTileId: string | null;
   telegraphTicks: number;
   markTicks: number;

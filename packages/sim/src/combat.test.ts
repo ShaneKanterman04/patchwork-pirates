@@ -180,7 +180,7 @@ describe("death to coin", () => {
     expect(world.events).toContainEqual({
       type: "enemy_killed",
       enemyId: "e1",
-      pos: { x: 2.5 - 2.6 / TICK_RATE, y: 1.5 }
+      pos: { x: 2.5 - (2.6 * 0.6) / TICK_RATE, y: 1.5 }
     });
   });
 });

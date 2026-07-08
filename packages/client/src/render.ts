@@ -43,6 +43,9 @@ const PLAYER_ATTACK_READ_MS = 260;
 const PLAYER_ATTACK_PULSE_STRENGTH = 0.08;
 const ENEMY_ATTACK_READ_MS = 220;
 const ENEMY_ATTACK_PULSE_STRENGTH = 0.22;
+const ENEMY_CLIMB_READ_MS = 350;
+const ENEMY_CLIMB_LIFT_TILES = 0.16;
+const ENEMY_CLIMB_ROTATION = 0.05;
 const ENEMY_WINDUP_SCALE = 1.06;
 const ENEMY_WINDUP_ROTATION = 0.06;
 const PICKUP_FLY_MS = 320;
@@ -1232,6 +1235,7 @@ export class GameRenderer {
       }
       this.applyEnemySpriteFacing(node, enemy);
       applyEnemyProceduralAttackRead(node, enemy, this.renderClockMs);
+      applyEnemyProceduralClimbRead(node, enemy, this.renderClockMs);
       drawHpBar(
         node,
         enemy.hpRatio,
@@ -3182,6 +3186,8 @@ const PREFS_ATTACK = ["attack", "move"] as const;
 const PREFS_ATTACK_IDLE = ["attack", "move", "idle"] as const;
 const PREFS_WINDUP = ["windup", "attack", "move"] as const;
 const PREFS_WINDUP_IDLE = ["windup", "attack", "move", "idle"] as const;
+const PREFS_CLIMB = ["climb", "move"] as const;
+const PREFS_CLIMB_IDLE = ["climb", "move", "idle"] as const;
 
 function enemyAnimationPreferences(enemy: EnemyView): readonly string[] {
   const kraken = enemy.kind === "kraken_head" || enemy.kind === "kraken_tentacle";
@@ -3190,6 +3196,9 @@ function enemyAnimationPreferences(enemy: EnemyView): readonly string[] {
   }
   if (enemy.anim === "windup") {
     return kraken ? PREFS_WINDUP_IDLE : PREFS_WINDUP;
+  }
+  if (enemy.anim === "climb") {
+    return kraken ? PREFS_CLIMB_IDLE : PREFS_CLIMB;
   }
   return kraken ? PREFS_MOVE_IDLE : PREFS_MOVE;
 }
@@ -3213,6 +3222,24 @@ function applyEnemyProceduralAttackRead(node: EntityNode, enemy: EnemyView, cloc
 
   const ageMs = clockMs - node.animStateStartedAtMs;
   applyEntityVisualPulse(node, ageMs, ENEMY_ATTACK_READ_MS, ENEMY_ATTACK_PULSE_STRENGTH);
+}
+
+function applyEnemyProceduralClimbRead(node: EntityNode, enemy: EnemyView, clockMs: number): void {
+  if (enemy.anim !== "climb") {
+    return;
+  }
+
+  const winningAnimation = node.spriteKey?.slice(enemy.kind.length + 1);
+  if (winningAnimation === "climb") {
+    return;
+  }
+
+  const t = clamp01((clockMs - node.animStateStartedAtMs) / ENEMY_CLIMB_READ_MS);
+  const lift = Math.sin(Math.PI * t) * ENEMY_CLIMB_LIFT_TILES;
+  const direction = enemy.x < RAFT_SIZE_TILES / 2 ? 1 : -1;
+  const visual = node.sprite?.visible === true ? node.sprite : node.body;
+  visual.position.y -= lift;
+  visual.rotation += direction * ENEMY_CLIMB_ROTATION * Math.sin(Math.PI * t);
 }
 
 function applyEntityVisualPulse(

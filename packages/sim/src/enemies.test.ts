@@ -293,7 +293,7 @@ describe("screamer behavior", () => {
     const before = { ...nearby.pos };
     updateEnemies(world);
 
-    expect(distance(before, nearby.pos)).toBeCloseTo((nearby.speed * 1.3) / TICK_RATE);
+    expect(distance(before, nearby.pos)).toBeCloseTo((nearby.speed * 1.3 * 0.6) / TICK_RATE);
 
     for (let i = 0; i < Math.round(0.25 * TICK_RATE) + 2; i += 1) {
       updateEnemies(world);
@@ -525,7 +525,7 @@ describe("brute turtle behavior", () => {
     const before = { ...brute.pos };
     updateEnemies(world);
 
-    expect(distance(before, brute.pos)).toBeCloseTo((brute.speed * 0.5) / TICK_RATE);
+    expect(distance(before, brute.pos)).toBeCloseTo((brute.speed * 0.5 * 0.6) / TICK_RATE);
   });
 });
 
@@ -552,6 +552,78 @@ describe("enemy behavior dispatch", () => {
 });
 
 describe("enemy animation state", () => {
+  it("moves at full speed in water and slows to 60 percent while standing on the raft", () => {
+    const world = createWorld(1, CONTENT);
+    const player = addPlayer(world, "p1");
+    player.pos = { x: 4.5, y: 0.5 };
+    const chum = addEnemy(world, "chum1", "chum", { x: -0.5, y: 0.5 });
+
+    const waterStart = { ...chum.pos };
+    updateEnemies(world);
+
+    expect(chum.onRaft).toBe(false);
+    expect(distance(waterStart, chum.pos)).toBeCloseTo(chum.speed / TICK_RATE);
+
+    chum.pos = { x: 0.5, y: 0.5 };
+    const raftStart = { ...chum.pos };
+    updateEnemies(world);
+
+    expect(chum.onRaft).toBe(true);
+    expect(distance(raftStart, chum.pos)).toBeCloseTo((chum.speed * 0.6) / TICK_RATE);
+  });
+
+  it("reports climb for the boarding animation window after first standing on deck", () => {
+    const world = createWorld(1, CONTENT);
+    const chum = addEnemy(world, "chum1", "chum", { x: 0.5, y: 0.5 });
+    const boardingTicks = Math.round(0.35 * TICK_RATE);
+
+    updateEnemies(world);
+
+    expect(chum.onRaft).toBe(true);
+    expect(chum.boardingAnimTicks).toBe(boardingTicks);
+    expect(chum.animState).toBe("climb");
+
+    for (let i = 1; i < boardingTicks; i += 1) {
+      updateEnemies(world);
+      expect(chum.animState).toBe("climb");
+    }
+
+    updateEnemies(world);
+
+    expect(chum.boardingAnimTicks).toBe(0);
+    expect(chum.animState).toBe("move");
+  });
+
+  it("re-triggers climb after stepping off the raft and boarding again", () => {
+    const world = createWorld(1, CONTENT);
+    const chum = addEnemy(world, "chum1", "chum", { x: -0.5, y: 0.5 });
+    const boardingTicks = Math.round(0.35 * TICK_RATE);
+
+    updateEnemies(world);
+
+    expect(chum.onRaft).toBe(false);
+
+    chum.pos = { x: 0.5, y: 0.5 };
+    updateEnemies(world);
+
+    expect(chum.animState).toBe("climb");
+
+    chum.pos = { x: -0.5, y: 0.5 };
+    for (let i = 0; i < boardingTicks + 1; i += 1) {
+      updateEnemies(world);
+    }
+
+    expect(chum.onRaft).toBe(false);
+    expect(chum.animState).toBe("move");
+
+    chum.pos = { x: 0.5, y: 0.5 };
+    updateEnemies(world);
+
+    expect(chum.onRaft).toBe(true);
+    expect(chum.boardingAnimTicks).toBe(boardingTicks);
+    expect(chum.animState).toBe("climb");
+  });
+
   it("reports attack during a contact hit window and returns to move while swimming", () => {
     const world = createWorld(1, CONTENT);
     const player = addPlayer(world, "p1");
@@ -562,7 +634,7 @@ describe("enemy animation state", () => {
 
     expect(chum.animState).toBe("attack");
 
-    for (let i = 0; i < Math.round(0.3 * TICK_RATE); i += 1) {
+    for (let i = 0; i < Math.round(0.35 * TICK_RATE); i += 1) {
       updateEnemies(world);
     }
 

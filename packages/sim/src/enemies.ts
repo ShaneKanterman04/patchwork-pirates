@@ -18,10 +18,18 @@ import type {
 } from "./types";
 
 const ATTACK_ANIM_TICKS = Math.round(0.3 * TICK_RATE);
+const BOARDING_ANIM_TICKS = Math.round(0.35 * TICK_RATE);
+const ON_RAFT_SPEED_MULT = 0.6;
 
 export function updateEnemies(world: WorldState): void {
   for (const enemy of world.enemies) {
     enemy.attackAnimTicks = Math.max(0, enemy.attackAnimTicks - 1);
+    enemy.boardingAnimTicks = Math.max(0, (enemy.boardingAnimTicks ?? 0) - 1);
+    const onRaftNow = isWalkable(world.raft, enemy.pos.x, enemy.pos.y);
+    if (onRaftNow && enemy.onRaft !== true) {
+      enemy.boardingAnimTicks = BOARDING_ANIM_TICKS;
+    }
+    enemy.onRaft = onRaftNow;
     if (enemy.telegraphTicks === 0) {
       enemy.attackingTileId = null;
     }
@@ -512,6 +520,8 @@ export function createEnemy(
     slowFactor: 1,
     buffTicks: 0,
     buffFactor: 1,
+    onRaft: false,
+    boardingAnimTicks: 0,
     attackingTileId: null,
     telegraphTicks: 0,
     markTicks: 0,
@@ -540,6 +550,10 @@ function enemyAnimState(enemy: EnemyState): EnemyState["animState"] {
 
   if (enemy.telegraphTicks > 0) {
     return "windup";
+  }
+
+  if ((enemy.boardingAnimTicks ?? 0) > 0) {
+    return "climb";
   }
 
   return "move";
@@ -594,6 +608,7 @@ function effectiveSpeed(enemy: EnemyState): number {
   return (
     enemy.speed *
     (enemy.slowTicks > 0 ? enemy.slowFactor : 1) *
+    (enemy.onRaft ? ON_RAFT_SPEED_MULT : 1) *
     ((enemy.buffTicks ?? 0) > 0 ? (enemy.buffFactor ?? 1) : 1)
   );
 }

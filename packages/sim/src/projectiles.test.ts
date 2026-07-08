@@ -135,12 +135,13 @@ describe("harpoon projectile", () => {
 
     expect(enemy.slowTicks).toBeGreaterThan(0);
     expect(enemy.slowFactor).toBe(0.5);
+    expect(enemy.onRaft).toBe(true);
     const beforeSlowMove = { ...enemy.pos };
 
     tick(world, new Map([["p1", IDLE_INPUT]]));
 
     expect(distance(beforeSlowMove, enemy.pos)).toBeCloseTo(
-      (enemy.speed * 0.5) / TICK_RATE
+      (enemy.speed * 0.5 * 0.6) / TICK_RATE
     );
   });
 });
