@@ -279,6 +279,16 @@ Report format
 What you built, every file touched, deps added, full validation output (paste,
 including screenshot file sizes), open concerns.`
 
+// Defensive: some callers/transports deliver a JSON-object `args` as a JSON-encoded
+// string instead of a parsed object. Normalize so `args.task` etc. always work.
+if (typeof args === 'string') {
+  try {
+    args = JSON.parse(args)
+  } catch {
+    args = { task: args }
+  }
+}
+
 phase('Bootstrap')
 const harnessCheck = await agent(
   `In ${REPO}, inspect (do NOT run anything) whether packages/e2e exists and looks
@@ -448,6 +458,17 @@ For "remove" tasks: identify EVERY reference to the thing being removed (content
 entry, sim primitive if it's exclusively used by this feature, client render/audio
 hooks, tests, art asset registry entries) and make sure some packet's requirements
 list covers deleting all of them, not just the obvious one.
+
+Before returning, Read back every brief file you just wrote and confirm each one is
+a real, substantive, task-specific brief (concrete file paths, concrete numbered
+requirements referencing THIS task) - not a stub. A brief under ~150 words is not
+finished; go back and write it properly. This step is mandatory, not optional.
+
+Do not return placeholder or illustrative values under any circumstances - every
+field (id, title, briefFile, reportFile, summary) must describe THIS task's real
+packets. If you find yourself about to write generic placeholders like id "a",
+title "b", or a summary that just says "test", stop - you have not done the work
+yet; go back, actually decompose the task, and write the real brief files first.
 
 Return the structured manifest described above.`,
   { label: 'decompose', phase: 'Decompose', model: 'opus', effort: 'high', schema: DECOMPOSE_SCHEMA }
