@@ -87,6 +87,9 @@ function updateModuleByBehavior(
       return;
     case "supply_cache":
       return;
+    case "spike_rail":
+      updateSpikeRail(world, module, behavior);
+      return;
   }
 }
 
@@ -133,6 +136,30 @@ function updateCannon(
     slowFactor: 1,
     slowDurationTicks: 0
   });
+
+  module.cooldownTicks = Math.round(behavior.cooldownS * TICK_RATE);
+}
+
+function updateSpikeRail(
+  world: WorldState,
+  module: ModuleState,
+  behavior: Extract<ModuleBehavior, { kind: "spike_rail" }>
+): void {
+  module.cooldownTicks = Math.max(0, module.cooldownTicks - 1);
+  if (module.cooldownTicks > 0) {
+    return;
+  }
+
+  const origin = moduleCenter(module);
+  for (const enemy of world.enemies) {
+    if (enemy.hp <= 0) {
+      continue;
+    }
+
+    if (distance(origin, enemy.pos) <= behavior.rangeTiles + enemy.radius) {
+      enemy.hp -= behavior.damage;
+    }
+  }
 
   module.cooldownTicks = Math.round(behavior.cooldownS * TICK_RATE);
 }

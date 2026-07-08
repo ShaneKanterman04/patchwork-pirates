@@ -10,7 +10,8 @@ import {
   placeModule,
   supplyCapacity,
   tick,
-  tileAt
+  tileAt,
+  updateModules
 } from "./index";
 import type {
   ContentRegistry,
@@ -47,6 +48,19 @@ const REPAIR_STATION: ModuleDef = {
   }
 };
 
+const SPIKE_RAIL: ModuleDef = {
+  id: "spike_rail",
+  name: "Spike Rail",
+  maxHp: 45,
+  salvageCost: 14,
+  behavior: {
+    kind: "spike_rail",
+    damage: 6,
+    rangeTiles: 0.75,
+    cooldownS: 0.5
+  }
+};
+
 const CHUM: EnemyDef = {
   id: "chum",
   name: "Chum",
@@ -66,7 +80,8 @@ const CONTENT: ContentRegistry = {
   enemies: { chum: CHUM },
   modules: {
     cannon: CANNON,
-    repair_station: REPAIR_STATION
+    repair_station: REPAIR_STATION,
+    spike_rail: SPIKE_RAIL
   },
   waves: []
 };
@@ -191,6 +206,50 @@ describe("supply cache module", () => {
 
     expect(world.modules).toEqual([]);
     expect(world.salvage).toBe(BASE_SUPPLY_CAP);
+  });
+});
+
+describe("spike rail module", () => {
+  it("damages enemies in boarding range", () => {
+    const world = createWorld(1, CONTENT);
+    const module = placeModule(world, "spike_rail", 1, 1);
+    const enemy = addEnemy(world, "e1", { x: 2.45, y: 1.5 });
+
+    updateModules(world);
+
+    expect(module).not.toBeNull();
+    expect(enemy.hp).toBe(CHUM.maxHp - 6);
+    expect(module?.cooldownTicks).toBe(Math.round(0.5 * TICK_RATE));
+  });
+
+  it("ignores enemies outside boarding range", () => {
+    const world = createWorld(1, CONTENT);
+    const module = placeModule(world, "spike_rail", 1, 1);
+    const enemy = addEnemy(world, "e1", { x: 2.6, y: 1.5 });
+
+    updateModules(world);
+
+    expect(enemy.hp).toBe(CHUM.maxHp);
+    expect(module?.cooldownTicks).toBe(Math.round(0.5 * TICK_RATE));
+  });
+
+  it("respects cooldown between pulses", () => {
+    const world = createWorld(1, CONTENT);
+    const module = placeModule(world, "spike_rail", 1, 1);
+    const enemy = addEnemy(world, "e1", { x: 2.45, y: 1.5 });
+
+    updateModules(world);
+    updateModules(world);
+
+    expect(enemy.hp).toBe(CHUM.maxHp - 6);
+    expect(module?.cooldownTicks).toBe(Math.round(0.5 * TICK_RATE) - 1);
+
+    for (let i = 1; i < Math.round(0.5 * TICK_RATE); i += 1) {
+      updateModules(world);
+    }
+
+    expect(enemy.hp).toBe(CHUM.maxHp - 12);
+    expect(module?.cooldownTicks).toBe(Math.round(0.5 * TICK_RATE));
   });
 });
 

@@ -189,6 +189,12 @@ export type ModuleBehavior =
   | {
       kind: "supply_cache";
       capacityBonus: number;
+    }
+  | {
+      kind: "spike_rail";
+      damage: number;
+      rangeTiles: number;
+      cooldownS: number;
     };
 
 export interface ModuleDef {

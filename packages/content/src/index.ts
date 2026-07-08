@@ -406,6 +406,20 @@ export const REPAIR_STATION = {
   }
 } as const satisfies DescribedModuleDef;
 
+export const SPIKE_RAIL = {
+  id: "spike_rail",
+  name: "Spike Rail",
+  description: "Damages enemies that board the raft over this edge",
+  maxHp: 45,
+  salvageCost: 14,
+  behavior: {
+    kind: "spike_rail",
+    damage: 6,
+    rangeTiles: 0.75,
+    cooldownS: 0.5
+  }
+} as const satisfies DescribedModuleDef;
+
 export const WEAPONS = {
   cutlass: CUTLASS,
   mallet: MALLET,
@@ -529,7 +543,8 @@ export const ENEMIES = {
 
 export const MODULES = {
   cannon: CANNON,
-  repair_station: REPAIR_STATION
+  repair_station: REPAIR_STATION,
+  spike_rail: SPIKE_RAIL
 } as const satisfies Record<string, DescribedModuleDef>;
 
 export const WAVES = [
