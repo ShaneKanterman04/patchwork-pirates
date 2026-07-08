@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "pnpm -r build",
+    "e2e": "pnpm --filter @patchwork/e2e run run",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
     "test": "vitest run",

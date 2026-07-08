@@ -28,3 +28,7 @@ coverage/
 .vite/
 apps/client/dist/
 packages/client/dist/
+
+# Workflow scratch (briefs/reports for Workflow-orchestrated runs)
+.workflow-scratch/
+packages/e2e/out/
