@@ -26,3 +26,4 @@ definition.
 ## Status
 
 Pre-production. No code yet — start at `docs/ROADMAP.md` Phase 0.
+# patchwork-pirates
