@@ -56,7 +56,7 @@ importers:
         specifier: ^24.0.10
         version: 24.13.2
       playwright:
-        specifier: ^1.53.2
+        specifier: ^1.61.1
         version: 1.61.1
       tsx:
         specifier: ^4.20.3
