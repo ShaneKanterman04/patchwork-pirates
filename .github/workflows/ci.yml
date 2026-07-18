@@ -24,8 +24,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm test
-      - run: pnpm build
       - run: pnpm --filter @patchwork/e2e exec playwright install --with-deps chromium
       - run: pnpm e2e:ci
