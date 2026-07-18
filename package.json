@@ -9,6 +9,7 @@
   "scripts": {
     "build": "pnpm -r build",
     "e2e": "pnpm --filter @patchwork/e2e run run",
+    "e2e:ci": "pnpm e2e solo-smoke && pnpm e2e coop-smoke",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
     "test": "vitest run",

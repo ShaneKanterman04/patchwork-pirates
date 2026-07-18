@@ -30,6 +30,7 @@ import {
 import type { PurchaseSnapshot } from "./shopReadability";
 import { canAffordOffer, nearestBuildTile, nearestExpansionSite, ownCoins } from "./shopLogic";
 
+async function startGame(): Promise<void> {
 const root = document.querySelector<HTMLDivElement>("#app");
 
 if (root === null) {
@@ -1075,3 +1076,19 @@ function el<K extends keyof HTMLElementTagNameMap>(
   }
   return node;
 }
+}
+
+void startGame().catch((error: unknown) => {
+  console.error("Patchwork Pirates failed to start", error);
+  const root = document.querySelector<HTMLDivElement>("#app");
+  if (root === null) return;
+  const panel = document.createElement("main");
+  panel.dataset.startupError = "true";
+  panel.style.cssText = "box-sizing:border-box;min-height:100%;padding:32px;background:#173746;color:#f8fbff;font-family:system-ui,sans-serif";
+  const title = document.createElement("h1");
+  title.textContent = "Patchwork Pirates could not start";
+  const detail = document.createElement("p");
+  detail.textContent = "Reload the page. If this keeps happening, share the browser console error with the project owner.";
+  panel.append(title, detail);
+  root.replaceChildren(panel);
+});

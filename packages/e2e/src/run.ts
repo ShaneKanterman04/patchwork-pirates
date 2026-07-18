@@ -50,7 +50,7 @@ const result: Result = {
   screenshotPaths: []
 };
 
-let devServer: ChildHandle | undefined;
+let clientServer: ChildHandle | undefined;
 let browser: Awaited<ReturnType<typeof launchBrowser>> | undefined;
 let testServer: ReturnType<typeof launchTestServer> | undefined;
 
@@ -58,13 +58,16 @@ try {
   await rm(outDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
 
-  devServer = await startClientDevServer();
+  clientServer = await startClientPreviewServer();
   testServer = launchTestServer(scenario.seed, serverPort);
   browser = await launchBrowser(scenario.players.length, headed);
 
   const pageUrl = `http://localhost:${clientPort}/?port=${serverPort}&resethints=1`;
   await Promise.all(browser.pages.map((page) => page.goto(pageUrl, { waitUntil: "domcontentloaded" })));
-  await Promise.all(browser.pages.map((page) => page.waitForSelector("[data-lobby]")));
+  await Promise.all(browser.pages.map(async (page) => {
+    await page.waitForSelector("canvas.game-canvas", { state: "visible", timeout: 15_000 });
+    await page.waitForSelector("[data-lobby] .lobby-actions", { state: "visible", timeout: 10_000 });
+  }));
 
   await runScenario(scenario, browser.pages, outDir, async (page, label) => {
     const filePath = await browser!.screenshot(page, outDir, label);
@@ -105,9 +108,9 @@ try {
       result.errors.push(`test server close failed: ${String(error)}`);
     });
   }
-  if (devServer !== undefined) {
-    await devServer.stop().catch((error: unknown) => {
-      result.errors.push(`dev server close failed: ${String(error)}`);
+  if (clientServer !== undefined) {
+    await clientServer.stop().catch((error: unknown) => {
+      result.errors.push(`preview server close failed: ${String(error)}`);
     });
   }
 
@@ -199,16 +202,12 @@ function stepPageIndex(step: ScenarioStep): number {
   return 0;
 }
 
-async function startClientDevServer(): Promise<ChildHandle> {
-  // Deliberately "vite" (dev server, unbundled native-ESM module graph), NOT "vite preview"
-  // (the production Rollup build). The production build's code-split renderer chunks
-  // (WebGLRenderer/BufferResource/RenderTargetSystem/Filter) import back from the entry
-  // chunk, and that circular graph never resolves its dynamic import() under a real browser
-  // module loader - app.init() hangs forever with no error, no canvas, nothing to screenshot.
-  // The dev server serves each module unbundled and does not hit this cycle. See PR/commit
-  // notes for the full repro; this is a real latent bug in the production build, tracked
-  // separately from this harness - flag it before ever shipping `vite build` output to players.
-  const child = spawn("pnpm", ["exec", "vite", "--port", String(clientPort), "--strictPort"], {
+async function startClientPreviewServer(): Promise<ChildHandle> {
+  // Browser acceptance must exercise the exact Rollup output shipped to players.
+  // A Vite development server serves an unbundled graph and cannot catch production-only
+  // module evaluation deadlocks.
+  await runCommand("pnpm", ["run", "build"], clientRoot);
+  const child = spawn("pnpm", ["exec", "vite", "preview", "--host", "127.0.0.1", "--port", String(clientPort), "--strictPort"], {
     cwd: clientRoot,
     stdio: ["ignore", "pipe", "pipe"]
   });
@@ -225,7 +224,7 @@ async function startClientDevServer(): Promise<ChildHandle> {
 
   await waitForHttp(`http://localhost:${clientPort}/`, 15_000, () => {
     if (child.exitCode !== null) {
-      throw new Error(`vite dev server exited early:\n${output}`);
+      throw new Error(`vite preview server exited early:\n${output}`);
     }
   });
 
