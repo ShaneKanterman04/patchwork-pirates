@@ -26,4 +26,12 @@ definition.
 ## Status
 
 Pre-production. No code yet — start at `docs/ROADMAP.md` Phase 0.
+
+## GitHub CI runner
+
+Validation uses the `homelab` micro tier. ARC manages when an ephemeral runner
+pod exists; that runner executes the browser validation and is deleted after
+the job. Keep it micro unless profiling shows sustained CPU demand that
+justifies `homelab-heavy`. The platform contract is in the
+[KanterLabs runner runbook](https://github.com/KanterLabs/infrastructure/tree/main/homelab/ci-runners).
 # patchwork-pirates
